@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { BrowserMultiFormatReader } from '@zxing/browser'
+import { BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
 
 interface Props {
@@ -8,10 +10,8 @@ interface Props {
 }
 
 export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const scannerRef = useRef<any>(null)
-  const videoTrackRef = useRef<MediaStreamTrack | null>(null)
-  const onResultRef = useRef<((res: any) => void) | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const controlsRef = useRef<{ stop: () => void } | null>(null)
   const lastVinRef = useRef({ vin: '', ts: 0 })
 
   const [errorMsg, setErrorMsg] = useState('')
@@ -26,131 +26,70 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const pickVinFromResult = (res: any): { vin: string; checksumOk: boolean } | null => {
-    if (!res) return null
-    const text = res.textualData || res.text || res.textual_data || (res.data && res.data.text) || ''
-    if (!text) return null
-    return pickBestVinFromText(text)
-  }
-
   useEffect(() => {
-    let cancelled = false
+    let stopped = false
+
+    const hints = new Map()
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.DATA_MATRIX,
+      BarcodeFormat.PDF_417,
+      BarcodeFormat.QR_CODE,
+    ])
+    hints.set(DecodeHintType.TRY_HARDER, true)
+
+    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 })
 
     ;(async () => {
       try {
-        const envKey = import.meta.env.VITE_BARKODER_KEY || ''
-        if (!envKey) {
-          setErrorMsg('Scanner not configured (missing license key).')
-          onFail?.()
-          return
-        }
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices()
+        if (!devices.length) throw new Error('No camera found')
 
-        let BarkoderSDKMod: any = null
-        try {
-          const mod = await import('barkoder-wasm')
-          BarkoderSDKMod = (mod as any)?.default || mod
-        } catch {
-          BarkoderSDKMod = (window as any).BarkoderSDK || (window as any).Barkoder || null
-        }
+        // prefer back/rear camera
+        const back = devices.find(d => /back|rear|environment/i.test(d.label)) ?? devices[devices.length - 1]
 
-        if (!BarkoderSDKMod) throw new Error('Barkoder SDK not found')
+        if (stopped) return
 
-        const Barkoder = await BarkoderSDKMod.initialize(envKey)
-        if (cancelled) return
-
-        scannerRef.current = Barkoder
-
-        if (containerRef.current) {
-          containerRef.current.id = containerRef.current.id || 'barkoder-container'
-          containerRef.current.style.width = containerRef.current.style.width || '100%'
-          containerRef.current.style.height = containerRef.current.style.height || '100%'
-        }
-
-        try {
-          if (typeof Barkoder.setCameraPosition === 'function') Barkoder.setCameraPosition('back')
-          else if (typeof Barkoder.setCameraFacingMode === 'function') Barkoder.setCameraFacingMode('environment')
-
-          if (typeof Barkoder.setCameraSwitchVisibility === 'function') Barkoder.setCameraSwitchVisibility(false)
-          if (typeof Barkoder.setCloseButtonVisibility === 'function') Barkoder.setCloseButtonVisibility(false)
-        } catch { /* ignore */ }
-
-        try {
-          const C = Barkoder.constants || BarkoderSDKMod.constants || {}
-          const D = C.Decoders || C.BarcodeType || {}
-          const decoders = [D.Code39, D.Code128, D.DataMatrix, D.PDF417, D.QR].filter(v => typeof v !== 'undefined')
-          if (decoders.length && typeof Barkoder.setEnabledDecoders === 'function') {
-            Barkoder.setEnabledDecoders(...decoders)
-          } else if (typeof Barkoder.setBarcodeTypeEnabled === 'function') {
-            decoders.forEach((t: any) => Barkoder.setBarcodeTypeEnabled(t, true))
-          }
-        } catch { /* ignore */ }
-
-        const onResult = async (res: any) => {
-          try {
-            const best = pickVinFromResult(res)
-            if (!best?.vin) return
-
-            const now = Date.now()
-            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < 1500) return
-            lastVinRef.current = { vin: best.vin, ts: now }
-
-            setPendingVin(best.vin)
-            setPendingVinMeta({ checksumOk: !!best.checksumOk })
-          } catch { /* ignore */ }
-        }
-
-        onResultRef.current = onResult
-
-        try {
-          Barkoder.startScanner(onResult)
-        } catch (e: any) {
-          setErrorMsg('Scanner start failed: ' + (e?.message || String(e)))
-        }
-
-        ;(function pollForTrack(attempts = 30) {
-          const videoEl = containerRef.current?.querySelector('video')
-          const stream = (videoEl as HTMLVideoElement & { srcObject: MediaStream })?.srcObject
-          const track = stream?.getVideoTracks?.()[0]
-          if (track) { videoTrackRef.current = track; return }
-          if (attempts > 0) setTimeout(() => pollForTrack(attempts - 1), 250)
-        })()
+        const controls = await reader.decodeFromVideoDevice(back.deviceId, videoRef.current!, (result, err) => {
+          if (stopped) return
+          if (err instanceof NotFoundException || !result) return
+          const text = result.getText()
+          if (!text) return
+          const best = pickBestVinFromText(text)
+          if (!best?.vin) return
+          const now = Date.now()
+          if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < 1500) return
+          lastVinRef.current = { vin: best.vin, ts: now }
+          setPendingVin(best.vin)
+          setPendingVinMeta({ checksumOk: !!best.checksumOk })
+        })
+        if (!stopped) controlsRef.current = controls
       } catch (err: any) {
-        setErrorMsg('Init failed: ' + (err?.message || String(err)))
+        if (stopped) return
+        setErrorMsg(err?.message || 'Camera error')
         onFail?.()
       }
     })()
 
     return () => {
-      cancelled = true
-      try { scannerRef.current?.stopScanner?.() } catch { /* ignore */ }
-      try { videoTrackRef.current?.stop?.() } catch { /* ignore */ }
+      stopped = true
+      try { controlsRef.current?.stop() } catch { /* ignore */ }
     }
   }, [onFail])
 
   const handleUseVin = () => {
     if (!pendingVin) return
     const cleaned = sanitizeVin(pendingVin)
-    if (isLikelyVin(cleaned)) {
-      onDetected(cleaned)
-    } else {
-      onDetected(pendingVin)
-    }
+    onDetected(isLikelyVin(cleaned) ? cleaned : pendingVin)
     setPendingVin('')
     setPendingVinMeta(null)
   }
 
-  const handleDismiss = async () => {
+  const handleDismiss = () => {
     setPendingVin('')
     setPendingVinMeta(null)
     lastVinRef.current = { vin: '', ts: 0 }
-    try {
-      const Barkoder = scannerRef.current
-      if (Barkoder && onResultRef.current) {
-        try { Barkoder.stopScanner?.() } catch { /* ignore */ }
-        await new Promise(r => setTimeout(r, 150))
-        Barkoder.startScanner?.(onResultRef.current)
-      }
-    } catch { /* ignore */ }
   }
 
   const vinModalOpen = !!pendingVin
@@ -158,7 +97,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
   return (
     <div className={`scanner-overlay ${vinModalOpen ? 'scanner-overlay--blur' : ''}`}>
       <div className={`scanner-box ${vinModalOpen ? 'scanner-box--blurred' : ''}`}>
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+        <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         {errorMsg && (
           <div style={{
             position: 'absolute', bottom: '1rem', left: '50%', transform: 'translateX(-50%)',
@@ -168,9 +107,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
             {errorMsg}
           </div>
         )}
-        <button className="scanner-close" type="button" onClick={onClose}>
-          Close
-        </button>
+        <div className="scanner-aim" />
+        <button className="scanner-close" type="button" onClick={onClose}>Close</button>
       </div>
 
       {vinModalOpen && (
@@ -207,6 +145,15 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           border: 1px solid rgba(255,255,255,0.08);
         }
         .scanner-box--blurred { filter: blur(2px); opacity: 0.6; }
+        .scanner-aim {
+          position: absolute; top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 72%; height: 18%;
+          border: 2px solid rgba(37,99,235,0.8);
+          border-radius: 6px;
+          box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+          pointer-events: none;
+        }
         .scanner-close {
           position: absolute; top: 10px; right: 10px;
           background: rgba(255,255,255,0.12); color: white;
@@ -236,8 +183,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         }
         .scanner-result-primary { flex: 1; background: #2563eb; border-color: rgba(37,99,235,0.25); color: #fff; }
         .scanner-result-secondary { background: #f3f4f6; color: #0f172a; min-width: 120px; }
-        .barkoder-close, .barkoder-close-button, .barkoder-camera-switch,
-        .barkoder-camera-switch-button { display: none !important; }
       `}</style>
     </div>
   )

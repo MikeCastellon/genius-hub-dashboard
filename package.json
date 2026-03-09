@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "barkoder-wasm": "^1.4.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
