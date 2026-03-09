@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Car, ScanLine, Loader2 } from 'lucide-react'
+import { Car, ScanLine, Loader2, Search } from 'lucide-react'
 import { decodeVin, isLikelyVin } from '@/lib/utils'
 
 interface VehicleData {
@@ -27,17 +27,13 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
     onChange({ ...value, [field]: e.target.value })
 
   const handleVinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vin = e.target.value.toUpperCase()
-    onChange({ ...value, vin })
+    onChange({ ...value, vin: e.target.value.toUpperCase() })
     setDecodeError('')
   }
 
   const handleDecodeVin = async () => {
     const vin = value.vin.trim()
-    if (!isLikelyVin(vin)) {
-      setDecodeError('Enter a valid 17-character VIN first')
-      return
-    }
+    if (!isLikelyVin(vin)) { setDecodeError('Enter a valid 17-character VIN'); return }
     setDecoding(true)
     setDecodeError('')
     try {
@@ -48,11 +44,15 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
         setDecodeError('VIN not found in NHTSA database')
       }
     } catch {
-      setDecodeError('Decode failed. Check VIN and try again.')
+      setDecodeError('Decode failed — check VIN and try again')
     } finally {
       setDecoding(false)
     }
   }
+
+  // Single smart button: scan when empty, decode when typing
+  const isTyping = value.vin.length > 0
+  const canDecode = value.vin.length === 17
 
   return (
     <div>
@@ -63,35 +63,49 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
         Vehicle Information
       </h3>
 
-      {/* VIN — full width input, then buttons below */}
+      {/* VIN row — input + single smart button */}
       <div className="mb-4">
         <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">VIN</label>
-        <input
-          type="text"
-          value={value.vin}
-          onChange={handleVinChange}
-          placeholder="17-CHARACTER VIN..."
-          maxLength={17}
-          className={`${inputClass} font-mono uppercase mb-2`}
-        />
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onScanClick}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-sm font-semibold hover:bg-blue-100 active:bg-blue-200 transition-colors"
-          >
-            <ScanLine size={15} />
-            Scan Barcode
-          </button>
-          <button
-            type="button"
-            onClick={handleDecodeVin}
-            disabled={decoding || value.vin.length !== 17}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold hover:shadow-md hover:shadow-blue-500/25 active:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {decoding ? <Loader2 size={14} className="animate-spin" /> : 'Decode VIN'}
-          </button>
+          <input
+            type="text"
+            value={value.vin}
+            onChange={handleVinChange}
+            placeholder="17-CHARACTER VIN..."
+            maxLength={17}
+            className={`${inputClass} flex-1 min-w-0 font-mono uppercase`}
+          />
+          {!isTyping ? (
+            /* Scan button */
+            <button
+              type="button"
+              onClick={onScanClick}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 active:opacity-90 transition-all"
+            >
+              <ScanLine size={15} />
+              Scan
+            </button>
+          ) : (
+            /* Decode button */
+            <button
+              type="button"
+              onClick={handleDecodeVin}
+              disabled={decoding || !canDecode}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 active:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {decoding
+                ? <Loader2 size={14} className="animate-spin" />
+                : <><Search size={14} /> Check</>
+              }
+            </button>
+          )}
         </div>
+        {/* VIN length indicator when typing */}
+        {isTyping && !decodeError && (
+          <p className={`text-[11px] mt-1.5 font-medium ${canDecode ? 'text-emerald-500' : 'text-zinc-400'}`}>
+            {canDecode ? '✓ 17 characters — tap Check to decode' : `${value.vin.length}/17 characters`}
+          </p>
+        )}
         {decodeError && <p className="text-[11px] text-red-500 mt-1.5">{decodeError}</p>}
       </div>
 
