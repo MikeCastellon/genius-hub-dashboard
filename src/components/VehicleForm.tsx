@@ -17,7 +17,7 @@ interface Props {
   onScanClick: () => void
 }
 
-const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+const inputClass = 'w-full px-3.5 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
 
 export default function VehicleForm({ value, onChange, onScanClick }: Props) {
   const [decoding, setDecoding] = useState(false)
@@ -63,40 +63,40 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
         Vehicle Information
       </h3>
 
-      {/* VIN Row */}
-      <div className="mb-3">
+      {/* VIN — full width input, then buttons below */}
+      <div className="mb-4">
         <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">VIN</label>
+        <input
+          type="text"
+          value={value.vin}
+          onChange={handleVinChange}
+          placeholder="17-CHARACTER VIN..."
+          maxLength={17}
+          className={`${inputClass} font-mono uppercase mb-2`}
+        />
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={value.vin}
-            onChange={handleVinChange}
-            placeholder="17-character VIN..."
-            maxLength={17}
-            className={`${inputClass} flex-1 font-mono uppercase`}
-          />
           <button
             type="button"
             onClick={onScanClick}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-sm font-semibold hover:bg-blue-100 active:bg-blue-200 transition-colors"
           >
-            <ScanLine size={14} />
-            <span className="hidden sm:inline">Scan</span>
+            <ScanLine size={15} />
+            Scan Barcode
           </button>
           <button
             type="button"
             onClick={handleDecodeVin}
             disabled={decoding || value.vin.length !== 17}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-xs font-semibold hover:shadow-md hover:shadow-blue-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold hover:shadow-md hover:shadow-blue-500/25 active:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {decoding ? <Loader2 size={13} className="animate-spin" /> : 'Decode'}
+            {decoding ? <Loader2 size={14} className="animate-spin" /> : 'Decode VIN'}
           </button>
         </div>
-        {decodeError && <p className="text-[11px] text-red-500 mt-1">{decodeError}</p>}
+        {decodeError && <p className="text-[11px] text-red-500 mt-1.5">{decodeError}</p>}
       </div>
 
       {/* Year / Make / Model */}
-      <div className="grid grid-cols-3 gap-3 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-3">
         <div>
           <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Year</label>
           <input type="text" value={value.year} onChange={set('year')} placeholder="2020" className={inputClass} />
@@ -112,7 +112,7 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
       </div>
 
       {/* Color / Plate */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Color</label>
           <input type="text" value={value.color} onChange={set('color')} placeholder="White" className={inputClass} />
