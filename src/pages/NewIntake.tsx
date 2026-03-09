@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useServices, useCustomers, createIntake, useAuth } from '@/lib/store'
 import { CartItem, PaymentMethod } from '@/lib/types'
-import { CheckCircle, Loader2, FileText, Car, ScanLine } from 'lucide-react'
+import { CheckCircle, Loader2, FileText, Car } from 'lucide-react'
 import VehicleForm from '@/components/VehicleForm'
 import CustomerForm from '@/components/CustomerForm'
 import ServicePicker from '@/components/ServicePicker'
@@ -114,21 +114,12 @@ export default function NewIntake() {
       )}
 
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-              <Car size={18} className="text-blue-500" />
-              New Vehicle Intake
-            </h2>
-            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Scan VIN or enter details manually</p>
-          </div>
-          <button
-            onClick={() => setShowScanner(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-          >
-            <ScanLine size={16} />
-            Scan VIN
-          </button>
+        <div className="mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <Car size={18} className="text-blue-500" />
+            New Vehicle Intake
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Scan VIN or enter details manually</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
