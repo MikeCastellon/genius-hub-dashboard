@@ -72,3 +72,90 @@ export interface CartItem {
 }
 
 export type PaymentMethod = 'cash' | 'zelle' | 'venmo' | 'ath_movil' | 'credit_card'
+
+// ── Invoicing ──────────────────────────────────────────────
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
+
+export interface Invoice {
+  id: string
+  business_id: string | null
+  customer_id: string | null
+  intake_id: string | null
+  invoice_number: string | null
+  status: InvoiceStatus
+  due_date: string | null
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+  customer?: Customer
+  items?: InvoiceItem[]
+}
+
+export interface InvoiceItem {
+  id: string
+  invoice_id: string
+  description: string
+  quantity: number
+  unit_price: number
+  total: number
+}
+
+// ── Scheduling ─────────────────────────────────────────────
+export type AppointmentStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface Appointment {
+  id: string
+  business_id: string
+  customer_name: string
+  customer_phone: string
+  customer_email: string | null
+  vehicle_year: string | null
+  vehicle_make: string | null
+  vehicle_model: string | null
+  vehicle_color: string | null
+  service_ids: string[] | null
+  scheduled_at: string
+  duration_minutes: number
+  status: AppointmentStatus
+  technician_id: string | null
+  notes: string | null
+  created_at: string
+  technician?: { display_name: string }
+}
+
+export interface BusinessHours {
+  id: string
+  business_id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_open: boolean
+}
+
+// ── Employee Hours ─────────────────────────────────────────
+export interface Shift {
+  id: string
+  business_id: string
+  employee_id: string
+  scheduled_start: string
+  scheduled_end: string
+  notes: string | null
+  created_at: string
+  employee?: { display_name: string }
+}
+
+export interface TimeEntry {
+  id: string
+  business_id: string
+  employee_id: string
+  clock_in: string
+  clock_out: string | null
+  hours_worked: number | null
+  notes: string | null
+  created_at: string
+  employee?: { display_name: string }
+}

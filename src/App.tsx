@@ -10,6 +10,11 @@ import Admin from '@/pages/Admin'
 import SuperAdmin from '@/pages/SuperAdmin'
 import PendingApproval from '@/pages/PendingApproval'
 import ResetPassword from '@/pages/ResetPassword'
+import Invoices from '@/pages/Invoices'
+import InvoiceDetail from '@/pages/InvoiceDetail'
+import Schedule from '@/pages/Schedule'
+import Hours from '@/pages/Hours'
+import BookingPage from '@/pages/BookingPage'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
@@ -23,17 +28,21 @@ export default function App() {
     )
   }
 
+  // Public routes (no auth required)
+  if (window.location.pathname.startsWith('/book/')) {
+    return (
+      <Routes>
+        <Route path="/book/:slug" element={<BookingPage />} />
+      </Routes>
+    )
+  }
+
   if (window.location.pathname === '/reset-password') {
     return <ResetPassword />
   }
 
-  if (!user) {
-    return <Login />
-  }
-
-  if (!profile?.approved) {
-    return <PendingApproval />
-  }
+  if (!user) return <Login />
+  if (!profile?.approved) return <PendingApproval />
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
   const isSuperAdmin = profile?.role === 'super_admin'
@@ -45,10 +54,15 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/history" element={<IntakeHistory />} />
         <Route path="/services" element={<Services />} />
+        <Route path="/invoices" element={<Invoices />} />
+        <Route path="/invoices/:id" element={<InvoiceDetail />} />
+        <Route path="/schedule" element={<Schedule />} />
+        <Route path="/hours" element={<Hours />} />
         {isAdmin && <Route path="/admin" element={<Admin />} />}
         {isSuperAdmin && <Route path="/super-admin" element={<SuperAdmin />} />}
       </Route>
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/book/:slug" element={<BookingPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

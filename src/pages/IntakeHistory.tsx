@@ -1,8 +1,9 @@
 import { useState, useMemo, Fragment } from 'react'
-import { useIntakes, useAuth } from '@/lib/store'
+import { useNavigate } from 'react-router-dom'
+import { useIntakes, useAuth, createInvoice } from '@/lib/store'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PaymentMethod } from '@/lib/types'
-import { Search, Loader2, History, ChevronDown, ChevronUp, Calendar, Car } from 'lucide-react'
+import { Search, Loader2, History, ChevronDown, ChevronUp, Calendar, Car, FileText } from 'lucide-react'
 
 type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'ytd' | 'all' | 'custom'
 
@@ -45,14 +46,43 @@ const paymentColors: Record<string, string> = {
 export default function IntakeHistory() {
   const { intakes, loading } = useIntakes()
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | 'all'>('all')
   const [datePreset, setDatePreset] = useState<DatePreset>('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null)
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+
+  const handleGenerateInvoice = async (intake: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setGeneratingInvoice(intake.id)
+    try {
+      const services = intake.intake_services || []
+      const items = services.map((s: any) => ({
+        description: s.service?.name || 'Service',
+        quantity: s.quantity,
+        unit_price: s.unit_price,
+        total: s.total,
+      }))
+      const inv = await createInvoice({
+        business_id: profile?.business_id,
+        customer_id: intake.customer?.id || null,
+        intake_id: intake.id,
+        status: 'draft',
+        subtotal: intake.subtotal,
+        tax_rate: 0,
+        tax_amount: 0,
+        total: intake.subtotal,
+      }, items)
+      navigate(`/invoices/${inv.id}`)
+    } finally {
+      setGeneratingInvoice(null)
+    }
+  }
 
   const filtered = useMemo(() => {
     const { from, to } = getDateRange(datePreset, customFrom, customTo)
@@ -215,6 +245,14 @@ export default function IntakeHistory() {
                             {intake.notes && (
                               <p className="text-[10px] text-zinc-400 mt-2 italic">Note: {intake.notes}</p>
                             )}
+                            <button
+                              onClick={(e) => handleGenerateInvoice(intake, e)}
+                              disabled={generatingInvoice === intake.id}
+                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              <FileText size={12} />
+                              {generatingInvoice === intake.id ? 'Generating...' : 'Generate Invoice'}
+                            </button>
                           </div>
                         </td>
                       </tr>
