@@ -361,7 +361,8 @@ export function useBusinesses() {
 }
 
 export async function createBusiness(name: string) {
-  const { error } = await supabase.from('businesses').insert({ name: name.trim() })
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const { error } = await supabase.from('businesses').insert({ name: name.trim(), slug })
   if (error) throw error
 }
 
