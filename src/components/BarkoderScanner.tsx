@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import { BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
+import { isNativeScannerAvailable, scanBarcode } from '@/lib/barcodeScanner'
 
 interface Props {
   onClose: () => void
@@ -110,6 +111,18 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
   }, [onFail])
 
   useEffect(() => {
+    if (isNativeScannerAvailable()) {
+      scanBarcode().then((result) => {
+        if (result) {
+          onDetected(result.value);
+        } else {
+          onFail?.();
+        }
+        onClose();
+      });
+      return;
+    }
+
     const stopped = { v: false }
     startCamera('environment', stopped)
     return () => {
@@ -117,6 +130,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
       try { controlsRef.current?.stop() } catch { /* ignore */ }
       try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startCamera])
 
   const handleFlipCamera = async () => {
