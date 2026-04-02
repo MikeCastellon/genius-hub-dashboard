@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock } from 'lucide-react'
 import { useAuth } from '@/lib/store'
+import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
 const navItems = [
   { to: '/', icon: Car, label: 'Intake' },
@@ -15,6 +16,11 @@ const navItems = [
 export default function Layout() {
   const { signOut, user, profile } = useAuth()
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
+
+  const handleSignOut = async () => {
+    if (user) await unregisterPushNotifications(user.id);
+    await signOut();
+  }
 
   const allNavItems = [
     ...navItems,
@@ -72,7 +78,7 @@ export default function Layout() {
             </div>
             <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
           </div>
-          <button onClick={signOut}
+          <button onClick={handleSignOut}
             className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 w-full">
             <LogOut size={15} />
             Sign Out
@@ -107,7 +113,7 @@ export default function Layout() {
               )}
             </NavLink>
           ))}
-          <button onClick={signOut}
+          <button onClick={handleSignOut}
             className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-semibold text-zinc-400 min-w-[52px]">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center">
               <LogOut size={16} />

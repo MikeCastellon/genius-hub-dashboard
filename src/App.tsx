@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/store'
+import { registerPushNotifications } from '@/lib/pushNotifications'
 import Layout from '@/components/Layout'
 import Login from '@/pages/Login'
 import NewIntake from '@/pages/NewIntake'
@@ -19,6 +21,12 @@ import { Loader2 } from 'lucide-react'
 
 export default function App() {
   const { user, profile, loading } = useAuth()
+
+  useEffect(() => {
+    if (user && profile?.approved) {
+      registerPushNotifications(user.id);
+    }
+  }, [user, profile?.approved]);
 
   if (loading || (user && profile === null)) {
     return (
