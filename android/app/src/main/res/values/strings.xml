@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pro Hub</string>
+    <string name="title_activity_main">Pro Hub</string>
+    <string name="package_name">com.autocaregenius.prohub</string>
+    <string name="custom_url_scheme">com.autocaregenius.prohub</string>
+</resources>

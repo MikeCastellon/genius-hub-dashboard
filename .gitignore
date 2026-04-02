@@ -4,3 +4,11 @@ dist/
 .env.local
 supabase/.temp/
 *.log
+
+# Native build artifacts (keep project files, ignore build output)
+ios/App/Pods/
+ios/DerivedData/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
