@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useServices, useCustomers, createIntake, useAuth } from '@/lib/store'
 import { CartItem, PaymentMethod } from '@/lib/types'
 import { CheckCircle, Loader2, FileText, Car } from 'lucide-react'
+import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
 import CustomerForm from '@/components/CustomerForm'
 import ServicePicker from '@/components/ServicePicker'
@@ -71,6 +72,7 @@ export default function NewIntake() {
         profile?.business_id
       )
 
+      await hapticSuccess()
       setSuccess(true)
       refreshCustomers()
 
@@ -83,6 +85,7 @@ export default function NewIntake() {
         setSuccess(false)
       }, 2200)
     } catch (err: any) {
+      await hapticError()
       alert('Error saving intake: ' + err.message)
     } finally {
       setSubmitting(false)

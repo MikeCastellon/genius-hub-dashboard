@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTimeEntries, useShifts, useAuth, useAdminUsers, clockIn, clockOut, getOpenTimeEntry, createShift, deleteShift } from '@/lib/store'
 import { TimeEntry } from '@/lib/types'
 import { Clock, Plus, Loader2, Trash2, Users, TimerReset } from 'lucide-react'
+import { hapticSuccess } from '@/lib/haptics'
 
 
 
@@ -71,6 +72,7 @@ export default function Hours() {
     try {
       const entry = await clockIn(user.id, profile.business_id)
       setOpenEntry(entry)
+      await hapticSuccess()
       refreshEntries()
     } finally {
       setClocking(false)
@@ -83,6 +85,7 @@ export default function Hours() {
     try {
       await clockOut(openEntry.id)
       setOpenEntry(null)
+      await hapticSuccess()
       refreshEntries()
     } finally {
       setClocking(false)
