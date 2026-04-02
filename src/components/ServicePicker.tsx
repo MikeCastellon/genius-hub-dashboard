@@ -10,8 +10,8 @@ interface Props {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Full Detail': 'bg-blue-50 text-blue-600 border-blue-100',
-  'Exterior': 'bg-sky-50 text-sky-600 border-sky-100',
+  'Full Detail': 'bg-red-50 text-red-700 border-red-100',
+  'Exterior': 'bg-red-50 text-sky-600 border-sky-100',
   'Interior': 'bg-violet-50 text-violet-600 border-violet-100',
   'Paint': 'bg-rose-50 text-rose-600 border-rose-100',
   'Engine': 'bg-amber-50 text-amber-600 border-amber-100',
@@ -59,8 +59,8 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
   return (
     <div>
       <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-4">
-        <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-          <Wrench size={13} className="text-blue-500" />
+        <div className="w-6 h-6 rounded-lg bg-red-50 flex items-center justify-center">
+          <Wrench size={13} className="text-red-600" />
         </div>
         Services
       </h3>
@@ -72,14 +72,14 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search services..."
-          className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10"
+          className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10"
         />
       </div>
 
       {services.length === 0 ? (
         <div className="py-10 text-center text-sm text-zinc-400">
           No services configured yet.{' '}
-          <span className="text-blue-500 font-medium">Add services in the Services tab.</span>
+          <span className="text-red-600 font-medium">Add services in the Services tab.</span>
         </div>
       ) : (
         <div className="space-y-4">
@@ -96,7 +96,7 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                       key={service.id}
                       className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                         qty > 0
-                          ? 'bg-blue-50/60 border-blue-200'
+                          ? 'bg-red-50/60 border-red-200'
                           : 'bg-white border-zinc-100 hover:border-zinc-200'
                       }`}
                     >
@@ -112,13 +112,13 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className="text-xs font-bold text-blue-600">{formatCurrency(service.price)}</span>
+                        <span className="text-xs font-bold text-red-700">{formatCurrency(service.price)}</span>
                         {qty > 0 ? (
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => removeService(service.id)}
-                              className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center hover:bg-blue-200 transition-colors"
+                              className="w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center hover:bg-red-200 transition-colors"
                             >
                               <Minus size={10} />
                             </button>
@@ -126,7 +126,7 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                             <button
                               type="button"
                               onClick={() => addService(service)}
-                              className="w-6 h-6 rounded-lg bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"
+                              className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors"
                             >
                               <Plus size={10} />
                             </button>
@@ -135,9 +135,9 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                           <button
                             type="button"
                             onClick={() => addService(service)}
-                            className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 border border-blue-100 transition-colors"
+                            className="w-6 h-6 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 border border-red-100 transition-colors"
                           >
-                            <Plus size={13} />
+                            <Plus size={10} />
                           </button>
                         )}
                       </div>

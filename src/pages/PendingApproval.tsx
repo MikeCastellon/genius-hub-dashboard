@@ -16,7 +16,7 @@ export default function PendingApproval() {
         </p>
         <p className="text-xs text-zinc-400 mb-6">{user?.email}</p>
         <div className="glass rounded-2xl p-4 mb-6 flex items-start gap-3 text-left">
-          <Car size={16} className="text-blue-400 mt-0.5 shrink-0" />
+          <Car size={16} className="text-red-500 mt-0.5 shrink-0" />
           <p className="text-xs text-zinc-500">
             An administrator will review your account and approve your access shortly.
             You'll be able to sign in once approved.

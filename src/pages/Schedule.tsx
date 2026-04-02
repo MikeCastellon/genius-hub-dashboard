@@ -7,7 +7,7 @@ import AppointmentModal from '@/components/AppointmentModal'
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
   pending: 'bg-amber-100 text-amber-700',
-  confirmed: 'bg-blue-100 text-blue-700',
+  confirmed: 'bg-red-100 text-red-700',
   in_progress: 'bg-violet-100 text-violet-700',
   completed: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-zinc-100 text-zinc-500',
@@ -109,7 +109,7 @@ export default function Schedule() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-            <Calendar size={18} className="text-blue-500" /> Schedule
+            <Calendar size={18} className="text-red-600" /> Schedule
           </h2>
           <p className="text-[12px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
         </div>
@@ -118,7 +118,7 @@ export default function Schedule() {
             {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
             <span className="hidden sm:inline">{copied ? 'Copied!' : 'Booking Link'}</span>
           </button>
-          <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm">
+          <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm">
             <Plus size={15} /> New
           </button>
         </div>
@@ -145,15 +145,15 @@ export default function Schedule() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-blue-500" /></div>
+            <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-red-600" /></div>
           ) : (
             <div className="grid grid-cols-7 gap-2">
               {apptsByDay.map(({ date, appts }) => {
                 const isToday = date.toDateString() === new Date().toDateString()
                 return (
                   <div key={date.toISOString()} className="min-h-[120px]">
-                    <div className={`text-center mb-2 py-1 rounded-lg ${isToday ? 'bg-blue-500 text-white' : ''}`}>
-                      <p className={`text-[10px] font-semibold ${isToday ? 'text-blue-100' : 'text-zinc-400'}`}>{DAYS[date.getDay()]}</p>
+                    <div className={`text-center mb-2 py-1 rounded-lg ${isToday ? 'bg-red-600 text-white' : ''}`}>
+                      <p className={`text-[10px] font-semibold ${isToday ? 'text-red-100' : 'text-zinc-400'}`}>{DAYS[date.getDay()]}</p>
                       <p className={`text-sm font-bold ${isToday ? 'text-white' : 'text-zinc-800'}`}>{date.getDate()}</p>
                     </div>
                     <div className="space-y-1">
@@ -192,7 +192,7 @@ export default function Schedule() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handleUpdate(a.id, { status: 'confirmed' })} className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold">Confirm</button>
+                      <button onClick={() => handleUpdate(a.id, { status: 'confirmed' })} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold">Confirm</button>
                       <button onClick={() => handleUpdate(a.id, { status: 'cancelled' })} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 text-xs font-semibold">Decline</button>
                     </div>
                   </div>
@@ -215,7 +215,7 @@ export default function Schedule() {
                       type="checkbox"
                       checked={!!bh.is_open}
                       onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, is_open: e.target.checked } : h))}
-                      className="rounded border-zinc-300 text-blue-500"
+                      className="rounded border-zinc-300 text-red-600"
                     />
                     <span className={`text-sm font-medium ${bh.is_open ? 'text-zinc-800' : 'text-zinc-400'}`}>{FULL_DAYS[i]}</span>
                   </label>
@@ -224,11 +224,11 @@ export default function Schedule() {
                   <div className="flex items-center gap-2 flex-1">
                     <input type="time" value={bh.start_time || '08:00'}
                       onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, start_time: e.target.value } : h))}
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-blue-300" />
+                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
                     <span className="text-zinc-400 text-xs">to</span>
                     <input type="time" value={bh.end_time || '18:00'}
                       onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, end_time: e.target.value } : h))}
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-blue-300" />
+                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
                   </div>
                 ) : (
                   <span className="text-xs text-zinc-400 italic">Closed</span>
@@ -237,7 +237,7 @@ export default function Schedule() {
             ))}
           </div>
           <button onClick={handleSaveHours} disabled={savingHours}
-            className="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold disabled:opacity-40">
+            className="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40">
             {savingHours ? 'Saving...' : 'Save Hours'}
           </button>
         </div>

@@ -50,7 +50,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-dots">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/25">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-red-700/25">
             <KeyRound size={22} className="text-white" />
           </div>
           <h1 className="text-xl font-bold text-zinc-900">Set New Password</h1>
@@ -63,7 +63,7 @@ export default function ResetPassword() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all"
               placeholder="Min 6 characters"
               required
               minLength={6}
@@ -75,7 +75,7 @@ export default function ResetPassword() {
               type="password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all"
               placeholder="Repeat password"
               required
             />
@@ -88,7 +88,7 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-sky-400 text-white py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-red-700/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 size={15} className="animate-spin" />Updating...</> : 'Update Password'}
           </button>

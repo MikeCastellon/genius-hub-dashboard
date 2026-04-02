@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html, body {
@@ -41,14 +41,14 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 12px 40px rgba(0, 0, 0, 0.06);
 }
 
-/* Glow accent - blue */
+/* Glow accent - red */
 .glow-accent {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.12), 0 4px 16px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 20px rgba(204, 0, 0, 0.12), 0 4px 16px rgba(204, 0, 0, 0.08);
 }
 
-/* Gradient text - blue */
+/* Gradient text - red */
 .gradient-text {
-  background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+  background: linear-gradient(135deg, #cc0000, #e60000);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -60,7 +60,7 @@ body {
   background-size: 24px 24px;
 }
 
-/* Focus glow - blue */
+/* Focus glow - red */
 input:focus, textarea:focus, select:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 16px rgba(59, 130, 246, 0.06);
+  box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.12), 0 0 16px rgba(204, 0, 0, 0.06);
 }

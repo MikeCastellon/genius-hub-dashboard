@@ -119,7 +119,7 @@ export default function Hours() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-            <Clock size={18} className="text-blue-500" /> Hours
+            <Clock size={18} className="text-red-600" /> Hours
           </h2>
           <p className="text-[12px] text-zinc-400 mt-0.5">Track time &amp; shifts</p>
         </div>
@@ -140,7 +140,7 @@ export default function Hours() {
           {/* Clock In/Out Widget */}
           <div className="glass rounded-2xl p-6 flex flex-col items-center gap-4">
             {checkingOpen ? (
-              <Loader2 size={24} className="animate-spin text-blue-500" />
+              <Loader2 size={24} className="animate-spin text-red-600" />
             ) : (
               <>
                 <div className={`w-24 h-24 rounded-full flex items-center justify-center ${openEntry ? 'bg-emerald-100' : 'bg-zinc-100'}`}>
@@ -169,7 +169,7 @@ export default function Hours() {
                     <button
                       onClick={handleClockIn}
                       disabled={clocking}
-                      className="px-10 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-400 text-white font-bold text-lg shadow-lg shadow-blue-500/25 disabled:opacity-50 active:scale-95 transition-transform"
+                      className="px-10 py-3.5 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-bold text-lg shadow-lg shadow-red-700/25 disabled:opacity-50 active:scale-95 transition-transform"
                     >
                       {clocking ? <Loader2 size={20} className="animate-spin" /> : 'Clock In'}
                     </button>
@@ -243,13 +243,13 @@ export default function Hours() {
           {isAdmin && (
             <div className="glass rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-                <Plus size={14} className="text-blue-500" /> Assign Shift
+                <Plus size={14} className="text-red-600" /> Assign Shift
               </h3>
               <div className="space-y-3">
                 <div>
                   <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Employee</label>
                   <select
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-blue-300"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
                     value={shiftForm.employee_id}
                     onChange={e => setShiftForm(f => ({ ...f, employee_id: e.target.value }))}
                   >
@@ -260,19 +260,19 @@ export default function Hours() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Start</label>
-                    <input type="datetime-local" className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-blue-300"
+                    <input type="datetime-local" className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
                       value={shiftForm.start} onChange={e => setShiftForm(f => ({ ...f, start: e.target.value }))} />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">End</label>
-                    <input type="datetime-local" className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-blue-300"
+                    <input type="datetime-local" className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
                       value={shiftForm.end} onChange={e => setShiftForm(f => ({ ...f, end: e.target.value }))} />
                   </div>
                 </div>
-                <input className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-blue-300"
+                <input className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
                   placeholder="Notes (optional)" value={shiftForm.notes} onChange={e => setShiftForm(f => ({ ...f, notes: e.target.value }))} />
                 <button onClick={handleCreateShift} disabled={savingShift || !shiftForm.employee_id || !shiftForm.start || !shiftForm.end}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold disabled:opacity-40">
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40">
                   {savingShift ? 'Saving...' : 'Assign Shift'}
                 </button>
               </div>
@@ -295,7 +295,7 @@ export default function Hours() {
                   .map(s => (
                     <div key={s.id} className="flex items-start justify-between py-2 border-b border-zinc-100 last:border-0">
                       <div>
-                        {isAdmin && <p className="text-xs font-semibold text-blue-600 mb-0.5">{s.employee?.display_name || 'Unknown'}</p>}
+                        {isAdmin && <p className="text-xs font-semibold text-red-700 mb-0.5">{s.employee?.display_name || 'Unknown'}</p>}
                         <p className="text-sm font-medium text-zinc-800">{formatDateShort(s.scheduled_start)}</p>
                         <p className="text-xs text-zinc-400">{formatTime(s.scheduled_start)} – {formatTime(s.scheduled_end)}</p>
                         {s.notes && <p className="text-xs text-zinc-400 mt-0.5">{s.notes}</p>}

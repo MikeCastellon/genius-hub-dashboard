@@ -21,7 +21,7 @@ export default function IntakeSummary({ cart, onCartChange }: Props) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[13px] font-semibold text-zinc-800">Order Summary</h3>
         {cart.length > 0 && (
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold">
+          <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
             {cart.reduce((s, i) => s + i.quantity, 0)} services
           </span>
         )}
@@ -45,7 +45,7 @@ export default function IntakeSummary({ cart, onCartChange }: Props) {
                 onChange={e => updatePrice(item.service.id, parseFloat(e.target.value) || 0)}
                 step="0.01"
                 min="0"
-                className="w-20 px-2 py-1 text-xs rounded-lg border border-zinc-200 text-right focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10"
+                className="w-20 px-2 py-1 text-xs rounded-lg border border-zinc-200 text-right focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10"
               />
               <button
                 type="button"
@@ -59,7 +59,7 @@ export default function IntakeSummary({ cart, onCartChange }: Props) {
 
           <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
             <span className="text-sm font-bold text-zinc-900">Total</span>
-            <span className="text-base font-bold text-blue-600">{formatCurrency(total)}</span>
+            <span className="text-base font-bold text-red-700">{formatCurrency(total)}</span>
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ import InvoiceBuilder from '@/components/InvoiceBuilder'
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   draft: 'bg-zinc-100 text-zinc-600',
-  sent: 'bg-blue-100 text-blue-700',
+  sent: 'bg-red-100 text-red-700',
   paid: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-600',
 }
@@ -53,13 +53,13 @@ export default function Invoices() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-            <FileText size={18} className="text-blue-500" /> Invoices
+            <FileText size={18} className="text-red-600" /> Invoices
           </h2>
           <p className="text-[12px] text-zinc-400 mt-0.5">{invoices.length} total</p>
         </div>
         <button
           onClick={() => setShowBuilder(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm shadow-blue-500/20"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
         >
           <Plus size={15} /> New Invoice
         </button>
@@ -70,7 +70,7 @@ export default function Invoices() {
         <div className="relative flex-1 min-w-[160px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
-            className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-blue-300"
+            className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
             placeholder="Search invoices..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -80,7 +80,7 @@ export default function Invoices() {
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${filter === s ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-zinc-600 border-zinc-200 hover:border-blue-200'}`}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${filter === s ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'}`}
           >
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
@@ -89,7 +89,7 @@ export default function Invoices() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={24} className="animate-spin text-blue-500" />
+          <Loader2 size={24} className="animate-spin text-red-600" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-zinc-400">
@@ -106,8 +106,8 @@ export default function Invoices() {
               className="w-full glass rounded-2xl p-4 flex items-center justify-between text-left hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                  <FileText size={16} className="text-blue-500" />
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                  <FileText size={16} className="text-red-600" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

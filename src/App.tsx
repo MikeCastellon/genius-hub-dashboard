@@ -23,7 +23,7 @@ export default function App() {
   if (loading || (user && profile === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-red-600" />
       </div>
     )
   }

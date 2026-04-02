@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/store'
-import { Loader2, UserPlus, LogIn, Mail, Car } from 'lucide-react'
+import { Loader2, UserPlus, LogIn, Mail } from 'lucide-react'
 
 type Mode = 'signin' | 'signup' | 'forgot'
 
@@ -40,7 +40,7 @@ export default function Login() {
     }
   }
 
-  const inputClass = 'w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+  const inputClass = 'w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
   const titles: Record<Mode, string> = {
     signin: 'Sign In',
@@ -52,11 +52,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-dots" style={{ background: '#fafafa' }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/25">
-            <Car size={28} className="text-white" />
+          <div className="flex items-center justify-center mx-auto mb-4">
+            <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-12 w-auto" />
           </div>
-          <h1 className="text-xl font-bold text-zinc-900">Detailers Hub</h1>
-          <p className="text-zinc-400 mt-1 text-[13px] font-medium tracking-widest uppercase">Management Platform</p>
+          <h1 className="text-xl font-bold text-zinc-900">Pro Hub</h1>
+          <p className="text-zinc-400 mt-1 text-[11px] font-medium tracking-widest uppercase">Sales & Service by Auto Care Genius</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass-strong rounded-2xl p-8 space-y-4">
@@ -93,7 +93,7 @@ export default function Login() {
           )}
 
           <button type="submit" disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-sky-400 text-white py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-red-700/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
             {loading ? (
               <><Loader2 size={15} className="animate-spin" />{mode === 'signup' ? 'Creating...' : mode === 'forgot' ? 'Sending...' : 'Signing in...'}</>
             ) : (
@@ -109,24 +109,24 @@ export default function Login() {
               <>
                 <p>
                   <button type="button" onClick={() => switchMode('forgot')}
-                    className="text-zinc-400 hover:text-blue-500 transition-colors">Forgot password?</button>
+                    className="text-zinc-400 hover:text-red-600 transition-colors">Forgot password?</button>
                 </p>
                 <p>Don't have an account?{' '}
                   <button type="button" onClick={() => switchMode('signup')}
-                    className="text-blue-500 font-semibold hover:text-blue-600">Sign Up</button>
+                    className="text-red-600 font-semibold hover:text-red-700">Sign Up</button>
                 </p>
               </>
             )}
             {mode === 'signup' && (
               <p>Already have an account?{' '}
                 <button type="button" onClick={() => switchMode('signin')}
-                  className="text-blue-500 font-semibold hover:text-blue-600">Sign In</button>
+                  className="text-red-600 font-semibold hover:text-red-700">Sign In</button>
               </p>
             )}
             {mode === 'forgot' && (
               <p>
                 <button type="button" onClick={() => switchMode('signin')}
-                  className="text-blue-500 font-semibold hover:text-blue-600">Back to Sign In</button>
+                  className="text-red-600 font-semibold hover:text-red-700">Back to Sign In</button>
               </p>
             )}
           </div>

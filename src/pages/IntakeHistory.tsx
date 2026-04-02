@@ -38,7 +38,7 @@ function getDateRange(preset: DatePreset, from: string, to: string) {
 const paymentColors: Record<string, string> = {
   cash: 'bg-emerald-50 text-emerald-600',
   zelle: 'bg-violet-50 text-violet-600',
-  venmo: 'bg-blue-50 text-blue-600',
+  venmo: 'bg-red-50 text-red-700',
   ath_movil: 'bg-amber-50 text-amber-600',
   credit_card: 'bg-zinc-100 text-zinc-600',
 }
@@ -101,21 +101,21 @@ export default function IntakeHistory() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-red-600" />
       </div>
     )
   }
 
-  const selectClass = 'px-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10'
+  const selectClass = 'px-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10'
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="mb-5">
         <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-          <History size={18} className="text-blue-500" />
+          <History size={18} className="text-red-600" />
           Intake History
           {isAdmin && (
-            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-semibold">Admin</span>
+            <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">Admin</span>
           )}
         </h2>
         <p className="text-[13px] text-zinc-400 mt-0.5">
@@ -130,9 +130,9 @@ export default function IntakeHistory() {
         <Calendar size={14} className="text-zinc-400 ml-1 shrink-0" />
         {DATE_PRESETS.map(p => (
           <button key={p.value} onClick={() => setDatePreset(p.value)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
               datePreset === p.value
-                ? 'bg-gradient-to-r from-blue-500 to-sky-400 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
             }`}>
             {p.label}
@@ -143,12 +143,12 @@ export default function IntakeHistory() {
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">From</label>
               <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10" />
+                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
             </div>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">To</label>
               <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10" />
+                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
             </div>
           </div>
         )}
@@ -159,7 +159,7 @@ export default function IntakeHistory() {
         <div className="relative flex-1 min-w-[180px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-300" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10"
             placeholder="Search by customer, VIN, make, model..." />
         </div>
         <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value as any)} className={selectClass}>
@@ -204,7 +204,7 @@ export default function IntakeHistory() {
                   <Fragment key={intake.id}>
                     <tr
                       onClick={() => setExpandedId(isExpanded ? null : intake.id)}
-                      className="border-b border-zinc-50 hover:bg-blue-50/20 cursor-pointer transition-colors"
+                      className="border-b border-zinc-50 hover:bg-red-50/20 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3 text-xs text-zinc-600">{formatDateTime(intake.created_at)}</td>
                       <td className="px-4 py-3">
@@ -232,7 +232,7 @@ export default function IntakeHistory() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={isAdmin ? 7 : 6} className="px-8 py-4 bg-blue-50/20 border-b border-zinc-100">
+                        <td colSpan={isAdmin ? 7 : 6} className="px-8 py-4 bg-red-50/20 border-b border-zinc-100">
                           <div className="space-y-1.5">
                             {services.map((item: any) => (
                               <div key={item.id} className="flex justify-between text-xs">
@@ -248,7 +248,7 @@ export default function IntakeHistory() {
                             <button
                               onClick={(e) => handleGenerateInvoice(intake, e)}
                               disabled={generatingInvoice === intake.id}
-                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold hover:bg-blue-100 disabled:opacity-50"
+                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-100 text-red-700 text-xs font-semibold hover:bg-red-100 disabled:opacity-50"
                             >
                               <FileText size={12} />
                               {generatingInvoice === intake.id ? 'Generating...' : 'Generate Invoice'}
@@ -286,20 +286,20 @@ export default function IntakeHistory() {
                       <p className="text-sm font-semibold text-zinc-800 truncate">{customer?.name || 'Unknown'}</p>
                       {vehicleLabel && (
                         <div className="flex items-center gap-1 mt-0.5">
-                          <Car size={10} className="text-blue-400" />
+                          <Car size={10} className="text-red-500" />
                           <p className="text-[10px] text-zinc-500 truncate">{vehicleLabel}</p>
                         </div>
                       )}
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <p className="text-sm font-bold text-blue-600">{formatCurrency(intake.subtotal)}</p>
+                      <p className="text-sm font-bold text-red-700">{formatCurrency(intake.subtotal)}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[10px] text-zinc-400">{formatDateTime(intake.created_at)}</span>
                       {isAdmin && (intake as any).technician?.display_name && (
-                        <span className="text-[10px] text-blue-400 font-medium">by {(intake as any).technician.display_name}</span>
+                        <span className="text-[10px] text-red-500 font-medium">by {(intake as any).technician.display_name}</span>
                       )}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium capitalize ${paymentColors[intake.payment_method] || ''}`}>
                         {intake.payment_method.replace('_', ' ')}
@@ -313,7 +313,7 @@ export default function IntakeHistory() {
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-zinc-100 p-3 bg-blue-50/20">
+                  <div className="border-t border-zinc-100 p-3 bg-red-50/20">
                     <div className="space-y-1.5">
                       {services.map((item: any) => (
                         <div key={item.id} className="flex justify-between text-xs">

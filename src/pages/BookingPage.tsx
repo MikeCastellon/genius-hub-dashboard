@@ -5,7 +5,7 @@ import { Service } from '@/lib/types'
 import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Calendar } from 'lucide-react'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const inputClass = 'w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+const inputClass = 'w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
 function generateSlots(date: Date, hours: any[], booked: any[]): string[] {
   const dayOfWeek = date.getDay()
@@ -75,7 +75,7 @@ export default function BookingPage() {
 
   if (!data) return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
     </div>
   )
 
@@ -92,7 +92,7 @@ export default function BookingPage() {
         {selectedSlot && (
           <div className="mt-4 bg-white rounded-2xl p-4 border border-zinc-200 text-sm text-zinc-700">
             <p className="font-semibold">{new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            <p className="text-blue-500 font-medium">{formatTime(selectedSlot)}</p>
+            <p className="text-red-600 font-medium">{formatTime(selectedSlot)}</p>
           </div>
         )}
       </div>
@@ -146,7 +146,7 @@ export default function BookingPage() {
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center shrink-0">
             <Car size={18} className="text-white" />
           </div>
           <div>
@@ -161,10 +161,10 @@ export default function BookingPage() {
         <div className="max-w-lg mx-auto flex gap-2">
           {['Services', 'Date & Time', 'Your Info'].map((label, i) => (
             <div key={i} className="flex-1 text-center">
-              <div className={`text-xs font-semibold ${step === i + 1 ? 'text-blue-600' : step > i + 1 ? 'text-emerald-500' : 'text-zinc-400'}`}>
+              <div className={`text-xs font-semibold ${step === i + 1 ? 'text-red-700' : step > i + 1 ? 'text-emerald-500' : 'text-zinc-400'}`}>
                 {step > i + 1 ? '✓ ' : ''}{label}
               </div>
-              <div className={`h-1 rounded-full mt-1 ${step === i + 1 ? 'bg-blue-500' : step > i + 1 ? 'bg-emerald-400' : 'bg-zinc-200'}`} />
+              <div className={`h-1 rounded-full mt-1 ${step === i + 1 ? 'bg-red-600' : step > i + 1 ? 'bg-emerald-400' : 'bg-zinc-200'}`} />
             </div>
           ))}
         </div>
@@ -192,15 +192,15 @@ export default function BookingPage() {
                         onClick={() => setSelectedServices(prev =>
                           selected ? prev.filter(s => s.id !== svc.id) : [...prev, svc]
                         )}
-                        className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-zinc-50'}`}
+                        className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${selected ? 'bg-red-50' : 'hover:bg-zinc-50'}`}
                       >
                         <div>
-                          <p className={`text-sm font-medium ${selected ? 'text-blue-700' : 'text-zinc-800'}`}>{svc.name}</p>
+                          <p className={`text-sm font-medium ${selected ? 'text-red-700' : 'text-zinc-800'}`}>{svc.name}</p>
                           {svc.duration_minutes && <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1"><Clock size={11} />{svc.duration_minutes} min</p>}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`text-sm font-semibold ${selected ? 'text-blue-600' : 'text-zinc-700'}`}>${svc.price}</span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'bg-blue-500 border-blue-500' : 'border-zinc-300'}`}>
+                          <span className={`text-sm font-semibold ${selected ? 'text-red-700' : 'text-zinc-700'}`}>${svc.price}</span>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'bg-red-600 border-red-600' : 'border-zinc-300'}`}>
                             {selected && <span className="text-white text-xs font-bold">✓</span>}
                           </div>
                         </div>
@@ -212,16 +212,16 @@ export default function BookingPage() {
             </div>
 
             {selectedServices.length > 0 && (
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm text-blue-700">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected</span>
-                <span className="font-bold text-blue-700">${totalPrice.toFixed(2)}</span>
+              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+                <span className="text-sm text-red-700">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected</span>
+                <span className="font-bold text-red-700">${totalPrice.toFixed(2)}</span>
               </div>
             )}
 
             <button
               onClick={() => setStep(2)}
               disabled={selectedServices.length === 0}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-400 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
             >
               Continue <ChevronRight size={16} />
             </button>
@@ -257,8 +257,8 @@ export default function BookingPage() {
                             onClick={() => setSelectedSlot(slot)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                               selectedSlot === slot
-                                ? 'bg-blue-500 text-white border-blue-500'
-                                : 'border-zinc-200 text-zinc-700 hover:border-blue-300 hover:bg-blue-50'
+                                ? 'bg-red-600 text-white border-red-600'
+                                : 'border-zinc-200 text-zinc-700 hover:border-red-300 hover:bg-red-50'
                             }`}
                           >
                             {formatTime(slot)}
@@ -281,7 +281,7 @@ export default function BookingPage() {
               <button
                 onClick={() => setStep(3)}
                 disabled={!selectedSlot}
-                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-400 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
+                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
               >
                 Continue <ChevronRight size={16} />
               </button>
@@ -293,8 +293,8 @@ export default function BookingPage() {
         {step === 3 && (
           <>
             {selectedSlot && (
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 text-blue-700">
+              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+                <div className="flex items-center gap-2 text-red-700">
                   <Calendar size={14} />
                   <span className="text-sm font-semibold">
                     {new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} at {formatTime(selectedSlot)}
@@ -305,7 +305,7 @@ export default function BookingPage() {
 
             <div className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
-                <User size={14} className="text-blue-500" /> Your Information
+                <User size={14} className="text-red-600" /> Your Information
               </h3>
               <input className={inputClass} placeholder="Full name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               <input className={inputClass} placeholder="Phone number *" type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
@@ -314,7 +314,7 @@ export default function BookingPage() {
 
             <div className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
-                <Car size={14} className="text-blue-500" /> Vehicle (optional)
+                <Car size={14} className="text-red-600" /> Vehicle (optional)
               </h3>
               <div className="grid grid-cols-3 gap-2">
                 <input className={inputClass} placeholder="Year" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
@@ -341,7 +341,7 @@ export default function BookingPage() {
               <button
                 onClick={handleSubmit}
                 disabled={!form.name || !form.phone || submitting}
-                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-400 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
+                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
               >
                 {submitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Confirm Booking'}
               </button>

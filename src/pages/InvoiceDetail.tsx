@@ -8,7 +8,7 @@ import InvoiceBuilder from '@/components/InvoiceBuilder'
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   draft: 'bg-zinc-100 text-zinc-600',
-  sent: 'bg-blue-100 text-blue-700',
+  sent: 'bg-red-100 text-red-700',
   paid: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-600',
 }
@@ -64,7 +64,7 @@ export default function InvoiceDetail() {
 
   if (loading) return (
     <div className="flex justify-center items-center h-full">
-      <Loader2 size={24} className="animate-spin text-blue-500" />
+      <Loader2 size={24} className="animate-spin text-red-600" />
     </div>
   )
 
@@ -102,7 +102,7 @@ export default function InvoiceDetail() {
           <div className="flex items-start justify-between mb-8">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <FileText size={20} className="text-blue-500" />
+                <FileText size={20} className="text-red-600" />
                 <h1 className="text-2xl font-bold text-zinc-900">{invoice.invoice_number || 'Invoice'}</h1>
               </div>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[invoice.status]}`}>
@@ -177,7 +177,7 @@ export default function InvoiceDetail() {
         <div className="mt-4 flex gap-2 print:hidden">
           {invoice.status === 'draft' && (
             <button onClick={() => handleStatusChange('sent')} disabled={updating}
-              className="flex-1 py-3 rounded-2xl bg-blue-500 text-white text-sm font-semibold disabled:opacity-40">
+              className="flex-1 py-3 rounded-2xl bg-red-600 text-white text-sm font-semibold disabled:opacity-40">
               Mark as Sent
             </button>
           )}

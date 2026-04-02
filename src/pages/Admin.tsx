@@ -77,8 +77,8 @@ export default function Admin() {
 
   const roleBadge = (role: UserRole) => {
     switch (role) {
-      case 'super_admin': return 'bg-violet-100 text-violet-600'
-      case 'admin': return 'bg-blue-100 text-blue-600'
+      case 'super_admin': return 'bg-red-100 text-red-700'
+      case 'admin': return 'bg-red-100 text-red-700'
       default: return 'bg-zinc-100 text-zinc-500'
     }
   }
@@ -87,7 +87,7 @@ export default function Admin() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-          <ShieldCheck size={18} className="text-blue-500" />
+          <ShieldCheck size={18} className="text-red-600" />
           Admin Panel
         </h2>
         <p className="text-[13px] text-zinc-400 mt-0.5">Manage users and permissions</p>
@@ -106,7 +106,7 @@ export default function Admin() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-blue-400" /></div>
+            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-red-500" /></div>
           ) : pending.length === 0 ? (
             <div className="glass rounded-2xl px-4 py-8 text-center">
               <p className="text-sm text-zinc-400">No pending users</p>
@@ -127,7 +127,7 @@ export default function Admin() {
                   <button
                     onClick={() => handleApprove(u.id)}
                     disabled={processingId === u.id}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
                   >
                     {processingId === u.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
                     Approve
@@ -155,8 +155,8 @@ export default function Admin() {
               approved.map(u => (
                 <div key={u.id} className="flex items-start justify-between px-4 py-3.5 gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-sky-50 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-blue-500">{u.display_name[0].toUpperCase()}</span>
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-50 to-red-50 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-red-600">{u.display_name[0].toUpperCase()}</span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -173,7 +173,7 @@ export default function Admin() {
                             value={u.business_id || ''}
                             onChange={e => handleBusinessChange(u.id, e.target.value)}
                             disabled={processingId === u.id}
-                            className="text-[10px] text-zinc-600 border border-zinc-200 rounded-lg px-1.5 py-0.5 bg-white focus:outline-none focus:border-blue-300"
+                            className="text-[10px] text-zinc-600 border border-zinc-200 rounded-lg px-1.5 py-0.5 bg-white focus:outline-none focus:border-red-300"
                           >
                             <option value="">No business</option>
                             {businesses.map(b => (
@@ -191,7 +191,7 @@ export default function Admin() {
                         value={u.role}
                         onChange={e => handleRoleChange(u.id, e.target.value as UserRole)}
                         disabled={processingId === u.id || u.id === myProfile?.id}
-                        className="text-[11px] px-2 py-1.5 rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-blue-300 disabled:opacity-50"
+                        className="text-[11px] px-2 py-1.5 rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-red-300 disabled:opacity-50"
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
@@ -203,7 +203,7 @@ export default function Admin() {
                         onClick={() => handleRoleChange(u.id, u.role === 'admin' ? 'user' : 'admin')}
                         disabled={processingId === u.id || u.id === myProfile?.id}
                         title={u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-400 hover:border-blue-200 hover:text-blue-500 transition-all disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-400 hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
                       >
                         {processingId === u.id ? <Loader2 size={11} className="animate-spin" /> : <Shield size={11} />}
                         {u.role === 'admin' ? 'Demote' : 'Make Admin'}

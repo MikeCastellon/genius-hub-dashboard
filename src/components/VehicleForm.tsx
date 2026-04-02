@@ -17,7 +17,7 @@ interface Props {
   onScanClick: () => void
 }
 
-const inputClass = 'w-full px-3.5 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+const inputClass = 'w-full px-3.5 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
 export default function VehicleForm({ value, onChange, onScanClick }: Props) {
   const [decoding, setDecoding] = useState(false)
@@ -57,8 +57,8 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
   return (
     <div>
       <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-4">
-        <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-          <Car size={13} className="text-blue-500" />
+        <div className="w-6 h-6 rounded-lg bg-red-50 flex items-center justify-center">
+          <Car size={13} className="text-red-600" />
         </div>
         Vehicle Information
       </h3>
@@ -80,7 +80,7 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
             <button
               type="button"
               onClick={onScanClick}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 active:opacity-90 transition-all"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 active:opacity-90 transition-all"
             >
               <ScanLine size={15} />
               Scan
@@ -91,7 +91,7 @@ export default function VehicleForm({ value, onChange, onScanClick }: Props) {
               type="button"
               onClick={handleDecodeVin}
               disabled={decoding || !canDecode}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 active:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 active:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {decoding
                 ? <Loader2 size={14} className="animate-spin" />

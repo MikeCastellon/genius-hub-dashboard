@@ -105,22 +105,22 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-red-600" />
       </div>
     )
   }
 
   const kpiCards = [
-    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, gradient: 'from-blue-500 to-sky-400' },
+    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, gradient: 'from-red-700 to-red-600' },
     { label: 'Vehicles Serviced', value: stats.count.toString(), icon: Car, gradient: 'from-emerald-400 to-green-500' },
-    { label: 'Avg per Vehicle', value: formatCurrency(stats.avgOrder), icon: TrendingUp, gradient: 'from-violet-500 to-purple-600' },
+    { label: 'Avg per Vehicle', value: formatCurrency(stats.avgOrder), icon: TrendingUp, gradient: 'from-rose-500 to-red-600' },
     { label: 'Services Today', value: intakes.filter(i => new Date(i.created_at).toDateString() === new Date().toDateString()).length.toString(), icon: Activity, gradient: 'from-amber-400 to-orange-500' },
   ]
 
   const paymentCards = [
     { label: 'Cash', value: formatCurrency(stats.cash), icon: Banknote, gradient: 'from-emerald-400 to-green-500' },
     { label: 'Zelle', value: formatCurrency(stats.zelle), icon: Wallet, gradient: 'from-violet-500 to-purple-600' },
-    { label: 'Venmo', value: formatCurrency(stats.venmo), icon: Smartphone, gradient: 'from-blue-400 to-blue-600' },
+    { label: 'Venmo', value: formatCurrency(stats.venmo), icon: Smartphone, gradient: 'from-red-500 to-red-700' },
     { label: 'ATH Movil', value: formatCurrency(stats.athMovil), icon: Smartphone, gradient: 'from-amber-400 to-orange-500' },
     { label: 'Credit Card', value: formatCurrency(stats.creditCard), icon: CreditCard, gradient: 'from-zinc-400 to-zinc-500' },
   ]
@@ -130,7 +130,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Activity size={18} className="text-blue-500" />
+            <Activity size={18} className="text-red-600" />
             Dashboard
           </h2>
           <p className="text-[13px] text-zinc-400 mt-0.5">Services overview and analytics</p>
@@ -144,7 +144,7 @@ export default function Dashboard() {
           <button key={p.value} onClick={() => setPreset(p.value)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
               preset === p.value
-                ? 'bg-gradient-to-r from-blue-500 to-sky-400 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
             }`}>
             {p.label}
@@ -155,12 +155,12 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">From</label>
               <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10" />
+                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
             </div>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">To</label>
               <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10" />
+                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
             </div>
           </div>
         )}
@@ -275,7 +275,7 @@ export default function Dashboard() {
                     <p className="text-xs font-medium text-zinc-700 truncate">{s.name}</p>
                     <p className="text-[10px] text-zinc-400">{s.count}x performed</p>
                   </div>
-                  <span className="text-xs font-bold text-blue-600 w-20 text-right">{formatCurrency(s.revenue)}</span>
+                  <span className="text-xs font-bold text-red-700 w-20 text-right">{formatCurrency(s.revenue)}</span>
                 </div>
               ))}
             </div>

@@ -17,7 +17,7 @@ interface Props {
   onSave: (data: any) => Promise<void>
 }
 
-const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
 export default function InvoiceBuilder({ initialData, onClose, onSave }: Props) {
   const { customers } = useCustomers()
@@ -135,7 +135,7 @@ export default function InvoiceBuilder({ initialData, onClose, onSave }: Props) 
                 </div>
               ))}
             </div>
-            <button onClick={addItem} className="mt-2 flex items-center gap-1.5 text-sm text-blue-500 font-medium hover:text-blue-700">
+            <button onClick={addItem} className="mt-2 flex items-center gap-1.5 text-sm text-red-600 font-medium hover:text-red-700">
               <Plus size={14} /> Add line item
             </button>
           </div>
@@ -173,7 +173,7 @@ export default function InvoiceBuilder({ initialData, onClose, onSave }: Props) 
           <button
             onClick={handleSave}
             disabled={saving || items.every(i => !i.description)}
-            className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-blue-500 to-sky-400 text-white text-sm font-semibold disabled:opacity-40"
+            className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40"
           >
             {saving ? 'Saving...' : initialData ? 'Save Changes' : 'Create Invoice'}
           </button>

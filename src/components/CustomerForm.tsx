@@ -14,7 +14,7 @@ interface Props {
   onChange: (v: CustomerData) => void
 }
 
-const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 transition-all'
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
 export default function CustomerForm({ customers, value, onChange }: Props) {
   const [suggestions, setSuggestions] = useState<Customer[]>([])
@@ -118,10 +118,10 @@ export default function CustomerForm({ customers, value, onChange }: Props) {
               key={c.id}
               type="button"
               onMouseDown={() => selectCustomer(c)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blue-50/60 transition-colors border-b border-zinc-50 last:border-0"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-50/60 transition-colors border-b border-zinc-50 last:border-0"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-sky-100 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-blue-600">{c.name[0].toUpperCase()}</span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-100 to-sky-100 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-red-700">{c.name[0].toUpperCase()}</span>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-zinc-800 truncate">{c.name}</p>
