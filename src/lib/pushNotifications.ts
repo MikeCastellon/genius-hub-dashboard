@@ -2,8 +2,11 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { supabase } from './supabase';
 
+let registered = false;
+
 export async function registerPushNotifications(userId: string) {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || registered) return;
+  registered = true;
 
   const permission = await PushNotifications.requestPermissions();
   if (permission.receive !== 'granted') {
@@ -39,6 +42,7 @@ export async function registerPushNotifications(userId: string) {
 
 export async function unregisterPushNotifications(userId: string) {
   if (!Capacitor.isNativePlatform()) return;
+  registered = false;
   await supabase.from('device_tokens').delete().eq('user_id', userId);
   await PushNotifications.removeAllListeners();
 }
