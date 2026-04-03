@@ -14,6 +14,7 @@ import PendingApproval from '@/pages/PendingApproval'
 import ResetPassword from '@/pages/ResetPassword'
 import Invoices from '@/pages/Invoices'
 import InvoiceDetail from '@/pages/InvoiceDetail'
+import Customers from '@/pages/Customers'
 import Schedule from '@/pages/Schedule'
 import Hours from '@/pages/Hours'
 import BookingPage from '@/pages/BookingPage'
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="/" element={<NewIntake />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/history" element={<IntakeHistory />} />
+        <Route path="/customers" element={<Customers />} />
         <Route path="/services" element={<Services />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/:id" element={<InvoiceDetail />} />
