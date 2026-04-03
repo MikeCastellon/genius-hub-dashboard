@@ -12,11 +12,13 @@ interface Props {
   customers: Customer[]
   value: CustomerData
   onChange: (v: CustomerData) => void
+  hiddenFields?: Set<string>
 }
 
 const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
-export default function CustomerForm({ customers, value, onChange }: Props) {
+export default function CustomerForm({ customers, value, onChange, hiddenFields }: Props) {
+  const show = (key: string) => !hiddenFields || !hiddenFields.has(key)
   const [suggestions, setSuggestions] = useState<Customer[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -76,38 +78,44 @@ export default function CustomerForm({ customers, value, onChange }: Props) {
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Name *</label>
-          <input
-            type="text"
-            value={value.name}
-            onChange={e => handleNameChange(e.target.value)}
-            onFocus={() => value.name.length >= 2 && setShowSuggestions(suggestions.length > 0)}
-            placeholder="Full name"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Phone *</label>
-          <input
-            type="tel"
-            value={value.phone}
-            onChange={e => handlePhoneChange(e.target.value)}
-            onFocus={() => value.phone.length >= 3 && setShowSuggestions(suggestions.length > 0)}
-            placeholder="(555) 000-0000"
-            className={inputClass}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Email</label>
-          <input
-            type="email"
-            value={value.email}
-            onChange={e => onChange({ ...value, email: e.target.value })}
-            placeholder="customer@email.com"
-            className={inputClass}
-          />
-        </div>
+        {show('name') && (
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Name *</label>
+            <input
+              type="text"
+              value={value.name}
+              onChange={e => handleNameChange(e.target.value)}
+              onFocus={() => value.name.length >= 2 && setShowSuggestions(suggestions.length > 0)}
+              placeholder="Full name"
+              className={inputClass}
+            />
+          </div>
+        )}
+        {show('phone') && (
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Phone *</label>
+            <input
+              type="tel"
+              value={value.phone}
+              onChange={e => handlePhoneChange(e.target.value)}
+              onFocus={() => value.phone.length >= 3 && setShowSuggestions(suggestions.length > 0)}
+              placeholder="(555) 000-0000"
+              className={inputClass}
+            />
+          </div>
+        )}
+        {show('email') && (
+          <div className="sm:col-span-2">
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Email</label>
+            <input
+              type="email"
+              value={value.email}
+              onChange={e => onChange({ ...value, email: e.target.value })}
+              placeholder="customer@email.com"
+              className={inputClass}
+            />
+          </div>
+        )}
       </div>
 
       {/* Autocomplete suggestions */}

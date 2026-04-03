@@ -203,10 +203,22 @@ export interface CertificatePhoto {
 
 export type IntakeSectionKey = 'vehicle' | 'customer' | 'services' | 'payment' | 'notes' | string
 
+export interface IntakeFieldDef {
+  key: string
+  label: string
+  fieldType: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'tel' | 'email'
+  required: boolean
+  visible: boolean
+  builtIn: boolean // built-in fields can be hidden but not deleted
+  options?: string[]
+}
+
 export interface IntakeSectionDef {
   visible: boolean
   label: string
   type?: 'builtin' | 'custom'
+  fields?: IntakeFieldDef[]
+  // Legacy single-field custom sections
   fieldType?: 'text' | 'textarea' | 'number' | 'select' | 'checkbox'
   options?: string[] // for select fields
 }
@@ -216,15 +228,39 @@ export interface IntakeConfig {
   sectionOrder: IntakeSectionKey[]
 }
 
+// Default fields per built-in section
+export const DEFAULT_VEHICLE_FIELDS: IntakeFieldDef[] = [
+  { key: 'vin', label: 'VIN', fieldType: 'text', required: false, visible: true, builtIn: true },
+  { key: 'year', label: 'Year', fieldType: 'text', required: false, visible: true, builtIn: true },
+  { key: 'make', label: 'Make', fieldType: 'text', required: false, visible: true, builtIn: true },
+  { key: 'model', label: 'Model', fieldType: 'text', required: false, visible: true, builtIn: true },
+  { key: 'color', label: 'Color', fieldType: 'text', required: false, visible: true, builtIn: true },
+  { key: 'license_plate', label: 'License Plate', fieldType: 'text', required: false, visible: true, builtIn: true },
+]
+
+export const DEFAULT_CUSTOMER_FIELDS: IntakeFieldDef[] = [
+  { key: 'name', label: 'Name', fieldType: 'text', required: true, visible: true, builtIn: true },
+  { key: 'phone', label: 'Phone', fieldType: 'tel', required: true, visible: true, builtIn: true },
+  { key: 'email', label: 'Email', fieldType: 'email', required: false, visible: true, builtIn: true },
+]
+
 export const DEFAULT_INTAKE_CONFIG: IntakeConfig = {
   sections: {
-    vehicle: { visible: true, label: 'Vehicle Information', type: 'builtin' },
-    customer: { visible: true, label: 'Customer Information', type: 'builtin' },
+    vehicle: { visible: true, label: 'Vehicle Information', type: 'builtin', fields: DEFAULT_VEHICLE_FIELDS },
+    customer: { visible: true, label: 'Customer Information', type: 'builtin', fields: DEFAULT_CUSTOMER_FIELDS },
     services: { visible: true, label: 'Services', type: 'builtin' },
     payment: { visible: true, label: 'Payment Method', type: 'builtin' },
     notes: { visible: true, label: 'Notes', type: 'builtin' },
   },
   sectionOrder: ['vehicle', 'customer', 'services', 'payment', 'notes'],
+}
+
+// Helper: get fields for a section, with defaults for built-in sections without saved fields
+export function getSectionFields(sectionKey: string, def: IntakeSectionDef): IntakeFieldDef[] {
+  if (def.fields) return def.fields
+  if (sectionKey === 'vehicle') return DEFAULT_VEHICLE_FIELDS
+  if (sectionKey === 'customer') return DEFAULT_CUSTOMER_FIELDS
+  return []
 }
 
 export interface BusinessSettings {

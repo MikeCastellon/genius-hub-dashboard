@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings } from '@/lib/store'
-import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig } from '@/lib/types'
-import { CheckCircle, Loader2, FileText, Car, Pencil, Eye, EyeOff, ArrowUp, ArrowDown, Trash2, Check } from 'lucide-react'
+import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef } from '@/lib/types'
+import { CheckCircle, Loader2, FileText, Car, Pencil } from 'lucide-react'
 import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
 import CustomerForm from '@/components/CustomerForm'
@@ -9,6 +9,7 @@ import ServicePicker from '@/components/ServicePicker'
 import IntakeSummary from '@/components/IntakeSummary'
 import PaymentSelector from '@/components/PaymentSelector'
 import BarkoderScanner from '@/components/BarkoderScanner'
+import SectionEditModal from '@/components/SectionEditModal'
 import { decodeVin, isLikelyVin } from '@/lib/utils'
 
 interface VehicleData {
@@ -38,26 +39,8 @@ export default function NewIntake() {
   const [success, setSuccess] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [editingSection, setEditingSection] = useState<IntakeSectionKey | null>(null)
-  const [editLabel, setEditLabel] = useState('')
-  const editRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
-
-  // Close popover on outside click
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (editRef.current && !editRef.current.contains(e.target as Node)) {
-        setEditingSection(null)
-      }
-    }
-    if (editingSection) document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [editingSection])
-
-  const openSectionEdit = (key: IntakeSectionKey) => {
-    setEditLabel(config.sections[key]?.label || '')
-    setEditingSection(key)
-  }
 
   const saveConfigChange = async (newConfig: IntakeConfig) => {
     if (!profile?.business_id) return
@@ -68,34 +51,12 @@ export default function NewIntake() {
     }
   }
 
-  const handleToggleVisibility = async (key: IntakeSectionKey) => {
-    const updated: IntakeConfig = {
+  const handleSectionEdit = async (key: IntakeSectionKey, updatedDef: typeof config.sections[string]) => {
+    await saveConfigChange({
       ...config,
-      sections: { ...config.sections, [key]: { ...config.sections[key], visible: !config.sections[key].visible } }
-    }
-    await saveConfigChange(updated)
+      sections: { ...config.sections, [key]: updatedDef }
+    })
     setEditingSection(null)
-  }
-
-  const handleRenameSection = async (key: IntakeSectionKey) => {
-    if (!editLabel.trim()) return
-    const updated: IntakeConfig = {
-      ...config,
-      sections: { ...config.sections, [key]: { ...config.sections[key], label: editLabel.trim() } }
-    }
-    await saveConfigChange(updated)
-    setEditingSection(null)
-  }
-
-  const handleMoveSection = async (key: IntakeSectionKey, direction: 'up' | 'down') => {
-    const order = [...config.sectionOrder]
-    const idx = order.indexOf(key)
-    if (direction === 'up' && idx > 0) {
-      [order[idx - 1], order[idx]] = [order[idx], order[idx - 1]]
-    } else if (direction === 'down' && idx < order.length - 1) {
-      [order[idx], order[idx + 1]] = [order[idx + 1], order[idx]]
-    }
-    await saveConfigChange({ ...config, sectionOrder: order })
   }
 
   const handleDeleteSection = async (key: IntakeSectionKey) => {
@@ -104,6 +65,22 @@ export default function NewIntake() {
     delete sections[key]
     await saveConfigChange({ sections, sectionOrder: config.sectionOrder.filter(k => k !== key) })
     setEditingSection(null)
+  }
+
+  // Build hidden fields sets for built-in sections
+  const hiddenFieldsFor = (key: string) => {
+    const def = config.sections[key]
+    if (!def) return new Set<string>()
+    const fields = getSectionFields(key, def)
+    return new Set(fields.filter(f => !f.visible).map(f => f.key))
+  }
+
+  // Get custom (non-built-in) fields added to a section
+  const extraFieldsFor = (key: string): IntakeFieldDef[] => {
+    const def = config.sections[key]
+    if (!def) return []
+    const fields = getSectionFields(key, def)
+    return fields.filter(f => !f.builtIn && f.visible)
   }
 
   // Get visible sections in order
@@ -190,59 +167,55 @@ export default function NewIntake() {
     }
   }
 
-  // Edit popover rendered for a section
-  const renderEditPopover = (key: IntakeSectionKey) => {
-    if (editingSection !== key) return null
-    const def = config.sections[key]
-    const isCustom = def?.type === 'custom'
-    const idx = config.sectionOrder.indexOf(key)
-
+  // Helper to render extra custom fields added to a built-in section
+  const renderExtraFields = (sectionKey: string) => {
+    const extras = extraFieldsFor(sectionKey)
+    if (extras.length === 0) return null
     return (
-      <div ref={editRef} className="absolute top-10 right-2 z-30 bg-white rounded-xl border border-zinc-200 shadow-lg p-3 w-56 space-y-2.5">
-        {/* Rename */}
-        <div>
-          <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">Label</label>
-          <div className="flex gap-1.5">
-            <input
-              className="flex-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-red-300"
-              value={editLabel}
-              onChange={e => setEditLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleRenameSection(key)}
-            />
-            <button onClick={() => handleRenameSection(key)} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
-              <Check size={12} />
-            </button>
+      <div className="mt-3 space-y-3">
+        {extras.map(field => (
+          <div key={field.key}>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">
+              {field.label}{field.required ? ' *' : ''}
+            </label>
+            {field.fieldType === 'textarea' ? (
+              <textarea
+                value={customFields[field.key] || ''}
+                onChange={e => setCustomFields(prev => ({ ...prev, [field.key]: e.target.value }))}
+                className={`${inputClass} resize-none`}
+                rows={3}
+                placeholder={`Enter ${field.label.toLowerCase()}...`}
+              />
+            ) : field.fieldType === 'select' && field.options ? (
+              <select
+                value={customFields[field.key] || ''}
+                onChange={e => setCustomFields(prev => ({ ...prev, [field.key]: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="">Select...</option>
+                {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            ) : field.fieldType === 'checkbox' ? (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={customFields[field.key] === 'yes'}
+                  onChange={e => setCustomFields(prev => ({ ...prev, [field.key]: e.target.checked ? 'yes' : '' }))}
+                  className="rounded border-zinc-300 text-red-600"
+                />
+                <span className="text-sm text-zinc-700">{field.label}</span>
+              </label>
+            ) : (
+              <input
+                type={field.fieldType === 'number' ? 'number' : field.fieldType === 'tel' ? 'tel' : field.fieldType === 'email' ? 'email' : 'text'}
+                value={customFields[field.key] || ''}
+                onChange={e => setCustomFields(prev => ({ ...prev, [field.key]: e.target.value }))}
+                className={inputClass}
+                placeholder={`Enter ${field.label.toLowerCase()}...`}
+              />
+            )}
           </div>
-        </div>
-
-        <div className="border-t border-zinc-100 pt-2 flex items-center justify-between">
-          {/* Move */}
-          <div className="flex gap-1">
-            <button onClick={() => handleMoveSection(key, 'up')} disabled={idx === 0}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-400 hover:text-zinc-700 disabled:opacity-20" title="Move up">
-              <ArrowUp size={12} />
-            </button>
-            <button onClick={() => handleMoveSection(key, 'down')} disabled={idx === config.sectionOrder.length - 1}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-400 hover:text-zinc-700 disabled:opacity-20" title="Move down">
-              <ArrowDown size={12} />
-            </button>
-          </div>
-
-          {/* Visibility toggle */}
-          <button onClick={() => handleToggleVisibility(key)}
-            className={`p-1.5 rounded-lg border text-xs font-medium flex items-center gap-1 ${def?.visible ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-zinc-200 text-zinc-400'}`}>
-            {def?.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-            {def?.visible ? 'Visible' : 'Hidden'}
-          </button>
-
-          {/* Delete (custom only) */}
-          {isCustom && (
-            <button onClick={() => handleDeleteSection(key)}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50" title="Remove section">
-              <Trash2 size={12} />
-            </button>
-          )}
-        </div>
+        ))}
       </div>
     )
   }
@@ -251,16 +224,13 @@ export default function NewIntake() {
   const wrapSection = (key: IntakeSectionKey, content: React.ReactNode) => (
     <div key={key} className="glass rounded-2xl p-4 md:p-5 relative group/section">
       {isAdmin && (
-        <>
-          <button
-            onClick={() => openSectionEdit(key)}
-            className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-300 opacity-0 group-hover/section:opacity-100 hover:bg-zinc-100 hover:text-zinc-500 transition-all z-20"
-            title="Edit section"
-          >
-            <Pencil size={12} />
-          </button>
-          {renderEditPopover(key)}
-        </>
+        <button
+          onClick={() => setEditingSection(key)}
+          className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-300 opacity-0 group-hover/section:opacity-100 hover:bg-zinc-100 hover:text-zinc-500 transition-all z-20"
+          title="Edit section"
+        >
+          <Pencil size={12} />
+        </button>
       )}
       {content}
     </div>
@@ -274,19 +244,27 @@ export default function NewIntake() {
     switch (key) {
       case 'vehicle':
         return wrapSection(key,
-          <VehicleForm
-            value={vehicle}
-            onChange={setVehicle}
-            onScanClick={() => setShowScanner(true)}
-          />
+          <>
+            <VehicleForm
+              value={vehicle}
+              onChange={setVehicle}
+              onScanClick={() => setShowScanner(true)}
+              hiddenFields={hiddenFieldsFor('vehicle')}
+            />
+            {renderExtraFields('vehicle')}
+          </>
         )
       case 'customer':
         return wrapSection(key,
-          <CustomerForm
-            customers={customers}
-            value={customer}
-            onChange={setCustomer}
-          />
+          <>
+            <CustomerForm
+              customers={customers}
+              value={customer}
+              onChange={setCustomer}
+              hiddenFields={hiddenFieldsFor('customer')}
+            />
+            {renderExtraFields('customer')}
+          </>
         )
       case 'services':
         return wrapSection(key,
@@ -394,6 +372,16 @@ export default function NewIntake() {
           onClose={() => setShowScanner(false)}
           onDetected={handleVinDetected}
           onFail={() => setShowScanner(false)}
+        />
+      )}
+
+      {editingSection && config.sections[editingSection] && (
+        <SectionEditModal
+          sectionKey={editingSection}
+          section={config.sections[editingSection]}
+          onSave={(updated) => handleSectionEdit(editingSection, updated)}
+          onDelete={config.sections[editingSection].type === 'custom' ? () => handleDeleteSection(editingSection) : undefined}
+          onClose={() => setEditingSection(null)}
         />
       )}
 
