@@ -368,6 +368,11 @@ export async function createBusiness(name: string) {
   if (error) throw error
 }
 
+export async function updateBusiness(id: string, updates: Partial<Pick<Business, 'name' | 'slug' | 'logo_url' | 'primary_color' | 'website' | 'phone' | 'address'>>) {
+  const { error } = await supabase.from('businesses').update(updates).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteBusiness(id: string) {
   const { error } = await supabase.from('businesses').delete().eq('id', id)
   if (error) throw error
@@ -480,7 +485,7 @@ export async function deleteAppointment(id: string) {
 export async function getPublicBookingData(slug: string) {
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, logo_url, primary_color')
+    .select('id, name, slug, logo_url, primary_color, website, phone, address')
     .eq('slug', slug)
     .maybeSingle()
   if (!business) return null

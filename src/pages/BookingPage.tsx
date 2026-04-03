@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getPublicBookingData, createAppointment } from '@/lib/store'
 import { Service } from '@/lib/types'
-import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Calendar } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Calendar, Globe, Phone, MapPin } from 'lucide-react'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const inputClass = 'w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
@@ -144,14 +144,38 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       {/* Header */}
-      <div className="bg-white border-b border-zinc-200 px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center shrink-0">
-            <Car size={18} className="text-white" />
+      <div className="bg-white border-b border-zinc-200 px-4 py-5">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-3">
+            {business.logo_url ? (
+              <img src={business.logo_url} alt={business.name} className="h-10 w-auto object-contain shrink-0" />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center shrink-0">
+                <Car size={18} className="text-white" />
+              </div>
+            )}
+            <div>
+              <h1 className="font-bold text-zinc-900">{business.name}</h1>
+              <p className="text-xs text-zinc-400">Book an appointment</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-zinc-900">{business.name}</h1>
-            <p className="text-xs text-zinc-400">Book an appointment</p>
+          {/* Business info strip */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+            {business.phone && (
+              <a href={`tel:${business.phone}`} className="flex items-center gap-1 hover:text-red-600 transition-colors">
+                <Phone size={11} /> {business.phone}
+              </a>
+            )}
+            {business.address && (
+              <span className="flex items-center gap-1">
+                <MapPin size={11} /> {business.address}
+              </span>
+            )}
+            {business.website && (
+              <a href={business.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-red-600 transition-colors">
+                <Globe size={11} /> Website
+              </a>
+            )}
           </div>
         </div>
       </div>

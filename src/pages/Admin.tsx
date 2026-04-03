@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   useAdminUsers, approveUser, revokeUser, setUserRole, setUserBusiness,
-  useBusinesses, useBusinessSettings, upsertBusinessSettings
+  useBusinesses, useBusinessSettings, upsertBusinessSettings, updateBusiness,
+  useBusinessHours, upsertBusinessHours
 } from '@/lib/store'
-import { UserRole, IntakeConfig, IntakeSectionKey, IntakeSectionDef, DEFAULT_INTAKE_CONFIG } from '@/lib/types'
+import { UserRole, IntakeConfig, IntakeSectionKey, IntakeSectionDef, DEFAULT_INTAKE_CONFIG, BusinessHours } from '@/lib/types'
 import {
   ShieldCheck, Clock, CheckCircle2, XCircle, Loader2,
   Users, Shield, Building2, Settings, Eye, EyeOff, GripVertical,
-  ArrowUp, ArrowDown, Plus, Trash2, RotateCcw
+  ArrowUp, ArrowDown, Plus, Trash2, RotateCcw, Globe, Phone, MapPin, Image
 } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 
@@ -17,7 +18,7 @@ export default function Admin() {
   const { businesses } = useBusinesses()
   const { settings, refresh: refreshSettings } = useBusinessSettings()
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'users' | 'intake'>('users')
+  const [tab, setTab] = useState<'users' | 'business' | 'intake'>('users')
 
   const isSuperAdmin = myProfile?.role === 'super_admin'
   const isAdmin = myProfile?.role === 'admin' || isSuperAdmin
@@ -71,6 +72,9 @@ export default function Admin() {
       <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-6 w-fit">
         <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'users' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Users size={14} /> Users
+        </button>
+        <button onClick={() => setTab('business')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'business' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+          <Building2 size={14} /> Business
         </button>
         <button onClick={() => setTab('intake')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Settings size={14} /> Intake Form
@@ -210,6 +214,14 @@ export default function Admin() {
             </div>
           </div>
         </div>
+      )}
+
+      {tab === 'business' && isAdmin && (
+        <BusinessInfoPanel
+          businessId={myProfile?.business_id || ''}
+          businesses={businesses}
+          refreshBusinesses={async () => { /* useBusinesses auto-refreshes */ }}
+        />
       )}
 
       {tab === 'intake' && isAdmin && (
@@ -430,6 +442,197 @@ function IntakeSettingsPanel({ businessId, currentConfig, onSaved }: {
         className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
         {saving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Intake Settings'}
       </button>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════
+// Business Info Sub-Component
+// ═══════════════════════════════════════════
+
+const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+function BusinessInfoPanel({ businessId, businesses }: {
+  businessId: string
+  businesses: { id: string; name: string; slug?: string; logo_url?: string | null; website?: string | null; phone?: string | null; address?: string | null }[]
+  refreshBusinesses: () => Promise<void>
+}) {
+  const biz = businesses.find(b => b.id === businessId)
+  const { hours, refresh: refreshHours } = useBusinessHours()
+
+  const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
+
+  const [name, setName] = useState(biz?.name || '')
+  const [logoUrl, setLogoUrl] = useState(biz?.logo_url || '')
+  const [website, setWebsite] = useState(biz?.website || '')
+  const [phone, setPhone] = useState(biz?.phone || '')
+  const [address, setAddress] = useState(biz?.address || '')
+  const [saving, setSaving] = useState(false)
+
+  // Business hours state
+  const [localHours, setLocalHours] = useState<Partial<BusinessHours>[]>([])
+  const [hoursInit, setHoursInit] = useState(false)
+  const [savingHours, setSavingHours] = useState(false)
+
+  // Sync biz fields when data loads
+  useEffect(() => {
+    if (biz) {
+      setName(biz.name || '')
+      setLogoUrl(biz.logo_url || '')
+      setWebsite(biz.website || '')
+      setPhone(biz.phone || '')
+      setAddress(biz.address || '')
+    }
+  }, [biz?.id])
+
+  // Init local hours
+  if (!hoursInit && hours.length > 0) {
+    setLocalHours(Array.from({ length: 7 }, (_, i) => {
+      const bh = hours.find(h => h.day_of_week === i)
+      return bh || { day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: false }
+    }))
+    setHoursInit(true)
+  }
+  if (!hoursInit && hours.length === 0 && localHours.length === 0) {
+    setLocalHours(Array.from({ length: 7 }, (_, i) => ({
+      day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: i >= 1 && i <= 5
+    })))
+  }
+
+  const handleSaveInfo = async () => {
+    if (!businessId) return
+    setSaving(true)
+    try {
+      await updateBusiness(businessId, {
+        name: name.trim(),
+        logo_url: logoUrl.trim() || null,
+        website: website.trim() || null,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+      })
+    } catch (err: any) {
+      alert('Error saving: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveHours = async () => {
+    if (!businessId) return
+    setSavingHours(true)
+    try {
+      await upsertBusinessHours(localHours.map(h => ({ ...h, business_id: businessId } as Omit<BusinessHours, 'id'>)))
+      refreshHours()
+    } catch (err: any) {
+      alert('Error saving hours: ' + err.message)
+    } finally {
+      setSavingHours(false)
+    }
+  }
+
+  if (!biz) {
+    return (
+      <div className="glass rounded-2xl px-4 py-8 text-center">
+        <p className="text-sm text-zinc-400">No business found for your account.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Business Details */}
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+          <Building2 size={14} className="text-red-600" />
+          Business Details
+        </h3>
+
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Business Name</label>
+          <input className={inputClass} value={name} onChange={e => setName(e.target.value)} placeholder="Your business name" />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+            <Image size={11} /> Logo URL
+          </label>
+          <input className={inputClass} value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://example.com/logo.svg" />
+          {logoUrl && (
+            <div className="mt-2 p-3 bg-zinc-50 rounded-xl flex items-center gap-3">
+              <img src={logoUrl} alt="Logo preview" className="h-10 w-auto object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
+              <span className="text-xs text-zinc-400">Preview</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+            <Globe size={11} /> Website
+          </label>
+          <input className={inputClass} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://www.yourbusiness.com" />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+            <Phone size={11} /> Phone
+          </label>
+          <input className={inputClass} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+            <MapPin size={11} /> Address
+          </label>
+          <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, State 00000" />
+        </div>
+
+        <button onClick={handleSaveInfo} disabled={saving || !name.trim()}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+          {saving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Business Info'}
+        </button>
+      </div>
+
+      {/* Business Hours */}
+      <div className="glass rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2 mb-4">
+          <Clock size={14} className="text-red-600" />
+          Business Hours
+        </h3>
+        <div className="space-y-3">
+          {localHours.map((bh, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-28 shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!bh.is_open}
+                    onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, is_open: e.target.checked } : h))}
+                    className="rounded border-zinc-300 text-red-600"
+                  />
+                  <span className={`text-sm font-medium ${bh.is_open ? 'text-zinc-800' : 'text-zinc-400'}`}>{FULL_DAYS[i]}</span>
+                </label>
+              </div>
+              {bh.is_open ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <input type="time" value={bh.start_time || '08:00'}
+                    onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, start_time: e.target.value } : h))}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
+                  <span className="text-zinc-400 text-xs">to</span>
+                  <input type="time" value={bh.end_time || '18:00'}
+                    onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, end_time: e.target.value } : h))}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400 italic">Closed</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <button onClick={handleSaveHours} disabled={savingHours}
+          className="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+          {savingHours ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Hours'}
+        </button>
+      </div>
     </div>
   )
 }

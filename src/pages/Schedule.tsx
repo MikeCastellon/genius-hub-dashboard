@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
-import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinessHours, upsertBusinessHours, useBusinesses } from '@/lib/store'
-import { Appointment, AppointmentStatus, BusinessHours } from '@/lib/types'
-import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check, Settings } from 'lucide-react'
+import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinesses } from '@/lib/store'
+import { Appointment, AppointmentStatus } from '@/lib/types'
+import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check } from 'lucide-react'
 import AppointmentModal from '@/components/AppointmentModal'
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
@@ -21,8 +21,6 @@ const STATUS_DOT: Record<AppointmentStatus, string> = {
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
 // Generate hours from 6am to 9pm
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 6)
 
@@ -40,31 +38,12 @@ export default function Schedule() {
   const { profile } = useAuth()
   const { appointments, loading, refresh } = useAppointments()
   const { users } = useAdminUsers()
-  const { hours, refresh: refreshHours } = useBusinessHours()
   const { businesses } = useBusinesses()
-  const [tab, setTab] = useState<'schedule' | 'hours'>('schedule')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [savingHours, setSavingHours] = useState(false)
-  const [localHours, setLocalHours] = useState<Partial<BusinessHours>[]>([])
-  const [hoursInit, setHoursInit] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
-
-  // Init local hours from DB once
-  if (!hoursInit && hours.length > 0) {
-    setLocalHours(Array.from({ length: 7 }, (_, i) => {
-      const bh = hours.find(h => h.day_of_week === i)
-      return bh || { day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: false }
-    }))
-    setHoursInit(true)
-  }
-  if (!hoursInit && hours.length === 0 && localHours.length === 0) {
-    setLocalHours(Array.from({ length: 7 }, (_, i) => ({
-      day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: i >= 1 && i <= 5
-    })))
-  }
 
   // Week grid
   const weekStart = new Date()
@@ -91,17 +70,6 @@ export default function Schedule() {
     navigator.clipboard.writeText(`${window.location.origin}/book/${slug}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleSaveHours = async () => {
-    if (!profile?.business_id) return
-    setSavingHours(true)
-    try {
-      await upsertBusinessHours(localHours.map(h => ({ ...h, business_id: profile.business_id! } as Omit<BusinessHours, 'id'>)))
-      refreshHours()
-    } finally {
-      setSavingHours(false)
-    }
   }
 
   const handleCreate = async (data: Omit<Appointment, 'id' | 'created_at' | 'technician'>) => {
@@ -147,16 +115,7 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-4 w-fit shrink-0">
-        <button onClick={() => setTab('schedule')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'schedule' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>Calendar</button>
-        <button onClick={() => setTab('hours')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'hours' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Settings size={13} /> Business Hours
-        </button>
-      </div>
-
-      {tab === 'schedule' && (
-        <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
           {/* Week nav */}
           <div className="flex items-center gap-3 mb-3 shrink-0">
             <button onClick={() => setWeekOffset(o => o - 1)} className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"><ChevronLeft size={16} /></button>
@@ -312,47 +271,6 @@ export default function Schedule() {
             </>
           )}
         </div>
-      )}
-
-      {tab === 'hours' && (
-        <div className="glass rounded-2xl p-5 max-w-lg">
-          <h3 className="text-sm font-semibold text-zinc-800 mb-4">Business Hours</h3>
-          <div className="space-y-3">
-            {localHours.map((bh, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-28 shrink-0">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!bh.is_open}
-                      onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, is_open: e.target.checked } : h))}
-                      className="rounded border-zinc-300 text-red-600"
-                    />
-                    <span className={`text-sm font-medium ${bh.is_open ? 'text-zinc-800' : 'text-zinc-400'}`}>{FULL_DAYS[i]}</span>
-                  </label>
-                </div>
-                {bh.is_open ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <input type="time" value={bh.start_time || '08:00'}
-                      onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, start_time: e.target.value } : h))}
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
-                    <span className="text-zinc-400 text-xs">to</span>
-                    <input type="time" value={bh.end_time || '18:00'}
-                      onChange={e => setLocalHours(prev => prev.map((h, j) => j === i ? { ...h, end_time: e.target.value } : h))}
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:border-red-300" />
-                  </div>
-                ) : (
-                  <span className="text-xs text-zinc-400 italic">Closed</span>
-                )}
-              </div>
-            ))}
-          </div>
-          <button onClick={handleSaveHours} disabled={savingHours}
-            className="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40">
-            {savingHours ? 'Saving...' : 'Save Hours'}
-          </button>
-        </div>
-      )}
 
       {/* Appointment detail modal */}
       {selected && (

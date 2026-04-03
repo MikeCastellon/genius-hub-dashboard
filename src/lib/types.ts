@@ -14,6 +14,11 @@ export interface Business {
   id: string
   name: string
   slug?: string
+  logo_url?: string | null
+  primary_color?: string | null
+  website?: string | null
+  phone?: string | null
+  address?: string | null
   created_at: string
 }
 
