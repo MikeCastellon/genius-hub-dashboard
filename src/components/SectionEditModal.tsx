@@ -78,8 +78,8 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
           <h2 className="text-base font-bold text-zinc-900">Edit Section</h2>
@@ -90,23 +90,23 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Section label */}
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Section Label</label>
-            <input className={inputClass} value={label} onChange={e => setLabel(e.target.value)} />
-          </div>
-
-          {/* Section visibility */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-700">Section Visible</span>
-            <button
-              onClick={() => setVisible(!visible)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                visible ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-zinc-100 text-zinc-400 border border-zinc-200'
-              }`}
-            >
-              {visible ? <><Eye size={12} /> Visible</> : <><EyeOff size={12} /> Hidden</>}
-            </button>
+          {/* Section label + visibility row */}
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Section Label</label>
+              <input className={inputClass} value={label} onChange={e => setLabel(e.target.value)} />
+            </div>
+            <div className="flex items-center gap-3 pb-0.5">
+              <span className="text-sm font-medium text-zinc-700 whitespace-nowrap">Visible</span>
+              <button
+                onClick={() => setVisible(!visible)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  visible ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-zinc-100 text-zinc-400 border border-zinc-200'
+                }`}
+              >
+                {visible ? <><Eye size={12} /> Visible</> : <><EyeOff size={12} /> Hidden</>}
+              </button>
+            </div>
           </div>
 
           {/* Fields list */}

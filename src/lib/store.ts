@@ -752,9 +752,9 @@ export function useBusinessSettings() {
 }
 
 export function useIntakeConfig() {
-  const { settings, loading } = useBusinessSettings()
+  const { settings, loading, refresh } = useBusinessSettings()
   const config: IntakeConfig = settings?.intake_config || DEFAULT_INTAKE_CONFIG
-  return { config, loading }
+  return { config, loading, refresh }
 }
 
 export async function upsertBusinessSettings(businessId: string, intakeConfig: IntakeConfig) {

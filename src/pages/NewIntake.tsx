@@ -27,7 +27,7 @@ export default function NewIntake() {
   const { user, profile } = useAuth()
   const { services, loading: servicesLoading } = useServices()
   const { customers, refresh: refreshCustomers } = useCustomers()
-  const { config } = useIntakeConfig()
+  const { config, refresh: refreshConfig } = useIntakeConfig()
 
   const [vehicle, setVehicle] = useState<VehicleData>({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '' })
@@ -46,6 +46,7 @@ export default function NewIntake() {
     if (!profile?.business_id) return
     try {
       await upsertBusinessSettings(profile.business_id, newConfig)
+      await refreshConfig()
     } catch (err: any) {
       alert('Error saving: ' + err.message)
     }
