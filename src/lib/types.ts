@@ -159,3 +159,36 @@ export interface TimeEntry {
   created_at: string
   employee?: { display_name: string }
 }
+
+// ── Certify (Certificates) ────────────────────────────────
+
+export interface Certificate {
+  id: string
+  business_id: string
+  intake_id: string
+  certificate_number: string
+  coating_brand: string
+  coating_product: string
+  odometer: number | null
+  warranty_years: number
+  warranty_expiry: string
+  technician_id: string | null
+  status: 'active' | 'expired' | 'voided'
+  is_public: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+  // Eager-loaded relations
+  intake?: VehicleIntake
+  customer?: Customer
+  technician?: { display_name: string }
+  photos?: CertificatePhoto[]
+}
+
+export interface CertificatePhoto {
+  id: string
+  certificate_id: string
+  storage_path: string
+  photo_type: 'before' | 'after' | 'product' | 'other'
+  created_at: string
+}

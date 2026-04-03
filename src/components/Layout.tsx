@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock } from 'lucide-react'
+import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/history', icon: History, label: 'History' },
   { to: '/invoices', icon: FileText, label: 'Invoices' },
+  { to: '/certify', icon: Award, label: 'Certify' },
   { to: '/schedule', icon: Calendar, label: 'Schedule' },
   { to: '/hours', icon: Clock, label: 'Hours' },
   { to: '/services', icon: Wrench, label: 'Services' },

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useIntakes, useAuth, createInvoice } from '@/lib/store'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PaymentMethod } from '@/lib/types'
-import { Search, Loader2, History, ChevronDown, ChevronUp, Calendar, Car, FileText } from 'lucide-react'
+import { Search, Loader2, History, ChevronDown, ChevronUp, Calendar, Car, FileText, Award } from 'lucide-react'
 
 type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'ytd' | 'all' | 'custom'
 
@@ -245,14 +245,23 @@ export default function IntakeHistory() {
                             {intake.notes && (
                               <p className="text-[10px] text-zinc-400 mt-2 italic">Note: {intake.notes}</p>
                             )}
-                            <button
-                              onClick={(e) => handleGenerateInvoice(intake, e)}
-                              disabled={generatingInvoice === intake.id}
-                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-100 text-red-700 text-xs font-semibold hover:bg-red-100 disabled:opacity-50"
-                            >
-                              <FileText size={12} />
-                              {generatingInvoice === intake.id ? 'Generating...' : 'Generate Invoice'}
-                            </button>
+                            <div className="mt-3 flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleGenerateInvoice(intake, e)}
+                                disabled={generatingInvoice === intake.id}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-100 text-red-700 text-xs font-semibold hover:bg-red-100 disabled:opacity-50"
+                              >
+                                <FileText size={12} />
+                                {generatingInvoice === intake.id ? 'Generating...' : 'Generate Invoice'}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/certify?intake=${intake.id}`) }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-100"
+                              >
+                                <Award size={12} />
+                                Certify
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

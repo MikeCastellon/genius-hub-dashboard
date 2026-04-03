@@ -17,6 +17,9 @@ import InvoiceDetail from '@/pages/InvoiceDetail'
 import Schedule from '@/pages/Schedule'
 import Hours from '@/pages/Hours'
 import BookingPage from '@/pages/BookingPage'
+import Certify from '@/pages/Certify'
+import CertificateDetail from '@/pages/CertificateDetail'
+import VerifyCertificate from '@/pages/VerifyCertificate'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
@@ -37,6 +40,14 @@ export default function App() {
   }
 
   // Public routes (no auth required)
+  if (window.location.pathname.startsWith('/verify/')) {
+    return (
+      <Routes>
+        <Route path="/verify/:certId" element={<VerifyCertificate />} />
+      </Routes>
+    )
+  }
+
   if (window.location.pathname.startsWith('/book/')) {
     return (
       <Routes>
@@ -64,6 +75,8 @@ export default function App() {
         <Route path="/services" element={<Services />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/:id" element={<InvoiceDetail />} />
+        <Route path="/certify" element={<Certify />} />
+        <Route path="/certify/:id" element={<CertificateDetail />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/hours" element={<Hours />} />
         {isAdmin && <Route path="/admin" element={<Admin />} />}

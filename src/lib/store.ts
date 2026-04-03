@@ -3,7 +3,8 @@ import { supabase } from './supabase'
 import {
   Profile, Business, Service, Customer, VehicleIntake,
   CartItem, PaymentMethod, UserRole,
-  Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry
+  Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry,
+  Certificate, CertificatePhoto
 } from './types'
 
 const isConfigured = () => {
@@ -615,4 +616,99 @@ export async function getOpenTimeEntry(employeeId: string): Promise<TimeEntry | 
     .limit(1)
     .maybeSingle()
   return data
+}
+
+// ============ Certificates (Certify) ============
+
+export function useCertificates() {
+  const [certificates, setCertificates] = useState<Certificate[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data } = await supabase
+      .from('certificates')
+      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*)')
+      .order('created_at', { ascending: false })
+    setCertificates(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { certificates, loading, refresh }
+}
+
+export async function getCertificate(id: string): Promise<Certificate | null> {
+  const { data } = await supabase
+    .from('certificates')
+    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*)')
+    .eq('id', id)
+    .maybeSingle()
+  return data
+}
+
+export async function getPublicCertificate(id: string): Promise<Certificate | null> {
+  const { data } = await supabase
+    .from('certificates')
+    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*)')
+    .eq('id', id)
+    .eq('is_public', true)
+    .maybeSingle()
+  return data
+}
+
+export async function createCertificate(
+  cert: Omit<Certificate, 'id' | 'certificate_number' | 'created_at' | 'updated_at' | 'intake' | 'customer' | 'technician' | 'photos'>
+): Promise<Certificate> {
+  // Generate next cert number
+  const { count } = await supabase
+    .from('certificates')
+    .select('*', { count: 'exact', head: true })
+    .eq('business_id', cert.business_id)
+  const num = String((count || 0) + 1).padStart(4, '0')
+
+  const { data, error } = await supabase
+    .from('certificates')
+    .insert({ ...cert, certificate_number: `CERT-${num}` })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateCertificate(id: string, updates: Partial<Certificate>) {
+  const { error } = await supabase
+    .from('certificates')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function uploadCertificatePhoto(
+  certificateId: string,
+  businessId: string,
+  file: File,
+  photoType: CertificatePhoto['photo_type']
+): Promise<CertificatePhoto> {
+  const timestamp = Date.now()
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${businessId}/${certificateId}/${photoType}_${timestamp}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('certificate-photos')
+    .upload(path, file, { contentType: file.type })
+  if (uploadError) throw uploadError
+
+  const { data, error } = await supabase
+    .from('certificate_photos')
+    .insert({ certificate_id: certificateId, storage_path: path, photo_type: photoType })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export function getCertificatePhotoUrl(storagePath: string): string {
+  const { data } = supabase.storage.from('certificate-photos').getPublicUrl(storagePath)
+  return data.publicUrl
 }
