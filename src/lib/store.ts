@@ -841,8 +841,26 @@ export async function updateCustomerTags(customerId: string, tags: string[]) {
   if (error) throw error
 }
 
-export async function inviteCustomer(email: string, businessId: string) {
-  // Create account with random password, then send password reset so customer can set their own
+export async function inviteCustomer(email: string, businessId: string, customerId?: string) {
+  // First check if a profile with this email already exists
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existingProfile) {
+    // Account already exists — just link the customer record to this profile
+    if (customerId) {
+      await supabase
+        .from('customers')
+        .update({ profile_id: existingProfile.id })
+        .eq('id', customerId)
+    }
+    return { user: existingProfile, alreadyExists: true }
+  }
+
+  // No account — create one with random password + send reset email
   const tempPassword = crypto.randomUUID() + '!Aa1'
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -853,13 +871,21 @@ export async function inviteCustomer(email: string, businessId: string) {
   })
   if (error) throw error
 
+  // Link the new profile to the customer record
+  if (customerId && data.user) {
+    await supabase
+      .from('customers')
+      .update({ profile_id: data.user.id })
+      .eq('id', customerId)
+  }
+
   // Send password reset email so customer can set their own password
   const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
   })
   if (resetError) throw resetError
 
-  return data
+  return { ...data, alreadyExists: false }
 }
 
 // ============ Customer Portal ============

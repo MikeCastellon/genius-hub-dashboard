@@ -122,8 +122,11 @@ export default function NewIntake() {
     setInviteLoading(true)
     setInviteError('')
     try {
-      await inviteCustomer(savedCustomer.email, profile.business_id)
+      const result = await inviteCustomer(savedCustomer.email, profile.business_id, savedCustomer.id)
       setInviteSent(true)
+      if (result.alreadyExists) {
+        setInviteError('')
+      }
     } catch (err: any) {
       setInviteError(err.message || 'Failed to send invite')
     } finally {

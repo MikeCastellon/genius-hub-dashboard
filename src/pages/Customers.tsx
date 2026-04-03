@@ -342,8 +342,13 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
     setInviting(true)
     setInviteMsg(null)
     try {
-      await inviteCustomer(customer.email, businessId)
-      setInviteMsg('Invite sent!')
+      const result = await inviteCustomer(customer.email, businessId, customer.id)
+      if (result.alreadyExists) {
+        setInviteMsg('Account already exists — linked to this customer.')
+      } else {
+        setInviteMsg('Invite sent!')
+      }
+      refresh()
     } catch (err: any) {
       setInviteMsg(err.message || 'Failed to send invite.')
     } finally {
