@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
+    iosScheme: 'https',
   },
   plugins: {
     SplashScreen: {
@@ -18,7 +19,8 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#fafafa',
+      overlaysWebView: false,
     },
   },
 };

@@ -49,7 +49,7 @@ export function useAuth() {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, business:businesses(*)')
       .eq('id', userId)
       .maybeSingle()
     setProfile(data)

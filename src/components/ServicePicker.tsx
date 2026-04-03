@@ -11,7 +11,7 @@ interface Props {
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Full Detail': 'bg-red-50 text-red-700 border-red-100',
-  'Exterior': 'bg-red-50 text-sky-600 border-sky-100',
+  'Exterior': 'bg-sky-50 text-sky-600 border-sky-100',
   'Interior': 'bg-violet-50 text-violet-600 border-violet-100',
   'Paint': 'bg-rose-50 text-rose-600 border-rose-100',
   'Engine': 'bg-amber-50 text-amber-600 border-amber-100',
@@ -118,7 +118,7 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                             <button
                               type="button"
                               onClick={() => removeService(service.id)}
-                              className="w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center hover:bg-red-200 transition-colors"
+                              className="w-9 h-9 rounded-lg bg-red-100 text-red-700 flex items-center justify-center hover:bg-red-200 transition-colors"
                             >
                               <Minus size={10} />
                             </button>
@@ -126,7 +126,7 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                             <button
                               type="button"
                               onClick={() => addService(service)}
-                              className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors"
+                              className="w-9 h-9 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors"
                             >
                               <Plus size={10} />
                             </button>
@@ -135,7 +135,7 @@ export default function ServicePicker({ services, cart, onCartChange }: Props) {
                           <button
                             type="button"
                             onClick={() => addService(service)}
-                            className="w-6 h-6 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 border border-red-100 transition-colors"
+                            className="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 border border-red-100 transition-colors"
                           >
                             <Plus size={10} />
                           </button>

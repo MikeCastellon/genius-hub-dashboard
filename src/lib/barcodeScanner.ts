@@ -26,5 +26,6 @@ export async function scanBarcode(): Promise<ScanResult | null> {
 }
 
 export function isNativeScannerAvailable(): boolean {
-  return Capacitor.isNativePlatform();
+  // MLKit barcode scanner not working on iOS with SPM, fall back to web camera
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 }

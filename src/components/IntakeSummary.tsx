@@ -50,9 +50,9 @@ export default function IntakeSummary({ cart, onCartChange }: Props) {
               <button
                 type="button"
                 onClick={() => removeItem(item.service.id)}
-                className="text-zinc-300 hover:text-red-400 transition-colors shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
               >
-                <X size={13} />
+                <X size={14} />
               </button>
             </div>
           ))}

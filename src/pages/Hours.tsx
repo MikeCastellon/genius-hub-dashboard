@@ -130,10 +130,10 @@ export default function Hours() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-5 w-fit">
-        <button onClick={() => setTab('clock')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'clock' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+        <button onClick={() => setTab('clock')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'clock' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <TimerReset size={13} /> Clock In/Out
         </button>
-        <button onClick={() => setTab('shifts')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'shifts' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+        <button onClick={() => setTab('shifts')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'shifts' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Users size={13} /> Shifts
         </button>
       </div>

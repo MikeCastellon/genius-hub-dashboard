@@ -66,7 +66,7 @@ export default function Invoices() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-4">
         <div className="relative flex-1 min-w-[160px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
@@ -76,15 +76,17 @@ export default function Invoices() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        {(['all', 'draft', 'sent', 'paid', 'cancelled'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${filter === s ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'}`}
-          >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+        <select
+          value={filter}
+          onChange={e => setFilter(e.target.value as InvoiceStatus | 'all')}
+          className="px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all"
+        >
+          <option value="all">All Status</option>
+          <option value="draft">Draft</option>
+          <option value="sent">Sent</option>
+          <option value="paid">Paid</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
       </div>
 
       {loading ? (

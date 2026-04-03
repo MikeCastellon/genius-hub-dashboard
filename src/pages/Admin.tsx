@@ -15,6 +15,7 @@ export default function Admin() {
   const { users, loading, refresh } = useAdminUsers()
   const { businesses } = useBusinesses()
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const isSuperAdmin = myProfile?.role === 'super_admin'
 
@@ -33,7 +34,7 @@ export default function Admin() {
       await approveUser(id)
       await refresh()
     } catch (e: any) {
-      alert('Error: ' + e.message)
+      setErrorMsg(e.message)
     } finally {
       setProcessingId(null)
     }
@@ -45,7 +46,7 @@ export default function Admin() {
       await revokeUser(id)
       await refresh()
     } catch (e: any) {
-      alert('Error: ' + e.message)
+      setErrorMsg(e.message)
     } finally {
       setProcessingId(null)
     }
@@ -57,7 +58,7 @@ export default function Admin() {
       await setUserRole(id, role)
       await refresh()
     } catch (e: any) {
-      alert('Error: ' + e.message)
+      setErrorMsg(e.message)
     } finally {
       setProcessingId(null)
     }
@@ -69,7 +70,7 @@ export default function Admin() {
       await setUserBusiness(id, businessId || null)
       await refresh()
     } catch (e: any) {
-      alert('Error: ' + e.message)
+      setErrorMsg(e.message)
     } finally {
       setProcessingId(null)
     }
@@ -78,7 +79,7 @@ export default function Admin() {
   const roleBadge = (role: UserRole) => {
     switch (role) {
       case 'super_admin': return 'bg-red-100 text-red-700'
-      case 'admin': return 'bg-red-100 text-red-700'
+      case 'admin': return 'bg-amber-100 text-amber-700'
       default: return 'bg-zinc-100 text-zinc-500'
     }
   }
@@ -91,6 +92,7 @@ export default function Admin() {
           Admin Panel
         </h2>
         <p className="text-[13px] text-zinc-400 mt-0.5">Manage users and permissions</p>
+        {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
       </div>
 
       <div className="space-y-8">
@@ -161,7 +163,7 @@ export default function Admin() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-semibold text-zinc-800">{u.display_name}</p>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide ${roleBadge(u.role)}`}>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide whitespace-nowrap shrink-0 ${roleBadge(u.role)}`}>
                           {u.role.replace('_', ' ')}
                         </span>
                       </div>

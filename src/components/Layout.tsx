@@ -35,7 +35,7 @@ export default function Layout() {
   const roleBadge = profile?.role === 'super_admin'
     ? { label: 'Super Admin', color: 'bg-red-100 text-red-700' }
     : profile?.role === 'admin'
-      ? { label: 'Admin', color: 'bg-red-100 text-red-700' }
+      ? { label: 'Admin', color: 'bg-amber-100 text-amber-700' }
       : null
 
   return (
@@ -87,14 +87,14 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-dots pb-20 md:pb-0">
+      <main className="flex-1 overflow-y-auto bg-dots pb-20 md:pb-0" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <Outlet />
       </main>
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-zinc-200/60 px-2 py-1 safe-bottom"
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}>
-        <div className="flex items-center justify-around">
+        <div className="flex items-center overflow-x-auto no-scrollbar gap-1">
           {allNavItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} end={to === '/'}
               className={({ isActive }) =>

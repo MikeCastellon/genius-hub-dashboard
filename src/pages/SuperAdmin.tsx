@@ -10,6 +10,7 @@ export default function SuperAdmin() {
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const handleAdd = async () => {
     if (!newName.trim()) return
@@ -20,7 +21,7 @@ export default function SuperAdmin() {
       setShowForm(false)
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     } finally {
       setAdding(false)
     }
@@ -33,7 +34,7 @@ export default function SuperAdmin() {
       await deleteBusiness(id)
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     } finally {
       setDeletingId(null)
     }
@@ -61,6 +62,7 @@ export default function SuperAdmin() {
           <p className="text-[13px] text-zinc-400 mt-0.5">
             Manage all detailing businesses on the platform
           </p>
+          {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
         </div>
         <button
           onClick={() => setShowForm(!showForm)}

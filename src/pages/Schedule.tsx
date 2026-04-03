@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinessHours, upsertBusinessHours } from '@/lib/store'
 import { Appointment, AppointmentStatus, BusinessHours } from '@/lib/types'
 import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check, Settings } from 'lucide-react'
@@ -35,18 +35,20 @@ export default function Schedule() {
   const [hoursInit, setHoursInit] = useState(false)
 
   // Init local hours from DB once
-  if (!hoursInit && hours.length > 0) {
-    setLocalHours(Array.from({ length: 7 }, (_, i) => {
-      const bh = hours.find(h => h.day_of_week === i)
-      return bh || { day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: false }
-    }))
-    setHoursInit(true)
-  }
-  if (!hoursInit && hours.length === 0 && localHours.length === 0) {
-    setLocalHours(Array.from({ length: 7 }, (_, i) => ({
-      day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: i >= 1 && i <= 5
-    })))
-  }
+  useEffect(() => {
+    if (!hoursInit && hours.length > 0) {
+      setLocalHours(Array.from({ length: 7 }, (_, i) => {
+        const bh = hours.find(h => h.day_of_week === i)
+        return bh || { day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: false }
+      }))
+      setHoursInit(true)
+    }
+    if (!hoursInit && hours.length === 0 && localHours.length === 0) {
+      setLocalHours(Array.from({ length: 7 }, (_, i) => ({
+        day_of_week: i, start_time: '08:00', end_time: '18:00', is_open: i >= 1 && i <= 5
+      })))
+    }
+  }, [hours, hoursInit, localHours.length])
 
   // Week grid
   const weekStart = new Date()
@@ -66,11 +68,19 @@ export default function Schedule() {
     })
   }))
 
-  const copyBookingLink = () => {
+  const copyBookingLink = async () => {
     const slug = (profile as any)?.business?.slug || ''
-    navigator.clipboard.writeText(`${window.location.origin}/book/${slug}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const baseUrl = import.meta.env.VITE_APP_URL || 'https://genius-hub-dashboard.netlify.app'
+    const url = `${baseUrl}/book/${slug}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Book an Appointment', text: 'Schedule your service appointment', url })
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const handleSaveHours = async () => {
@@ -126,8 +136,8 @@ export default function Schedule() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-5 w-fit">
-        <button onClick={() => setTab('schedule')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'schedule' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>Calendar</button>
-        <button onClick={() => setTab('hours')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'hours' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+        <button onClick={() => setTab('schedule')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${tab === 'schedule' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>Calendar</button>
+        <button onClick={() => setTab('hours')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'hours' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Settings size={13} /> Business Hours
         </button>
       </div>

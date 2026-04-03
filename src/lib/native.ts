@@ -14,7 +14,8 @@ export async function initNativeApp() {
 
   // Style status bar
   if (platform === 'ios') {
-    await StatusBar.setStyle({ style: Style.Dark });
+    await StatusBar.setStyle({ style: Style.Light });
+    await StatusBar.setOverlaysWebView({ overlay: false });
   }
   if (platform === 'android') {
     await StatusBar.setBackgroundColor({ color: '#ffffff' });

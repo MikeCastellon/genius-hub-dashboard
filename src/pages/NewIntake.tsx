@@ -33,6 +33,7 @@ export default function NewIntake() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const handleVinDetected = async (vin: string) => {
     setShowScanner(false)
@@ -50,9 +51,10 @@ export default function NewIntake() {
 
   const handleSubmit = async () => {
     if (!customer.name || !customer.phone || cart.length === 0 || !paymentMethod) {
-      alert('Please fill in customer name, phone, add at least one service, and select a payment method.')
+      setErrorMsg('Please fill in customer name, phone, add at least one service, and select a payment method.')
       return
     }
+    setErrorMsg('')
     setSubmitting(true)
     try {
       await createIntake(
@@ -86,7 +88,7 @@ export default function NewIntake() {
       }, 2200)
     } catch (err: any) {
       await hapticError()
-      alert('Error saving intake: ' + err.message)
+      setErrorMsg('Error saving intake: ' + err.message)
     } finally {
       setSubmitting(false)
     }
@@ -116,7 +118,7 @@ export default function NewIntake() {
         />
       )}
 
-      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="p-4 md:p-6 pb-28 md:pb-6 max-w-7xl mx-auto">
         <div className="mb-5">
           <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <Car size={18} className="text-red-600" />
@@ -184,6 +186,10 @@ export default function NewIntake() {
                 placeholder="Optional notes about the vehicle or services..."
               />
             </div>
+
+            {errorMsg && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2.5 border border-red-100 mb-2">{errorMsg}</p>
+            )}
 
             <button
               onClick={handleSubmit}

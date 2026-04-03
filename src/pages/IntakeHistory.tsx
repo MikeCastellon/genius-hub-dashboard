@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useIntakes, useAuth, createInvoice } from '@/lib/store'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PaymentMethod } from '@/lib/types'
-import { Search, Loader2, History, ChevronDown, ChevronUp, Calendar, Car, FileText } from 'lucide-react'
+import { Search, Loader2, History, ChevronDown, ChevronUp, Car, FileText } from 'lucide-react'
 
 type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'ytd' | 'all' | 'custom'
 
@@ -125,44 +125,22 @@ export default function IntakeHistory() {
         </p>
       </div>
 
-      {/* Date filter */}
-      <div className="glass rounded-2xl p-3 mb-3 flex flex-wrap items-center gap-2">
-        <Calendar size={14} className="text-zinc-400 ml-1 shrink-0" />
-        {DATE_PRESETS.map(p => (
-          <button key={p.value} onClick={() => setDatePreset(p.value)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              datePreset === p.value
-                ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
-            }`}>
-            {p.label}
-          </button>
-        ))}
-        {datePreset === 'custom' && (
-          <div className="flex flex-wrap items-center gap-2 w-full mt-1 pl-6">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">From</label>
-              <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
-            </div>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">To</label>
-              <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
-            </div>
-          </div>
-        )}
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-300" />
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10"
+          placeholder="Search by customer, VIN, make, model..." />
       </div>
 
-      {/* Filters */}
-      <div className="glass rounded-2xl p-4 mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-300" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10"
-            placeholder="Search by customer, VIN, make, model..." />
-        </div>
-        <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value as any)} className={selectClass}>
+      {/* Filters row */}
+      <div className="flex gap-2 mb-4">
+        <select value={datePreset} onChange={e => setDatePreset(e.target.value as any)} className={selectClass + ' flex-1'}>
+          {DATE_PRESETS.map(p => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+        <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value as any)} className={selectClass + ' flex-1'}>
           <option value="all">All Payments</option>
           <option value="cash">Cash</option>
           <option value="zelle">Zelle</option>
@@ -171,6 +149,22 @@ export default function IntakeHistory() {
           <option value="credit_card">Credit Card</option>
         </select>
       </div>
+
+      {/* Custom date range */}
+      {datePreset === 'custom' && (
+        <div className="flex gap-2 mb-4">
+          <div className="flex items-center gap-2 flex-1">
+            <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">From</label>
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+              className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
+          </div>
+          <div className="flex items-center gap-2 flex-1">
+            <label className="text-[10px] text-zinc-400 uppercase tracking-wider shrink-0">To</label>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+              className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
+          </div>
+        </div>
+      )}
 
       {/* Desktop Table */}
       <div className="hidden md:block glass rounded-2xl overflow-x-auto">

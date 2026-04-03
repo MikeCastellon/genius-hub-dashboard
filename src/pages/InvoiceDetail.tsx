@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getInvoice, updateInvoice, updateInvoiceItems } from '@/lib/store'
 import { Invoice, InvoiceStatus } from '@/lib/types'
@@ -22,15 +22,15 @@ export default function InvoiceDetail() {
   const [copied, setCopied] = useState(false)
   const [updating, setUpdating] = useState(false)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
     const data = await getInvoice(id)
     setInvoice(data)
     setLoading(false)
-  }
+  }, [id])
 
-  useEffect(() => { load() }, [id])
+  useEffect(() => { load() }, [load])
 
   const handleStatusChange = async (status: InvoiceStatus) => {
     if (!invoice) return
@@ -188,7 +188,7 @@ export default function InvoiceDetail() {
             </button>
           )}
           {(invoice.status === 'draft' || invoice.status === 'sent') && (
-            <button onClick={() => handleStatusChange('cancelled')} disabled={updating}
+            <button onClick={() => { if (confirm('Are you sure you want to cancel this invoice?')) handleStatusChange('cancelled') }} disabled={updating}
               className="px-4 py-3 rounded-2xl border border-zinc-200 text-zinc-600 text-sm font-semibold">
               Cancel
             </button>

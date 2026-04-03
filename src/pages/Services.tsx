@@ -24,6 +24,7 @@ export default function Services() {
   const [newCategory, setNewCategory] = useState('General')
   const [newDuration, setNewDuration] = useState('')
   const [adding, setAdding] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const displayed = services
     .filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.category.toLowerCase().includes(search.toLowerCase()))
@@ -45,7 +46,7 @@ export default function Services() {
       })
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     }
     setEditingId(null)
   }
@@ -55,12 +56,12 @@ export default function Services() {
       await updateService(id, { active: !active })
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     }
   }
 
   const handleAdd = async () => {
-    if (!newName.trim()) return alert('Service name is required')
+    if (!newName.trim()) { setErrorMsg('Service name is required'); return }
     setAdding(true)
     try {
       await createService({
@@ -75,7 +76,7 @@ export default function Services() {
       setShowAddForm(false)
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     }
     setAdding(false)
   }
@@ -86,7 +87,7 @@ export default function Services() {
       await deleteService(id)
       refresh()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      setErrorMsg(err.message)
     }
   }
 
@@ -109,6 +110,7 @@ export default function Services() {
             Services
           </h2>
           <p className="text-[13px] text-zinc-400 mt-0.5">{displayed.length} of {services.length} services</p>
+          {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
         </div>
         {isAdmin && (
           <button onClick={() => setShowAddForm(!showAddForm)}
