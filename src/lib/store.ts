@@ -4,7 +4,8 @@ import {
   Profile, Business, Service, Customer, VehicleIntake,
   CartItem, PaymentMethod, UserRole,
   Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry,
-  Certificate, CertificatePhoto
+  Certificate, CertificatePhoto,
+  BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG
 } from './types'
 
 const isConfigured = () => {
@@ -711,4 +712,52 @@ export async function uploadCertificatePhoto(
 export function getCertificatePhotoUrl(storagePath: string): string {
   const { data } = supabase.storage.from('certificate-photos').getPublicUrl(storagePath)
   return data.publicUrl
+}
+
+// ============ Business Settings (Intake Config) ============
+
+export function useBusinessSettings() {
+  const [settings, setSettings] = useState<BusinessSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data } = await supabase
+      .from('business_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle()
+    setSettings(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { settings, loading, refresh }
+}
+
+export function useIntakeConfig() {
+  const { settings, loading } = useBusinessSettings()
+  const config: IntakeConfig = settings?.intake_config || DEFAULT_INTAKE_CONFIG
+  return { config, loading }
+}
+
+export async function upsertBusinessSettings(businessId: string, intakeConfig: IntakeConfig) {
+  const { data: existing } = await supabase
+    .from('business_settings')
+    .select('id')
+    .eq('business_id', businessId)
+    .maybeSingle()
+
+  if (existing) {
+    const { error } = await supabase
+      .from('business_settings')
+      .update({ intake_config: intakeConfig, updated_at: new Date().toISOString() })
+      .eq('business_id', businessId)
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('business_settings')
+      .insert({ business_id: businessId, intake_config: intakeConfig })
+    if (error) throw error
+  }
 }

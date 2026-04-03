@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useServices, useCustomers, createIntake, useAuth } from '@/lib/store'
-import { CartItem, PaymentMethod } from '@/lib/types'
+import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig } from '@/lib/store'
+import { CartItem, PaymentMethod, IntakeSectionKey } from '@/lib/types'
 import { CheckCircle, Loader2, FileText, Car } from 'lucide-react'
 import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
@@ -20,19 +20,32 @@ interface VehicleData {
   license_plate: string
 }
 
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
+
 export default function NewIntake() {
   const { user, profile } = useAuth()
   const { services, loading: servicesLoading } = useServices()
   const { customers, refresh: refreshCustomers } = useCustomers()
+  const { config } = useIntakeConfig()
 
   const [vehicle, setVehicle] = useState<VehicleData>({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '' })
   const [cart, setCart] = useState<CartItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [notes, setNotes] = useState('')
+  const [customFields, setCustomFields] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+
+  // Get visible sections in order
+  const visibleSections = config.sectionOrder.filter(key => config.sections[key]?.visible)
+
+  // Split into left (main form) and right (summary) columns
+  // Built-in right-column sections: summary is always right, payment & notes go right
+  const rightKeys = new Set(['payment', 'notes'])
+  const leftSections = visibleSections.filter(k => !rightKeys.has(k))
+  const rightSections = visibleSections.filter(k => rightKeys.has(k))
 
   const handleVinDetected = async (vin: string) => {
     setShowScanner(false)
@@ -48,15 +61,31 @@ export default function NewIntake() {
     }
   }
 
+  // Determine which fields are required based on visible sections
+  const needsCustomer = visibleSections.includes('customer')
+  const needsPayment = visibleSections.includes('payment')
+  const needsServices = visibleSections.includes('services')
+
   const handleSubmit = async () => {
-    if (!customer.name || !customer.phone || cart.length === 0 || !paymentMethod) {
-      alert('Please fill in customer name, phone, add at least one service, and select a payment method.')
+    if (needsCustomer && (!customer.name || !customer.phone)) {
+      alert('Please fill in customer name and phone.')
       return
     }
+    if (needsServices && cart.length === 0) {
+      alert('Please add at least one service.')
+      return
+    }
+    if (needsPayment && !paymentMethod) {
+      alert('Please select a payment method.')
+      return
+    }
+
     setSubmitting(true)
     try {
       await createIntake(
-        { name: customer.name, phone: customer.phone, email: customer.email || null },
+        needsCustomer
+          ? { name: customer.name, phone: customer.phone, email: customer.email || null }
+          : { name: 'Walk-in', phone: '', email: null },
         {
           vin: vehicle.vin || undefined,
           year: vehicle.year ? parseInt(vehicle.year) : undefined,
@@ -66,8 +95,8 @@ export default function NewIntake() {
           license_plate: vehicle.license_plate || undefined,
         },
         cart,
-        paymentMethod,
-        notes,
+        paymentMethod || 'cash',
+        [notes, ...Object.entries(customFields).filter(([,v]) => v).map(([k,v]) => `${config.sections[k]?.label || k}: ${v}`)].filter(Boolean).join('\n'),
         user?.id,
         profile?.business_id
       )
@@ -82,6 +111,7 @@ export default function NewIntake() {
         setCart([])
         setPaymentMethod(null)
         setNotes('')
+        setCustomFields({})
         setSuccess(false)
       }, 2200)
     } catch (err: any) {
@@ -89,6 +119,121 @@ export default function NewIntake() {
       alert('Error saving intake: ' + err.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Render a section by key
+  const renderSection = (key: IntakeSectionKey) => {
+    const def = config.sections[key]
+    if (!def) return null
+
+    switch (key) {
+      case 'vehicle':
+        return (
+          <div key={key} className="glass rounded-2xl p-4 md:p-5">
+            <VehicleForm
+              value={vehicle}
+              onChange={setVehicle}
+              onScanClick={() => setShowScanner(true)}
+            />
+          </div>
+        )
+      case 'customer':
+        return (
+          <div key={key} className="glass rounded-2xl p-4 md:p-5">
+            <CustomerForm
+              customers={customers}
+              value={customer}
+              onChange={setCustomer}
+            />
+          </div>
+        )
+      case 'services':
+        return (
+          <div key={key} className="glass rounded-2xl p-4 md:p-5">
+            {servicesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="animate-spin text-red-600" />
+              </div>
+            ) : (
+              <ServicePicker
+                services={services}
+                cart={cart}
+                onCartChange={setCart}
+              />
+            )}
+          </div>
+        )
+      case 'payment':
+        return (
+          <div key={key} className="glass rounded-2xl p-4 md:p-5">
+            <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} />
+          </div>
+        )
+      case 'notes':
+        return (
+          <div key={key} className="glass rounded-2xl p-4 md:p-5">
+            <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center">
+                <FileText size={13} className="text-amber-500" />
+              </div>
+              {def.label}
+            </h3>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className={`${inputClass} resize-none`}
+              rows={3}
+              placeholder="Optional notes about the vehicle or services..."
+            />
+          </div>
+        )
+      default:
+        // Custom section — render based on fieldType
+        if (def.type === 'custom') {
+          return (
+            <div key={key} className="glass rounded-2xl p-4 md:p-5">
+              <h3 className="text-[13px] font-semibold text-zinc-800 mb-3">{def.label}</h3>
+              {def.fieldType === 'textarea' ? (
+                <textarea
+                  value={customFields[key] || ''}
+                  onChange={e => setCustomFields(prev => ({ ...prev, [key]: e.target.value }))}
+                  className={`${inputClass} resize-none`}
+                  rows={3}
+                  placeholder={`Enter ${def.label.toLowerCase()}...`}
+                />
+              ) : def.fieldType === 'select' && def.options ? (
+                <select
+                  value={customFields[key] || ''}
+                  onChange={e => setCustomFields(prev => ({ ...prev, [key]: e.target.value }))}
+                  className={inputClass}
+                >
+                  <option value="">Select...</option>
+                  {def.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              ) : def.fieldType === 'checkbox' ? (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={customFields[key] === 'yes'}
+                    onChange={e => setCustomFields(prev => ({ ...prev, [key]: e.target.checked ? 'yes' : '' }))}
+                    className="rounded border-zinc-300 text-red-600"
+                  />
+                  <span className="text-sm text-zinc-700">{def.label}</span>
+                </label>
+              ) : (
+                <input
+                  type={def.fieldType === 'number' ? 'number' : 'text'}
+                  value={customFields[key] || ''}
+                  onChange={e => setCustomFields(prev => ({ ...prev, [key]: e.target.value }))}
+                  className={inputClass}
+                  placeholder={`Enter ${def.label.toLowerCase()}...`}
+                />
+              )}
+            </div>
+          )
+        }
+        return null
     }
   }
 
@@ -126,68 +271,24 @@ export default function NewIntake() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Left: Vehicle + Customer + Services */}
+          {/* Left: Dynamic sections */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <VehicleForm
-                value={vehicle}
-                onChange={setVehicle}
-                onScanClick={() => setShowScanner(true)}
-              />
-            </div>
-
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <CustomerForm
-                customers={customers}
-                value={customer}
-                onChange={setCustomer}
-              />
-            </div>
-
-            <div className="glass rounded-2xl p-4 md:p-5">
-              {servicesLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 size={24} className="animate-spin text-red-600" />
-                </div>
-              ) : (
-                <ServicePicker
-                  services={services}
-                  cart={cart}
-                  onCartChange={setCart}
-                />
-              )}
-            </div>
+            {leftSections.map(key => renderSection(key))}
           </div>
 
-          {/* Right: Summary + Payment + Notes + Submit */}
+          {/* Right: Summary + dynamic right sections + Submit */}
           <div className="space-y-4 md:space-y-6">
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <IntakeSummary cart={cart} onCartChange={setCart} />
-            </div>
+            {needsServices && (
+              <div className="glass rounded-2xl p-4 md:p-5">
+                <IntakeSummary cart={cart} onCartChange={setCart} />
+              </div>
+            )}
 
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} />
-            </div>
-
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <FileText size={13} className="text-amber-500" />
-                </div>
-                Notes
-              </h3>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all resize-none"
-                rows={3}
-                placeholder="Optional notes about the vehicle or services..."
-              />
-            </div>
+            {rightSections.map(key => renderSection(key))}
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || cart.length === 0 || !paymentMethod || !customer.name || !customer.phone}
+              disabled={submitting || (needsServices && cart.length === 0) || (needsPayment && !paymentMethod) || (needsCustomer && (!customer.name || !customer.phone))}
               className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-red-700/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (

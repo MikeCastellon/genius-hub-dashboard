@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinessHours, upsertBusinessHours } from '@/lib/store'
+import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinessHours, upsertBusinessHours, useBusinesses } from '@/lib/store'
 import { Appointment, AppointmentStatus, BusinessHours } from '@/lib/types'
 import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check, Settings } from 'lucide-react'
 import AppointmentModal from '@/components/AppointmentModal'
@@ -41,6 +41,7 @@ export default function Schedule() {
   const { appointments, loading, refresh } = useAppointments()
   const { users } = useAdminUsers()
   const { hours, refresh: refreshHours } = useBusinessHours()
+  const { businesses } = useBusinesses()
   const [tab, setTab] = useState<'schedule' | 'hours'>('schedule')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selected, setSelected] = useState<Appointment | null>(null)
@@ -84,7 +85,9 @@ export default function Schedule() {
   })), [weekDays[0].getTime(), appointments])
 
   const copyBookingLink = () => {
-    const slug = (profile as any)?.business?.slug || ''
+    const biz = businesses.find(b => b.id === profile?.business_id)
+    const slug = biz?.slug || ''
+    if (!slug) { alert('No booking slug found. Set one in business settings.'); return }
     navigator.clipboard.writeText(`${window.location.origin}/book/${slug}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

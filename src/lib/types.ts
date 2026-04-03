@@ -13,6 +13,7 @@ export interface Profile {
 export interface Business {
   id: string
   name: string
+  slug?: string
   created_at: string
 }
 
@@ -191,4 +192,39 @@ export interface CertificatePhoto {
   storage_path: string
   photo_type: 'before' | 'after' | 'product' | 'other'
   created_at: string
+}
+
+// ── Business Settings (Intake Config) ─────────────────────
+
+export type IntakeSectionKey = 'vehicle' | 'customer' | 'services' | 'payment' | 'notes' | string
+
+export interface IntakeSectionDef {
+  visible: boolean
+  label: string
+  type?: 'builtin' | 'custom'
+  fieldType?: 'text' | 'textarea' | 'number' | 'select' | 'checkbox'
+  options?: string[] // for select fields
+}
+
+export interface IntakeConfig {
+  sections: Record<IntakeSectionKey, IntakeSectionDef>
+  sectionOrder: IntakeSectionKey[]
+}
+
+export const DEFAULT_INTAKE_CONFIG: IntakeConfig = {
+  sections: {
+    vehicle: { visible: true, label: 'Vehicle Information', type: 'builtin' },
+    customer: { visible: true, label: 'Customer Information', type: 'builtin' },
+    services: { visible: true, label: 'Services', type: 'builtin' },
+    payment: { visible: true, label: 'Payment Method', type: 'builtin' },
+    notes: { visible: true, label: 'Notes', type: 'builtin' },
+  },
+  sectionOrder: ['vehicle', 'customer', 'services', 'payment', 'notes'],
+}
+
+export interface BusinessSettings {
+  id: string
+  business_id: string
+  intake_config: IntakeConfig
+  updated_at: string
 }
