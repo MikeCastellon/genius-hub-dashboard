@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getPublicBookingData, createAppointment } from '@/lib/store'
 import { Service } from '@/lib/types'
-import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Calendar, Globe, Phone, MapPin } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Globe, Phone, MapPin } from 'lucide-react'
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const inputClass = 'w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
 function generateSlots(date: Date, hours: any[], booked: any[]): string[] {
@@ -36,22 +36,38 @@ function generateSlots(date: Date, hours: any[], booked: any[]): string[] {
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
-function formatDateShort(d: Date) {
-  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+
+// Build calendar grid for a month
+function getMonthGrid(year: number, month: number) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = firstDay.getDay()
+  const daysInMonth = lastDay.getDate()
+
+  const cells: (number | null)[] = []
+  for (let i = 0; i < startDow; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
 }
 
 export default function BookingPage() {
   const { slug } = useParams<{ slug: string }>()
   const [data, setData] = useState<any>(null)
   const [notFound, setNotFound] = useState(false)
-  const [step, setStep] = useState(1)
 
-  // Step 1: services
-  const [selectedServices, setSelectedServices] = useState<Service[]>([])
-  // Step 2: date/time
-  const [weekOffset, setWeekOffset] = useState(0)
+  // Calendar state
+  const today = new Date()
+  const [viewMonth, setViewMonth] = useState(today.getMonth())
+  const [viewYear, setViewYear] = useState(today.getFullYear())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
-  // Step 3: customer info
+
+  // Services
+  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+
+  // Form (step after selecting time)
+  const [step, setStep] = useState<'calendar' | 'details'>('calendar')
   const [form, setForm] = useState({ name: '', phone: '', email: '', year: '', make: '', model: '', color: '', notes: '' })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
@@ -64,59 +80,44 @@ export default function BookingPage() {
     })
   }, [slug])
 
-  if (notFound) return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-zinc-800">Business not found</h1>
-        <p className="text-zinc-400 mt-2">Check the booking link and try again.</p>
-      </div>
-    </div>
-  )
+  const monthGrid = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
 
-  if (!data) return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
-    </div>
-  )
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+    else setViewMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+    else setViewMonth(m => m + 1)
+  }
 
-  if (done) return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
-      <div className="text-center max-w-sm">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-500/25">
-          <CheckCircle size={36} className="text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-zinc-900">You're booked!</h2>
-        <p className="text-zinc-500 mt-2 text-sm">
-          {data.business.name} will confirm your appointment shortly.
-        </p>
-        {selectedSlot && (
-          <div className="mt-4 bg-white rounded-2xl p-4 border border-zinc-200 text-sm text-zinc-700">
-            <p className="font-semibold">{new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            <p className="text-red-600 font-medium">{formatTime(selectedSlot)}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  // Check if a day has available slots
+  const isDayAvailable = (day: number) => {
+    if (!data) return false
+    const d = new Date(viewYear, viewMonth, day)
+    // Don't allow past dates
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    if (d < todayStart) return false
+    return generateSlots(d, data.hours, data.booked).length > 0
+  }
 
-  const { business, services, hours, booked } = data
+  const slotsForSelectedDate = useMemo(() => {
+    if (!selectedDate || !data) return []
+    return generateSlots(selectedDate, data.hours, data.booked)
+  }, [selectedDate, data])
 
-  // Build week days for step 2
-  const weekStart = new Date()
-  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
-  weekStart.setHours(0, 0, 0, 0)
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart)
-    d.setDate(weekStart.getDate() + i)
-    return d
-  })
+  const handleDateClick = (day: number) => {
+    if (!isDayAvailable(day)) return
+    setSelectedDate(new Date(viewYear, viewMonth, day))
+    setSelectedSlot(null)
+  }
 
   const handleSubmit = async () => {
-    if (!selectedSlot) return
+    if (!selectedSlot || !data) return
     setSubmitting(true)
     try {
       await createAppointment({
-        business_id: business.id,
+        business_id: data.business.id,
         customer_name: form.name,
         customer_phone: form.phone,
         customer_email: form.email || null,
@@ -126,7 +127,7 @@ export default function BookingPage() {
         vehicle_color: form.color || null,
         service_ids: selectedServices.map(s => s.id),
         scheduled_at: selectedSlot,
-        duration_minutes: 60,
+        duration_minutes: selectedServices.reduce((sum, s) => sum + (s.duration_minutes || 60), 0) || 60,
         status: 'pending',
         technician_id: null,
         notes: form.notes || null,
@@ -139,240 +140,323 @@ export default function BookingPage() {
     }
   }
 
+  // ── Loading / Error / Done states ──
+
+  if (notFound) return (
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-zinc-800">Business not found</h1>
+        <p className="text-zinc-400 mt-2">Check the booking link and try again.</p>
+      </div>
+    </div>
+  )
+
+  if (!data) return (
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+    </div>
+  )
+
+  if (done) return (
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8 max-w-md text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+          <CheckCircle size={28} className="text-white" />
+        </div>
+        <h2 className="text-xl font-bold text-zinc-900">You're booked!</h2>
+        <p className="text-zinc-500 mt-2 text-sm">
+          {data.business.name} will confirm your appointment shortly.
+        </p>
+        {selectedSlot && (
+          <div className="mt-4 bg-zinc-50 rounded-xl p-3 text-sm text-zinc-700">
+            <p className="font-semibold">{new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            <p className="text-red-600 font-medium">{formatTime(selectedSlot)}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const { business, services } = data
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration_minutes || 60), 0)
   const totalPrice = selectedServices.reduce((s, sv) => s + sv.price, 0)
+  const monthName = new Date(viewYear, viewMonth).toLocaleDateString([], { month: 'long', year: 'numeric' })
+
+  // Can't go before current month
+  const canGoPrev = viewYear > today.getFullYear() || (viewYear === today.getFullYear() && viewMonth > today.getMonth())
+
+  // ── Details form (after selecting time) ──
+
+  if (step === 'details') return (
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm w-full max-w-lg p-6 space-y-5">
+        {/* Back + header */}
+        <div>
+          <button onClick={() => setStep('calendar')} className="text-sm text-zinc-400 hover:text-zinc-600 flex items-center gap-1 mb-3">
+            <ChevronLeft size={14} /> Back
+          </button>
+          <h2 className="text-lg font-bold text-zinc-900">Enter your details</h2>
+          {selectedSlot && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-red-600 font-medium">
+              <Clock size={14} />
+              {new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} at {formatTime(selectedSlot)}
+            </div>
+          )}
+        </div>
+
+        {/* Selected services summary */}
+        {selectedServices.length > 0 && (
+          <div className="bg-zinc-50 rounded-xl p-3 space-y-1">
+            {selectedServices.map(s => (
+              <div key={s.id} className="flex justify-between text-sm">
+                <span className="text-zinc-700">{s.name}</span>
+                <span className="text-zinc-500">${s.price}</span>
+              </div>
+            ))}
+            <div className="border-t border-zinc-200 pt-1 flex justify-between text-sm font-semibold">
+              <span>Total</span>
+              <span className="text-red-600">${totalPrice.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Your info */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+            <User size={14} className="text-red-600" /> Your Information
+          </h3>
+          <input className={inputClass} placeholder="Full name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          <input className={inputClass} placeholder="Phone number *" type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+          <input className={inputClass} placeholder="Email (optional)" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+        </div>
+
+        {/* Vehicle */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+            <Car size={14} className="text-red-600" /> Vehicle (optional)
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            <input className={inputClass} placeholder="Year" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
+            <input className={inputClass} placeholder="Make" value={form.make} onChange={e => setForm(f => ({ ...f, make: e.target.value }))} />
+            <input className={inputClass} placeholder="Model" value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} />
+          </div>
+          <input className={inputClass} placeholder="Color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} />
+        </div>
+
+        <textarea
+          className={`${inputClass} resize-none`}
+          rows={3}
+          placeholder="Any notes or special requests..."
+          value={form.notes}
+          onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+        />
+
+        <button
+          onClick={handleSubmit}
+          disabled={!form.name || !form.phone || submitting}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
+        >
+          {submitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Confirm Booking'}
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── Main Calendly-style layout ──
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      {/* Header */}
-      <div className="bg-white border-b border-zinc-200 px-4 py-5">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-3 mb-3">
-            {business.logo_url ? (
-              <img src={business.logo_url} alt={business.name} className="h-10 w-auto object-contain shrink-0" />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center shrink-0">
-                <Car size={18} className="text-white" />
-              </div>
-            )}
-            <div>
-              <h1 className="font-bold text-zinc-900">{business.name}</h1>
-              <p className="text-xs text-zinc-400">Book an appointment</p>
-            </div>
-          </div>
-          {/* Business info strip */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
-            {business.phone && (
-              <a href={`tel:${business.phone}`} className="flex items-center gap-1 hover:text-red-600 transition-colors">
-                <Phone size={11} /> {business.phone}
-              </a>
-            )}
-            {business.address && (
-              <span className="flex items-center gap-1">
-                <MapPin size={11} /> {business.address}
-              </span>
-            )}
-            {business.website && (
-              <a href={business.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-red-600 transition-colors">
-                <Globe size={11} /> Website
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-4 md:p-8">
+      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm w-full max-w-4xl overflow-hidden">
+        <div className="flex flex-col md:flex-row min-h-[520px]">
 
-      {/* Step indicator */}
-      <div className="bg-white border-b border-zinc-100 px-4 py-3">
-        <div className="max-w-lg mx-auto flex gap-2">
-          {['Services', 'Date & Time', 'Your Info'].map((label, i) => (
-            <div key={i} className="flex-1 text-center">
-              <div className={`text-xs font-semibold ${step === i + 1 ? 'text-red-700' : step > i + 1 ? 'text-emerald-500' : 'text-zinc-400'}`}>
-                {step > i + 1 ? '✓ ' : ''}{label}
-              </div>
-              <div className={`h-1 rounded-full mt-1 ${step === i + 1 ? 'bg-red-600' : step > i + 1 ? 'bg-emerald-400' : 'bg-zinc-200'}`} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto p-4 space-y-4">
-
-        {/* ── Step 1: Services ── */}
-        {step === 1 && (
-          <>
-            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-100">
-                <h2 className="font-semibold text-zinc-800 text-sm">Select Services</h2>
-              </div>
-              {services.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-zinc-400 text-center">No services available</p>
+          {/* ── Left panel: Business info + services ── */}
+          <div className="md:w-[320px] shrink-0 border-b md:border-b-0 md:border-r border-zinc-200 p-6 flex flex-col">
+            {/* Business header */}
+            <div className="mb-5">
+              {business.logo_url ? (
+                <img src={business.logo_url} alt={business.name} className="h-10 w-auto object-contain mb-3" />
               ) : (
-                <div className="divide-y divide-zinc-100">
-                  {services.map((svc: Service) => {
-                    const selected = selectedServices.some(s => s.id === svc.id)
+                <h1 className="text-lg font-bold text-zinc-900 mb-1">{business.name}</h1>
+              )}
+              {business.logo_url && <p className="text-sm text-zinc-500">{business.name}</p>}
+              <h2 className="text-xl font-bold text-zinc-900 mt-1">Book an Appointment</h2>
+            </div>
+
+            {/* Duration + price */}
+            {selectedServices.length > 0 && (
+              <div className="flex items-center gap-3 text-sm text-zinc-600 mb-4">
+                <span className="flex items-center gap-1"><Clock size={14} className="text-zinc-400" /> {totalDuration} min</span>
+                <span className="font-semibold text-red-600">${totalPrice.toFixed(2)}</span>
+              </div>
+            )}
+
+            {/* Service selection */}
+            <div className="flex-1 overflow-y-auto -mx-1 px-1">
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Select Services</p>
+              <div className="space-y-1.5">
+                {services.map((svc: Service) => {
+                  const selected = selectedServices.some(s => s.id === svc.id)
+                  return (
+                    <button
+                      key={svc.id}
+                      type="button"
+                      onClick={() => setSelectedServices(prev =>
+                        selected ? prev.filter(s => s.id !== svc.id) : [...prev, svc]
+                      )}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all text-sm ${
+                        selected ? 'bg-red-50 border border-red-200' : 'hover:bg-zinc-50 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selected ? 'bg-red-600 border-red-600' : 'border-zinc-300'
+                        }`}>
+                          {selected && <span className="text-white text-[9px] font-bold">✓</span>}
+                        </div>
+                        <div>
+                          <p className={`font-medium ${selected ? 'text-red-700' : 'text-zinc-800'}`}>{svc.name}</p>
+                          {svc.duration_minutes && <p className="text-[11px] text-zinc-400">{svc.duration_minutes} min</p>}
+                        </div>
+                      </div>
+                      <span className={`text-sm font-semibold ${selected ? 'text-red-600' : 'text-zinc-500'}`}>${svc.price}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Business info footer */}
+            <div className="mt-4 pt-4 border-t border-zinc-100 space-y-1.5 text-xs text-zinc-400">
+              {business.phone && (
+                <a href={`tel:${business.phone}`} className="flex items-center gap-1.5 hover:text-red-600">
+                  <Phone size={11} /> {business.phone}
+                </a>
+              )}
+              {business.address && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={11} /> {business.address}
+                </span>
+              )}
+              {business.website && (
+                <a href={business.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-red-600">
+                  <Globe size={11} /> Website
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* ── Right panel: Calendar + time slots ── */}
+          <div className="flex-1 p-6 flex flex-col">
+            <h3 className="text-base font-bold text-zinc-900 mb-4">Select a Date & Time</h3>
+
+            <div className="flex flex-col lg:flex-row gap-6 flex-1">
+              {/* Month calendar */}
+              <div className="flex-1">
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-4">
+                  <button onClick={prevMonth} disabled={!canGoPrev}
+                    className="p-1.5 rounded-lg hover:bg-zinc-100 disabled:opacity-20 disabled:cursor-not-allowed">
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-sm font-semibold text-zinc-800">{monthName}</span>
+                  <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-zinc-100">
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-2">
+                  {DAY_LABELS.map(d => (
+                    <div key={d} className="text-center text-[10px] font-semibold text-zinc-400 uppercase tracking-wider py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {monthGrid.map((day, i) => {
+                    if (day === null) return <div key={i} />
+                    const available = isDayAvailable(day)
+                    const isSelected = selectedDate &&
+                      selectedDate.getDate() === day &&
+                      selectedDate.getMonth() === viewMonth &&
+                      selectedDate.getFullYear() === viewYear
+                    const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear()
+
                     return (
                       <button
-                        key={svc.id}
-                        type="button"
-                        onClick={() => setSelectedServices(prev =>
-                          selected ? prev.filter(s => s.id !== svc.id) : [...prev, svc]
-                        )}
-                        className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${selected ? 'bg-red-50' : 'hover:bg-zinc-50'}`}
+                        key={i}
+                        onClick={() => handleDateClick(day)}
+                        disabled={!available}
+                        className={`aspect-square rounded-full flex items-center justify-center text-sm font-medium transition-all relative
+                          ${isSelected
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : available
+                              ? 'text-zinc-800 hover:bg-red-50 hover:text-red-600'
+                              : 'text-zinc-300 cursor-not-allowed'
+                          }
+                        `}
                       >
-                        <div>
-                          <p className={`text-sm font-medium ${selected ? 'text-red-700' : 'text-zinc-800'}`}>{svc.name}</p>
-                          {svc.duration_minutes && <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1"><Clock size={11} />{svc.duration_minutes} min</p>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-sm font-semibold ${selected ? 'text-red-700' : 'text-zinc-700'}`}>${svc.price}</span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'bg-red-600 border-red-600' : 'border-zinc-300'}`}>
-                            {selected && <span className="text-white text-xs font-bold">✓</span>}
-                          </div>
-                        </div>
+                        {day}
+                        {isToday && !isSelected && (
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />
+                        )}
                       </button>
                     )
                   })}
                 </div>
-              )}
-            </div>
 
-            {selectedServices.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm text-red-700">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected</span>
-                <span className="font-bold text-red-700">${totalPrice.toFixed(2)}</span>
-              </div>
-            )}
-
-            <button
-              onClick={() => setStep(2)}
-              disabled={selectedServices.length === 0}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
-            >
-              Continue <ChevronRight size={16} />
-            </button>
-          </>
-        )}
-
-        {/* ── Step 2: Date & Time ── */}
-        {step === 2 && (
-          <>
-            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between">
-                <button onClick={() => setWeekOffset(o => Math.max(0, o - 1))} className="p-1.5 rounded-lg hover:bg-zinc-100">
-                  <ChevronLeft size={16} />
-                </button>
-                <h2 className="font-semibold text-zinc-800 text-sm">
-                  {formatDateShort(weekDays[0])} — {formatDateShort(weekDays[6])}
-                </h2>
-                <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg hover:bg-zinc-100">
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-              <div className="p-4 space-y-3">
-                {weekDays.map((day) => {
-                  const slots = generateSlots(day, hours, booked)
-                  if (slots.length === 0) return null
-                  return (
-                    <div key={day.toISOString()}>
-                      <p className="text-xs font-semibold text-zinc-500 mb-2">{DAYS[day.getDay()]} {day.getDate()}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {slots.map(slot => (
-                          <button
-                            key={slot}
-                            onClick={() => setSelectedSlot(slot)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                              selectedSlot === slot
-                                ? 'bg-red-600 text-white border-red-600'
-                                : 'border-zinc-200 text-zinc-700 hover:border-red-300 hover:bg-red-50'
-                            }`}
-                          >
-                            {formatTime(slot)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-                {weekDays.every(d => generateSlots(d, hours, booked).length === 0) && (
-                  <p className="text-sm text-zinc-400 text-center py-4">No availability this week — try the next week.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-2xl border border-zinc-200 text-zinc-600 font-semibold text-sm flex items-center justify-center gap-1">
-                <ChevronLeft size={15} /> Back
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={!selectedSlot}
-                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
-              >
-                Continue <ChevronRight size={16} />
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* ── Step 3: Customer Info ── */}
-        {step === 3 && (
-          <>
-            {selectedSlot && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 text-red-700">
-                  <Calendar size={14} />
-                  <span className="text-sm font-semibold">
-                    {new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} at {formatTime(selectedSlot)}
-                  </span>
+                {/* Timezone */}
+                <div className="mt-4 text-xs text-zinc-400 flex items-center gap-1.5">
+                  <Globe size={12} />
+                  {Intl.DateTimeFormat().resolvedOptions().timeZone} ({new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})
                 </div>
               </div>
-            )}
 
-            <div className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
-                <User size={14} className="text-red-600" /> Your Information
-              </h3>
-              <input className={inputClass} placeholder="Full name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-              <input className={inputClass} placeholder="Phone number *" type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-              <input className={inputClass} placeholder="Email (optional)" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              {/* Time slots column */}
+              {selectedDate && (
+                <div className="lg:w-48 shrink-0">
+                  <p className="text-sm font-semibold text-zinc-700 mb-3">
+                    {selectedDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </p>
+                  {slotsForSelectedDate.length === 0 ? (
+                    <p className="text-sm text-zinc-400">No available times</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                      {slotsForSelectedDate.map(slot => {
+                        const isActive = selectedSlot === slot
+                        return (
+                          <div key={slot} className="flex gap-2">
+                            <button
+                              onClick={() => setSelectedSlot(slot)}
+                              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${
+                                isActive
+                                  ? 'bg-red-600 text-white border-red-600'
+                                  : 'border-red-200 text-red-600 hover:bg-red-50'
+                              }`}
+                            >
+                              {formatTime(slot)}
+                            </button>
+                            {isActive && (
+                              <button
+                                onClick={() => setStep('details')}
+                                className="px-4 py-2.5 rounded-lg bg-zinc-800 text-white text-sm font-semibold hover:bg-zinc-700 transition-colors"
+                              >
+                                Next
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
 
-            <div className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
-                <Car size={14} className="text-red-600" /> Vehicle (optional)
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                <input className={inputClass} placeholder="Year" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
-                <input className={inputClass} placeholder="Make" value={form.make} onChange={e => setForm(f => ({ ...f, make: e.target.value }))} />
-                <input className={inputClass} placeholder="Model" value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} />
-              </div>
-              <input className={inputClass} placeholder="Color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} />
-            </div>
-
-            <div className="bg-white rounded-2xl border border-zinc-200 p-4">
-              <textarea
-                className={`${inputClass} resize-none`}
-                rows={3}
-                placeholder="Any notes or special requests..."
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-2xl border border-zinc-200 text-zinc-600 font-semibold text-sm flex items-center justify-center gap-1">
-                <ChevronLeft size={15} /> Back
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!form.name || !form.phone || submitting}
-                className="flex-[2] py-3 rounded-2xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
-              >
-                {submitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Confirm Booking'}
-              </button>
-            </div>
-          </>
-        )}
-
+        </div>
       </div>
     </div>
   )
