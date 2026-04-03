@@ -559,85 +559,87 @@ function BusinessInfoPanel({ businessId, businesses }: {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
       {/* Left column: Business Details */}
-      <div className="glass rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+      <div className="glass rounded-2xl p-5 flex flex-col">
+        <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2 mb-4">
           <Building2 size={14} className="text-red-600" />
           Business Details
         </h3>
 
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Business Name</label>
-          <input className={inputClass} value={name} onChange={e => setName(e.target.value)} placeholder="Your business name" />
-        </div>
+        <div className="space-y-4 flex-1">
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Business Name</label>
+            <input className={inputClass} value={name} onChange={e => setName(e.target.value)} placeholder="Your business name" />
+          </div>
 
-        {/* Logo Upload */}
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
-            <Upload size={11} /> Logo
-          </label>
-          <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-          <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <div className="w-16 h-16 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden shrink-0">
-                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0">
-                <Upload size={16} className="text-zinc-300" />
-              </div>
-            )}
-            <div className="flex-1 space-y-1.5">
-              <button
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploadingLogo}
-                className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 flex items-center gap-1.5"
-              >
-                {uploadingLogo ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {logoUrl ? 'Change Logo' : 'Upload Logo'}</>}
-              </button>
-              {logoUrl && (
-                <button onClick={() => { setLogoUrl(''); updateBusiness(businessId, { logo_url: null }) }}
-                  className="text-[10px] text-zinc-400 hover:text-red-500">
-                  Remove logo
-                </button>
+          {/* Logo Upload */}
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+              <Upload size={11} /> Logo
+            </label>
+            <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            <div className="flex items-center gap-3">
+              {logoUrl ? (
+                <div className="w-16 h-16 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden shrink-0">
+                  <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0">
+                  <Upload size={16} className="text-zinc-300" />
+                </div>
               )}
+              <div className="flex-1 space-y-1.5">
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                  className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {uploadingLogo ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {logoUrl ? 'Change Logo' : 'Upload Logo'}</>}
+                </button>
+                {logoUrl && (
+                  <button onClick={() => { setLogoUrl(''); updateBusiness(businessId, { logo_url: null }) }}
+                    className="text-[10px] text-zinc-400 hover:text-red-500">
+                    Remove logo
+                  </button>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+              <Globe size={11} /> Website
+            </label>
+            <input className={inputClass} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://www.yourbusiness.com" />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+              <Phone size={11} /> Phone
+            </label>
+            <input className={inputClass} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+              <MapPin size={11} /> Address
+            </label>
+            <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, State 00000" />
           </div>
         </div>
 
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
-            <Globe size={11} /> Website
-          </label>
-          <input className={inputClass} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://www.yourbusiness.com" />
-        </div>
-
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
-            <Phone size={11} /> Phone
-          </label>
-          <input className={inputClass} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
-        </div>
-
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
-            <MapPin size={11} /> Address
-          </label>
-          <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, State 00000" />
-        </div>
-
         <button onClick={handleSaveInfo} disabled={saving || !name.trim()}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2 mt-5">
           {saving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Business Info'}
         </button>
       </div>
 
       {/* Right column: Business Hours */}
-      <div className="glass rounded-2xl p-5">
+      <div className="glass rounded-2xl p-5 flex flex-col">
         <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2 mb-4">
           <Clock size={14} className="text-red-600" />
           Business Hours
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-3 flex-1">
           {localHours.map((bh, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className="w-28 shrink-0">
