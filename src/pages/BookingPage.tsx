@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getPublicBookingData, createAppointment } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
 import { Service } from '@/lib/types'
-import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Globe, Phone, MapPin } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight, Clock, Car, User, Globe, Phone, MapPin, Lock } from 'lucide-react'
 
 const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const inputClass = 'w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
@@ -71,6 +72,13 @@ export default function BookingPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', year: '', make: '', model: '', color: '', notes: '' })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+
+  // Account creation
+  const [accountPassword, setAccountPassword] = useState('')
+  const [accountConfirmPassword, setAccountConfirmPassword] = useState('')
+  const [accountCreating, setAccountCreating] = useState(false)
+  const [accountCreated, setAccountCreated] = useState(false)
+  const [accountError, setAccountError] = useState('')
 
   useEffect(() => {
     if (!slug) return
@@ -157,20 +165,127 @@ export default function BookingPage() {
     </div>
   )
 
+  const handleCreateAccount = async () => {
+    setAccountError('')
+    if (accountPassword.length < 6) {
+      setAccountError('Password must be at least 6 characters')
+      return
+    }
+    if (accountPassword !== accountConfirmPassword) {
+      setAccountError('Passwords do not match')
+      return
+    }
+    setAccountCreating(true)
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: accountPassword,
+        options: {
+          data: {
+            role: 'customer',
+            business_id: data.business.id,
+            display_name: form.name,
+          },
+        },
+      })
+      if (error) throw error
+      setAccountCreated(true)
+    } catch (e: any) {
+      setAccountError(e.message || 'Failed to create account')
+    } finally {
+      setAccountCreating(false)
+    }
+  }
+
   if (done) return (
     <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8 max-w-md text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
-          <CheckCircle size={28} className="text-white" />
+      <div className="w-full max-w-md space-y-4">
+        {/* Confirmation card */}
+        <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+            <CheckCircle size={28} className="text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900">You're booked!</h2>
+          <p className="text-zinc-500 mt-2 text-sm">
+            {data.business.name} will confirm your appointment shortly.
+          </p>
+          {selectedSlot && (
+            <div className="mt-4 bg-zinc-50 rounded-xl p-3 text-sm text-zinc-700">
+              <p className="font-semibold">{new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+              <p className="text-red-600 font-medium">{formatTime(selectedSlot)}</p>
+            </div>
+          )}
         </div>
-        <h2 className="text-xl font-bold text-zinc-900">You're booked!</h2>
-        <p className="text-zinc-500 mt-2 text-sm">
-          {data.business.name} will confirm your appointment shortly.
-        </p>
-        {selectedSlot && (
-          <div className="mt-4 bg-zinc-50 rounded-xl p-3 text-sm text-zinc-700">
-            <p className="font-semibold">{new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            <p className="text-red-600 font-medium">{formatTime(selectedSlot)}</p>
+
+        {/* Account creation card */}
+        {form.email && !accountCreated && (
+          <div className="bg-zinc-50 rounded-2xl border border-zinc-200 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center shadow-sm">
+                <Lock size={16} className="text-white" />
+              </div>
+              <h3 className="text-base font-bold text-zinc-900">Want to track your bookings?</h3>
+            </div>
+            <p className="text-sm text-zinc-500 mb-4 ml-12">
+              Create a free account to view your appointments, history, and invoices
+            </p>
+            <div className="space-y-3">
+              <div>
+                <input
+                  className={inputClass}
+                  type="password"
+                  placeholder="Password"
+                  value={accountPassword}
+                  onChange={e => setAccountPassword(e.target.value)}
+                />
+                {accountPassword.length > 0 && accountPassword.length < 6 && (
+                  <p className="text-xs text-red-500 mt-1 ml-1">Password must be at least 6 characters</p>
+                )}
+              </div>
+              <div>
+                <input
+                  className={inputClass}
+                  type="password"
+                  placeholder="Confirm password"
+                  value={accountConfirmPassword}
+                  onChange={e => setAccountConfirmPassword(e.target.value)}
+                />
+                {accountConfirmPassword.length > 0 && accountPassword !== accountConfirmPassword && (
+                  <p className="text-xs text-red-500 mt-1 ml-1">Passwords do not match</p>
+                )}
+              </div>
+              {accountError && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{accountError}</p>
+              )}
+              <button
+                onClick={handleCreateAccount}
+                disabled={accountCreating || accountPassword.length < 6 || accountPassword !== accountConfirmPassword}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white font-semibold disabled:opacity-40 flex items-center justify-center gap-2 text-sm transition-all"
+              >
+                {accountCreating ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Create Account'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Account created success */}
+        {accountCreated && (
+          <div className="bg-zinc-50 rounded-2xl border border-zinc-200 shadow-sm p-6 text-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle size={18} className="text-white" />
+            </div>
+            <p className="text-sm font-semibold text-zinc-900">Account created!</p>
+            <p className="text-sm text-zinc-500 mt-1">You can now sign in to your portal.</p>
+            <a
+              href="/login"
+              className="inline-block mt-3 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+            >
+              Sign in &rarr;
+            </a>
           </div>
         )}
       </div>
