@@ -102,26 +102,28 @@ export default function Customers() {
   }, [customers, search, sortBy])
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-white/60 shrink-0">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <Users size={20} className="text-red-600" />
+            <h1 className="text-lg font-bold text-zinc-900">Customers</h1>
+          </div>
+          <p className="text-[12px] text-zinc-400 font-medium mt-0.5">{customers.length} customer{customers.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 transition-all shadow-sm"
+        >
+          <Plus size={14} />
+          Add Customer
+        </button>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
       {/* Left panel — customer list */}
       <div className="w-[380px] shrink-0 border-r border-zinc-200/60 flex flex-col bg-white/40">
-        {/* Header */}
-        <div className="p-5 border-b border-zinc-100">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2.5">
-              <Users size={20} className="text-red-600" />
-              <h1 className="text-lg font-bold text-zinc-900">Customers</h1>
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 transition-all shadow-sm"
-            >
-              <Plus size={14} />
-              Add Customer
-            </button>
-          </div>
-          <p className="text-[12px] text-zinc-400 font-medium">{customers.length} customer{customers.length !== 1 ? 's' : ''}</p>
-        </div>
 
         {/* Search */}
         <div className="px-4 pt-3 pb-2">
@@ -252,6 +254,7 @@ export default function Customers() {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Add Customer Modal */}
