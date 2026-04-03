@@ -462,7 +462,7 @@ export default function BookingPage() {
             {/* Account link */}
             <div className="mt-3 pt-3 border-t border-zinc-100 text-center">
               <a href="/login" className="text-xs text-zinc-400 hover:text-red-600 transition-colors">
-                <span className="font-semibold">Sign in</span> or <span className="font-semibold">create an account</span>
+                <span className="font-semibold">Sign in</span> or <span className="font-semibold">Create an account</span>
               </a>
             </div>
           </div>

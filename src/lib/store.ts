@@ -792,8 +792,21 @@ export function useCustomerDetail(customerId: string | null) {
   const refresh = useCallback(async () => {
     if (!customerId || !isConfigured()) { setLoading(false); return }
 
-    const custRes = await supabase.from('customers').select('*').eq('id', customerId).single()
-    const cust = custRes.data
+    let custRes = await supabase.from('customers').select('*').eq('id', customerId).single()
+    let cust = custRes.data
+
+    // Auto-link: if customer has email but no profile_id, check if a profile exists
+    if (cust && cust.email && !cust.profile_id) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', cust.email)
+        .maybeSingle()
+      if (existingProfile) {
+        await supabase.from('customers').update({ profile_id: existingProfile.id }).eq('id', cust.id)
+        cust = { ...cust, profile_id: existingProfile.id }
+      }
+    }
 
     const [notesRes, intakesRes, invoicesRes] = await Promise.all([
       supabase.from('customer_notes').select('*, author:profiles(display_name)').eq('customer_id', customerId).order('created_at', { ascending: false }),
