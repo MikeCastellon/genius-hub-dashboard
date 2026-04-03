@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   useAdminUsers, approveUser, revokeUser, setUserRole, setUserBusiness,
   useBusinesses, useBusinessSettings, upsertBusinessSettings, updateBusiness,
-  useBusinessHours, upsertBusinessHours
+  useBusinessHours, upsertBusinessHours, uploadBusinessLogo
 } from '@/lib/store'
 import { UserRole, IntakeConfig, IntakeSectionKey, IntakeSectionDef, DEFAULT_INTAKE_CONFIG, BusinessHours } from '@/lib/types'
 import {
   ShieldCheck, Clock, CheckCircle2, XCircle, Loader2,
   Users, Shield, Building2, Settings, Eye, EyeOff, GripVertical,
-  ArrowUp, ArrowDown, Plus, Trash2, RotateCcw, Globe, Phone, MapPin, Image
+  ArrowUp, ArrowDown, Plus, Trash2, RotateCcw, Globe, Phone, MapPin, Upload
 } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 
@@ -459,6 +459,7 @@ function BusinessInfoPanel({ businessId, businesses }: {
 }) {
   const biz = businesses.find(b => b.id === businessId)
   const { hours, refresh: refreshHours } = useBusinessHours()
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
@@ -468,6 +469,7 @@ function BusinessInfoPanel({ businessId, businesses }: {
   const [phone, setPhone] = useState(biz?.phone || '')
   const [address, setAddress] = useState(biz?.address || '')
   const [saving, setSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   // Business hours state
   const [localHours, setLocalHours] = useState<Partial<BusinessHours>[]>([])
@@ -499,13 +501,29 @@ function BusinessInfoPanel({ businessId, businesses }: {
     })))
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !businessId) return
+    setUploadingLogo(true)
+    try {
+      const url = await uploadBusinessLogo(businessId, file)
+      setLogoUrl(url)
+      await updateBusiness(businessId, { logo_url: url })
+    } catch (err: any) {
+      alert('Error uploading logo: ' + err.message)
+    } finally {
+      setUploadingLogo(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
   const handleSaveInfo = async () => {
     if (!businessId) return
     setSaving(true)
     try {
       await updateBusiness(businessId, {
         name: name.trim(),
-        logo_url: logoUrl.trim() || null,
+        logo_url: logoUrl || null,
         website: website.trim() || null,
         phone: phone.trim() || null,
         address: address.trim() || null,
@@ -539,8 +557,8 @@ function BusinessInfoPanel({ businessId, businesses }: {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Business Details */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      {/* Left column: Business Details */}
       <div className="glass rounded-2xl p-5 space-y-4">
         <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
           <Building2 size={14} className="text-red-600" />
@@ -552,17 +570,38 @@ function BusinessInfoPanel({ businessId, businesses }: {
           <input className={inputClass} value={name} onChange={e => setName(e.target.value)} placeholder="Your business name" />
         </div>
 
+        {/* Logo Upload */}
         <div>
           <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
-            <Image size={11} /> Logo URL
+            <Upload size={11} /> Logo
           </label>
-          <input className={inputClass} value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://example.com/logo.svg" />
-          {logoUrl && (
-            <div className="mt-2 p-3 bg-zinc-50 rounded-xl flex items-center gap-3">
-              <img src={logoUrl} alt="Logo preview" className="h-10 w-auto object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
-              <span className="text-xs text-zinc-400">Preview</span>
+          <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <div className="w-16 h-16 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden shrink-0">
+                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0">
+                <Upload size={16} className="text-zinc-300" />
+              </div>
+            )}
+            <div className="flex-1 space-y-1.5">
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 flex items-center gap-1.5"
+              >
+                {uploadingLogo ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {logoUrl ? 'Change Logo' : 'Upload Logo'}</>}
+              </button>
+              {logoUrl && (
+                <button onClick={() => { setLogoUrl(''); updateBusiness(businessId, { logo_url: null }) }}
+                  className="text-[10px] text-zinc-400 hover:text-red-500">
+                  Remove logo
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <div>
@@ -592,7 +631,7 @@ function BusinessInfoPanel({ businessId, businesses }: {
         </button>
       </div>
 
-      {/* Business Hours */}
+      {/* Right column: Business Hours */}
       <div className="glass rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2 mb-4">
           <Clock size={14} className="text-red-600" />

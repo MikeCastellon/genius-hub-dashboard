@@ -373,6 +373,17 @@ export async function updateBusiness(id: string, updates: Partial<Pick<Business,
   if (error) throw error
 }
 
+export async function uploadBusinessLogo(businessId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() || 'png'
+  const path = `${businessId}/logo_${Date.now()}.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from('business-logos')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (uploadError) throw uploadError
+  const { data } = supabase.storage.from('business-logos').getPublicUrl(path)
+  return data.publicUrl
+}
+
 export async function deleteBusiness(id: string) {
   const { error } = await supabase.from('businesses').delete().eq('id', id)
   if (error) throw error
