@@ -116,7 +116,7 @@ export default function NewIntake() {
         />
       )}
 
-      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="p-4 md:p-6">
         <div className="mb-5">
           <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <Car size={18} className="text-red-600" />

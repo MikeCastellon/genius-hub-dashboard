@@ -74,7 +74,7 @@ export default function InvoiceDetail() {
 
   return (
     <>
-      <div className="p-4 md:p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">
+      <div className="p-4 md:p-6 print:p-0">
         {/* Top actions — hidden in print */}
         <div className="flex items-center justify-between mb-5 print:hidden">
           <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800">

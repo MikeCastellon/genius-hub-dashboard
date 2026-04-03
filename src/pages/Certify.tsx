@@ -34,7 +34,7 @@ export default function Certify() {
   }, [certificates, filter, search])
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">

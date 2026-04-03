@@ -72,7 +72,7 @@ export default function CertificateDetail() {
   const warrantyDaysLeft = Math.max(0, Math.ceil((new Date(cert.warranty_expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6">
       {/* Top actions */}
       <div className="flex items-center justify-between mb-5">
         <button onClick={() => navigate('/certify')} className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800">

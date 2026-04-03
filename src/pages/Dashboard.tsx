@@ -126,7 +126,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
