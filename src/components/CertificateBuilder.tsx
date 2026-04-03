@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useIntakes, useAuth, createCertificate, uploadCertificatePhoto } from '@/lib/store'
-import { X, Loader2, Search, Camera } from 'lucide-react'
+import { X, Loader2, Search, Camera, Plus } from 'lucide-react'
 
 interface Props {
   preselectedIntakeId?: string
@@ -202,34 +202,51 @@ export default function CertificateBuilder({ preselectedIntakeId, onClose, onSav
           {/* Step 4: Photos */}
           <div>
             <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Photos</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['before', 'after', 'product', 'other'] as const).map(type => (
-                <label
-                  key={type}
-                  className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-zinc-200 hover:border-red-300 cursor-pointer transition-colors"
-                >
-                  <Camera size={20} className="text-zinc-300 mb-1" />
-                  <span className="text-[11px] font-semibold text-zinc-400 capitalize">{type}</span>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoAdd(e, type)} />
-                </label>
-              ))}
-            </div>
-            {photos.length > 0 && (
-              <div className="flex gap-2 mt-3 flex-wrap">
-                {photos.map((p, idx) => (
-                  <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-zinc-200">
-                    <img src={p.preview} className="w-full h-full object-cover" alt="" />
-                    <button
-                      onClick={() => removePhoto(idx)}
-                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px]"
-                    >
-                      ×
-                    </button>
-                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center py-0.5 capitalize">{p.type}</span>
+            <div className="grid grid-cols-2 gap-3">
+              {(['before', 'after', 'product', 'other'] as const).map(type => {
+                const typePhotos = photos
+                  .map((p, idx) => ({ ...p, idx }))
+                  .filter(p => p.type === type)
+
+                return (
+                  <div key={type} className="rounded-xl border-2 border-dashed border-zinc-200 overflow-hidden">
+                    {/* Header */}
+                    <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-zinc-500 capitalize">{type}</span>
+                      <label className="flex items-center gap-1 text-[10px] font-semibold text-red-600 cursor-pointer hover:text-red-700">
+                        <Plus size={12} />
+                        Add
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoAdd(e, type)} />
+                      </label>
+                    </div>
+
+                    {typePhotos.length === 0 ? (
+                      /* Empty state — clickable */
+                      <label className="flex flex-col items-center justify-center py-6 cursor-pointer hover:bg-red-50/30 transition-colors">
+                        <Camera size={22} className="text-zinc-300 mb-1" />
+                        <span className="text-[10px] text-zinc-400">Tap to upload</span>
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoAdd(e, type)} />
+                      </label>
+                    ) : (
+                      /* Photo grid inside the zone */
+                      <div className="p-2 flex gap-1.5 flex-wrap">
+                        {typePhotos.map(p => (
+                          <div key={p.idx} className="relative w-14 h-14 rounded-lg overflow-hidden border border-zinc-200 shrink-0">
+                            <img src={p.preview} className="w-full h-full object-cover" alt="" />
+                            <button
+                              onClick={() => removePhoto(p.idx)}
+                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] shadow-sm"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                )
+              })}
+            </div>
           </div>
 
           {/* Notes */}
