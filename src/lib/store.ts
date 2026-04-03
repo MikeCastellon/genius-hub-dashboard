@@ -842,12 +842,23 @@ export async function updateCustomerTags(customerId: string, tags: string[]) {
 }
 
 export async function inviteCustomer(email: string, businessId: string) {
-  // Use supabase auth to invite - this sends the invite email
-  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { role: 'customer', business_id: businessId },
-    redirectTo: `${window.location.origin}/portal`,
+  // Create account with random password, then send password reset so customer can set their own
+  const tempPassword = crypto.randomUUID() + '!Aa1'
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: tempPassword,
+    options: {
+      data: { role: 'customer', business_id: businessId },
+    },
   })
   if (error) throw error
+
+  // Send password reset email so customer can set their own password
+  const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+  if (resetError) throw resetError
+
   return data
 }
 

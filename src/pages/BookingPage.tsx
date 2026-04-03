@@ -458,6 +458,13 @@ export default function BookingPage() {
                 </a>
               )}
             </div>
+
+            {/* Account link */}
+            <div className="mt-3 pt-3 border-t border-zinc-100 text-center">
+              <a href="/login" className="text-xs text-zinc-400 hover:text-red-600 transition-colors">
+                Have an account? <span className="font-semibold">Sign in</span>
+              </a>
+            </div>
           </div>
 
           {/* ── Right panel: Calendar + time slots ── */}
