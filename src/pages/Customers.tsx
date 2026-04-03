@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
-import { useCustomers, useAuth, upsertCustomer } from '@/lib/store'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X } from 'lucide-react'
+import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, inviteCustomer, useAuth, upsertCustomer } from '@/lib/store'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt } from 'lucide-react'
 
 const AVATAR_COLORS = [
   'bg-red-100 text-red-700',
@@ -32,6 +32,35 @@ const TAG_COLORS: Record<string, string> = {
 function tagColor(tag: string): string {
   return TAG_COLORS[tag.toLowerCase()] || 'bg-zinc-100 text-zinc-600'
 }
+
+const TAG_BG_CYCLE = [
+  'bg-red-100 text-red-700',
+  'bg-blue-100 text-blue-700',
+  'bg-green-100 text-green-700',
+  'bg-purple-100 text-purple-700',
+  'bg-amber-100 text-amber-700',
+  'bg-teal-100 text-teal-700',
+]
+
+function tagBgColor(index: number): string {
+  return TAG_BG_CYCLE[index % TAG_BG_CYCLE.length]
+}
+
+function timeAgo(date: string): string {
+  const now = new Date()
+  const d = new Date(date)
+  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000)
+  if (seconds < 60) return 'Just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return d.toLocaleDateString()
+}
+
+type HistoryTab = 'intakes' | 'bookings' | 'invoices'
 
 type SortOption = 'name' | 'last_visit' | 'total_spend'
 
@@ -71,11 +100,6 @@ export default function Customers() {
     }
     return sorted
   }, [customers, search, sortBy])
-
-  const selectedCustomer = useMemo(
-    () => customers.find(c => c.id === selectedCustomerId) || null,
-    [customers, selectedCustomerId]
-  )
 
   return (
     <div className="flex h-full">
@@ -215,21 +239,17 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* Right panel — detail placeholder */}
-      <div className="flex-1 flex items-center justify-center bg-zinc-50/50">
-        {selectedCustomer ? (
-          <div className="text-center">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-3 ${nameToColor(selectedCustomer.name)}`}>
-              {selectedCustomer.name.charAt(0).toUpperCase()}
-            </div>
-            <p className="text-lg font-bold text-zinc-900">{selectedCustomer.name}</p>
-            <p className="text-[13px] text-zinc-400 mt-1">Detail panel coming soon</p>
-          </div>
+      {/* Right panel — customer detail */}
+      <div className="flex-1 bg-zinc-50/50">
+        {selectedCustomerId ? (
+          <CustomerDetailPanel customerId={selectedCustomerId} profileId={profile?.id || null} businessId={profile?.business_id || null} />
         ) : (
-          <div className="text-center">
-            <Users size={48} className="text-zinc-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-zinc-500">Select a customer</p>
-            <p className="text-[12px] text-zinc-400 mt-1">Choose a customer from the list to see details.</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Users size={48} className="text-zinc-300 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-zinc-500">Select a customer</p>
+              <p className="text-[12px] text-zinc-400 mt-1">Choose a customer from the list to see details.</p>
+            </div>
           </div>
         )}
       </div>
@@ -242,6 +262,422 @@ export default function Customers() {
           onSaved={() => { setShowAddModal(false); refresh() }}
         />
       )}
+    </div>
+  )
+}
+
+function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId: string; profileId: string | null; businessId: string | null }) {
+  const detail = useCustomerDetail(customerId)
+  const { customer, notes, intakes, appointments, invoices, loading, refresh } = detail
+
+  const [noteText, setNoteText] = useState('')
+  const [sendingNote, setSendingNote] = useState(false)
+  const [newTag, setNewTag] = useState('')
+  const [showTagInput, setShowTagInput] = useState(false)
+  const [savingTags, setSavingTags] = useState(false)
+  const [activeTab, setActiveTab] = useState<HistoryTab>('intakes')
+  const [inviting, setInviting] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 size={24} className="animate-spin text-zinc-400" />
+      </div>
+    )
+  }
+
+  if (!customer) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-sm text-zinc-400">Customer not found.</p>
+      </div>
+    )
+  }
+
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !profileId) return
+    setSendingNote(true)
+    try {
+      await addCustomerNote(customerId, profileId, noteText.trim())
+      setNoteText('')
+      refresh()
+    } catch (err) {
+      console.error('Failed to add note:', err)
+    } finally {
+      setSendingNote(false)
+    }
+  }
+
+  const handleAddTag = async () => {
+    const tag = newTag.trim().toLowerCase()
+    if (!tag || customer.tags.includes(tag)) { setNewTag(''); setShowTagInput(false); return }
+    setSavingTags(true)
+    try {
+      await updateCustomerTags(customerId, [...customer.tags, tag])
+      setNewTag('')
+      setShowTagInput(false)
+      refresh()
+    } catch (err) {
+      console.error('Failed to add tag:', err)
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  const handleRemoveTag = async (tag: string) => {
+    setSavingTags(true)
+    try {
+      await updateCustomerTags(customerId, customer.tags.filter(t => t !== tag))
+      refresh()
+    } catch (err) {
+      console.error('Failed to remove tag:', err)
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  const handleInvite = async () => {
+    if (!customer.email || !businessId) return
+    setInviting(true)
+    setInviteMsg(null)
+    try {
+      await inviteCustomer(customer.email, businessId)
+      setInviteMsg('Invite sent!')
+    } catch (err: any) {
+      setInviteMsg(err.message || 'Failed to send invite.')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const statusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      pending: 'bg-amber-100 text-amber-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      in_progress: 'bg-purple-100 text-purple-700',
+      completed: 'bg-green-100 text-green-700',
+      cancelled: 'bg-zinc-100 text-zinc-500',
+      draft: 'bg-zinc-100 text-zinc-600',
+      sent: 'bg-blue-100 text-blue-700',
+      paid: 'bg-green-100 text-green-700',
+    }
+    return styles[status] || 'bg-zinc-100 text-zinc-600'
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+
+        {/* Profile Header */}
+        <div className="flex items-start gap-4">
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shrink-0 ${nameToColor(customer.name)}`}>
+            {customer.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-zinc-900">{customer.name}</h2>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="flex items-center gap-1 text-[13px] text-zinc-500">
+                <Phone size={12} />
+                {customer.phone}
+              </span>
+              {customer.email && (
+                <span className="flex items-center gap-1 text-[13px] text-zinc-400 truncate">
+                  <Mail size={12} />
+                  {customer.email}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              {customer.profile_id ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
+                  Account Active
+                </span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600">
+                    No Account
+                  </span>
+                  {customer.email && businessId && (
+                    <button
+                      onClick={handleInvite}
+                      disabled={inviting}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                    >
+                      {inviting ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
+                      Send Invite
+                    </button>
+                  )}
+                </>
+              )}
+              {inviteMsg && (
+                <span className={`text-[11px] font-medium ${inviteMsg === 'Invite sent!' ? 'text-green-600' : 'text-red-600'}`}>
+                  {inviteMsg}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-lg font-bold text-zinc-900">{formatCurrency(customer.total_spend)}</p>
+            <p className="text-[11px] text-zinc-400">Total Spend</p>
+          </div>
+        </div>
+
+        {/* Contact Actions Row */}
+        <div className="flex gap-3">
+          <a
+            href={`tel:${customer.phone}`}
+            className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-green-50 hover:border-green-200 transition-all"
+          >
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+              <Phone size={14} className="text-green-600" />
+            </div>
+            <span className="text-[11px] font-semibold text-zinc-600">Call</span>
+          </a>
+          {customer.email ? (
+            <a
+              href={`mailto:${customer.email}`}
+              className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-blue-50 hover:border-blue-200 transition-all"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Mail size={14} className="text-blue-600" />
+              </div>
+              <span className="text-[11px] font-semibold text-zinc-600">Email</span>
+            </a>
+          ) : (
+            <div className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-100 opacity-40 cursor-not-allowed">
+              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center">
+                <Mail size={14} className="text-zinc-400" />
+              </div>
+              <span className="text-[11px] font-semibold text-zinc-400">Email</span>
+            </div>
+          )}
+          <a
+            href={`sms:${customer.phone}`}
+            className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-purple-50 hover:border-purple-200 transition-all"
+          >
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <MessageSquare size={14} className="text-purple-600" />
+            </div>
+            <span className="text-[11px] font-semibold text-zinc-600">Text</span>
+          </a>
+        </div>
+
+        {/* Tags Section */}
+        <div className="bg-white rounded-2xl border border-zinc-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[13px] font-bold text-zinc-700 flex items-center gap-1.5">
+              <Tag size={13} className="text-zinc-400" />
+              Tags
+            </h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {customer.tags.map((tag, i) => (
+              <span key={tag} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold ${tagBgColor(i)}`}>
+                {tag}
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  disabled={savingTags}
+                  className="ml-0.5 hover:opacity-70 transition-opacity"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            {showTagInput ? (
+              <div className="inline-flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={e => setNewTag(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowTagInput(false); setNewTag('') } }}
+                  placeholder="Tag name"
+                  autoFocus
+                  className="w-20 px-2 py-1 rounded-lg border border-zinc-200 text-[11px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300"
+                />
+                <button
+                  onClick={handleAddTag}
+                  disabled={savingTags}
+                  className="p-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                >
+                  {savingTags ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTagInput(true)}
+                className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-semibold text-zinc-400 bg-zinc-50 hover:bg-zinc-100 border border-dashed border-zinc-200 transition-colors"
+              >
+                <Plus size={10} />
+                Add
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Notes / Activity Timeline */}
+        <div className="bg-white rounded-2xl border border-zinc-200 p-4">
+          <h3 className="text-[13px] font-bold text-zinc-700 flex items-center gap-1.5 mb-3">
+            <FileText size={13} className="text-zinc-400" />
+            Notes
+          </h3>
+
+          {/* Add note input */}
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddNote() }}
+              placeholder="Add a note..."
+              className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
+            />
+            <button
+              onClick={handleAddNote}
+              disabled={sendingNote || !noteText.trim() || !profileId}
+              className="px-3 py-2 rounded-xl text-[12px] font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 disabled:opacity-50 transition-all shadow-sm flex items-center gap-1.5"
+            >
+              {sendingNote ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+            </button>
+          </div>
+
+          {/* Timeline */}
+          {notes.length === 0 ? (
+            <p className="text-[12px] text-zinc-400 text-center py-4">No notes yet.</p>
+          ) : (
+            <div className="space-y-0 relative">
+              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-zinc-200" />
+              {notes.map(note => (
+                <div key={note.id} className="relative pl-6 pb-4">
+                  <div className="absolute left-[3px] top-1.5 w-[9px] h-[9px] rounded-full bg-red-400 border-2 border-white" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-semibold text-zinc-700">
+                        {note.author?.display_name || 'Staff'}
+                      </span>
+                      <span className="text-[11px] text-zinc-400">{timeAgo(note.created_at)}</span>
+                    </div>
+                    <p className="text-[13px] text-zinc-600 mt-0.5">{note.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* History Tabs */}
+        <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
+          <div className="flex border-b border-zinc-100">
+            {([
+              { key: 'intakes' as HistoryTab, label: 'Intakes', icon: Car },
+              { key: 'bookings' as HistoryTab, label: 'Bookings', icon: Calendar },
+              { key: 'invoices' as HistoryTab, label: 'Invoices', icon: Receipt },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[12px] font-semibold transition-colors ${
+                  activeTab === tab.key
+                    ? 'text-red-600 border-b-2 border-red-600 bg-red-50/30'
+                    : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'
+                }`}
+              >
+                <tab.icon size={13} />
+                {tab.label}
+                <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                  activeTab === tab.key ? 'bg-red-100 text-red-600' : 'bg-zinc-100 text-zinc-500'
+                }`}>
+                  {tab.key === 'intakes' ? intakes.length : tab.key === 'bookings' ? appointments.length : invoices.length}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4 max-h-80 overflow-y-auto">
+            {/* Intakes Tab */}
+            {activeTab === 'intakes' && (
+              intakes.length === 0 ? (
+                <p className="text-[12px] text-zinc-400 text-center py-6">No intakes yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {intakes.map(intake => (
+                    <div key={intake.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
+                      <div>
+                        <p className="text-[13px] font-semibold text-zinc-800">
+                          {[intake.year, intake.make, intake.model].filter(Boolean).join(' ') || 'Vehicle'}
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {formatDate(intake.created_at)}
+                          {intake.intake_services && intake.intake_services.length > 0 && (
+                            <> &middot; {intake.intake_services.map(s => s.service?.name || 'Service').join(', ')}</>
+                          )}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-semibold text-zinc-700">{formatCurrency(intake.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Bookings Tab */}
+            {activeTab === 'bookings' && (
+              appointments.length === 0 ? (
+                <p className="text-[12px] text-zinc-400 text-center py-6">No bookings yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {appointments.map(appt => (
+                    <div key={appt.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
+                      <div>
+                        <p className="text-[13px] font-semibold text-zinc-800">
+                          {formatDateTime(appt.scheduled_at)}
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {appt.duration_minutes}min
+                          {appt.notes && <> &middot; {appt.notes}</>}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge(appt.status)}`}>
+                        {appt.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Invoices Tab */}
+            {activeTab === 'invoices' && (
+              invoices.length === 0 ? (
+                <p className="text-[12px] text-zinc-400 text-center py-6">No invoices yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map(inv => (
+                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
+                      <div>
+                        <p className="text-[13px] font-semibold text-zinc-800">
+                          {inv.invoice_number || 'Invoice'}
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {formatDate(inv.created_at)}
+                          {inv.due_date && <> &middot; Due {formatDate(inv.due_date)}</>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge(inv.status)}`}>
+                          {inv.status}
+                        </span>
+                        <span className="text-[13px] font-semibold text-zinc-700">{formatCurrency(inv.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+      </div>
     </div>
   )
 }
