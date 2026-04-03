@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings } from '@/lib/store'
-import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef } from '@/lib/types'
+import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings, inviteCustomer } from '@/lib/store'
+import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef, Customer } from '@/lib/types'
+import { supabase } from '@/lib/supabase'
 import { CheckCircle, Loader2, FileText, Car, Pencil } from 'lucide-react'
 import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
@@ -39,6 +40,10 @@ export default function NewIntake() {
   const [success, setSuccess] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [editingSection, setEditingSection] = useState<IntakeSectionKey | null>(null)
+  const [savedCustomer, setSavedCustomer] = useState<Customer | null>(null)
+  const [inviteSent, setInviteSent] = useState(false)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteError, setInviteError] = useState('')
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
 
@@ -112,6 +117,20 @@ export default function NewIntake() {
   const needsPayment = visibleSections.includes('payment')
   const needsServices = visibleSections.includes('services')
 
+  const handleSendInvite = async () => {
+    if (!savedCustomer?.email || !profile?.business_id) return
+    setInviteLoading(true)
+    setInviteError('')
+    try {
+      await inviteCustomer(savedCustomer.email, profile.business_id)
+      setInviteSent(true)
+    } catch (err: any) {
+      setInviteError(err.message || 'Failed to send invite')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (needsCustomer && (!customer.name || !customer.phone)) {
       alert('Please fill in customer name and phone.')
@@ -147,19 +166,37 @@ export default function NewIntake() {
         profile?.business_id
       )
 
+      // Fetch the saved customer record to check for invite eligibility
+      if (needsCustomer && customer.phone && profile?.business_id) {
+        const { data: cust } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('phone', customer.phone)
+          .eq('business_id', profile.business_id)
+          .maybeSingle()
+        setSavedCustomer(cust)
+      }
+
       await hapticSuccess()
       setSuccess(true)
+      setInviteSent(false)
+      setInviteError('')
       refreshCustomers()
 
-      setTimeout(() => {
-        setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
-        setCustomer({ name: '', phone: '', email: '' })
-        setCart([])
-        setPaymentMethod(null)
-        setNotes('')
-        setCustomFields({})
-        setSuccess(false)
-      }, 2200)
+      // Only auto-reset if no invite prompt is shown
+      const hasInvitePrompt = needsCustomer && customer.email
+      if (!hasInvitePrompt) {
+        setTimeout(() => {
+          setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
+          setCustomer({ name: '', phone: '', email: '' })
+          setCart([])
+          setPaymentMethod(null)
+          setNotes('')
+          setCustomFields({})
+          setSuccess(false)
+          setSavedCustomer(null)
+        }, 2200)
+      }
     } catch (err: any) {
       await hapticError()
       alert('Error saving intake: ' + err.message)
@@ -352,15 +389,63 @@ export default function NewIntake() {
     }
   }
 
+  const resetForm = () => {
+    setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
+    setCustomer({ name: '', phone: '', email: '' })
+    setCart([])
+    setPaymentMethod(null)
+    setNotes('')
+    setCustomFields({})
+    setSuccess(false)
+    setSavedCustomer(null)
+    setInviteSent(false)
+    setInviteError('')
+  }
+
   if (success) {
     return (
       <div className="flex items-center justify-center h-full p-6">
-        <div className="text-center">
+        <div className="text-center max-w-sm w-full">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-500/25">
             <CheckCircle size={36} className="text-white" />
           </div>
           <h2 className="text-2xl font-bold text-zinc-900">Intake Saved!</h2>
-          <p className="text-zinc-400 mt-2 text-sm">Preparing new intake form...</p>
+          <p className="text-zinc-400 mt-2 text-sm">
+            {savedCustomer && savedCustomer.email && !savedCustomer.profile_id
+              ? 'Would you like to invite this customer?'
+              : 'Preparing new intake form...'}
+          </p>
+
+          {savedCustomer && savedCustomer.email && !savedCustomer.profile_id && !inviteSent && (
+            <div className="bg-zinc-50 rounded-2xl border border-zinc-100 p-5 mt-4 text-left">
+              <h3 className="font-semibold text-zinc-900 mb-1">Invite {savedCustomer.name}?</h3>
+              <p className="text-sm text-zinc-500 mb-3">
+                Send an account invite to {savedCustomer.email} so they can track bookings and view invoices.
+              </p>
+              <button
+                onClick={handleSendInvite}
+                disabled={inviteLoading}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold"
+              >
+                {inviteLoading ? 'Sending...' : 'Send Invite'}
+              </button>
+              {inviteError && <p className="text-red-500 text-xs mt-2">{inviteError}</p>}
+            </div>
+          )}
+          {inviteSent && (
+            <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-4 mt-4 text-sm text-emerald-700 font-medium">
+              Invite sent to {savedCustomer?.email}!
+            </div>
+          )}
+
+          {savedCustomer && savedCustomer.email && !savedCustomer.profile_id && (
+            <button
+              onClick={resetForm}
+              className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-50 transition-colors"
+            >
+              Start New Intake
+            </button>
+          )}
         </div>
       </div>
     )
