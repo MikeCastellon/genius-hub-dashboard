@@ -77,7 +77,7 @@ export interface CartItem {
   unitPrice: number
 }
 
-export type PaymentMethod = 'cash' | 'zelle' | 'venmo' | 'ath_movil' | 'credit_card'
+export type PaymentMethod = string
 
 // ── Invoicing ──────────────────────────────────────────────
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
@@ -211,6 +211,35 @@ export interface IntakeFieldDef {
   visible: boolean
   builtIn: boolean // built-in fields can be hidden but not deleted
   options?: string[]
+  icon?: string    // lucide icon name (for payment methods)
+  gradient?: string // tailwind gradient classes (for payment methods)
+}
+
+// Available icons for payment methods
+export const PAYMENT_ICONS: Record<string, string> = {
+  Banknote: 'Banknote',
+  Wallet: 'Wallet',
+  Smartphone: 'Smartphone',
+  CreditCard: 'CreditCard',
+  DollarSign: 'DollarSign',
+  Receipt: 'Receipt',
+  QrCode: 'QrCode',
+  Landmark: 'Landmark',
+  Send: 'Send',
+  CircleDollarSign: 'CircleDollarSign',
+}
+
+export const PAYMENT_GRADIENTS: Record<string, string> = {
+  'Green': 'from-emerald-400 to-green-500',
+  'Purple': 'from-violet-500 to-purple-600',
+  'Blue': 'from-blue-400 to-blue-600',
+  'Orange': 'from-amber-400 to-orange-500',
+  'Gray': 'from-zinc-400 to-zinc-500',
+  'Red': 'from-red-400 to-red-500',
+  'Pink': 'from-pink-400 to-rose-500',
+  'Teal': 'from-teal-400 to-cyan-500',
+  'Yellow': 'from-yellow-400 to-amber-500',
+  'Indigo': 'from-indigo-400 to-blue-500',
 }
 
 export interface IntakeSectionDef {
@@ -244,12 +273,20 @@ export const DEFAULT_CUSTOMER_FIELDS: IntakeFieldDef[] = [
   { key: 'email', label: 'Email', fieldType: 'email', required: false, visible: true, builtIn: true },
 ]
 
+export const DEFAULT_PAYMENT_FIELDS: IntakeFieldDef[] = [
+  { key: 'cash', label: 'Cash', fieldType: 'text', required: false, visible: true, builtIn: true, icon: 'Banknote', gradient: 'from-emerald-400 to-green-500' },
+  { key: 'zelle', label: 'Zelle', fieldType: 'text', required: false, visible: true, builtIn: true, icon: 'Wallet', gradient: 'from-violet-500 to-purple-600' },
+  { key: 'venmo', label: 'Venmo', fieldType: 'text', required: false, visible: true, builtIn: true, icon: 'Smartphone', gradient: 'from-blue-400 to-blue-600' },
+  { key: 'ath_movil', label: 'ATH Movil', fieldType: 'text', required: false, visible: true, builtIn: true, icon: 'Smartphone', gradient: 'from-amber-400 to-orange-500' },
+  { key: 'credit_card', label: 'Credit Card', fieldType: 'text', required: false, visible: true, builtIn: true, icon: 'CreditCard', gradient: 'from-zinc-400 to-zinc-500' },
+]
+
 export const DEFAULT_INTAKE_CONFIG: IntakeConfig = {
   sections: {
     vehicle: { visible: true, label: 'Vehicle Information', type: 'builtin', fields: DEFAULT_VEHICLE_FIELDS },
     customer: { visible: true, label: 'Customer Information', type: 'builtin', fields: DEFAULT_CUSTOMER_FIELDS },
     services: { visible: true, label: 'Services', type: 'builtin' },
-    payment: { visible: true, label: 'Payment Method', type: 'builtin' },
+    payment: { visible: true, label: 'Payment Method', type: 'builtin', fields: DEFAULT_PAYMENT_FIELDS },
     notes: { visible: true, label: 'Notes', type: 'builtin' },
   },
   sectionOrder: ['vehicle', 'customer', 'services', 'payment', 'notes'],
@@ -260,6 +297,7 @@ export function getSectionFields(sectionKey: string, def: IntakeSectionDef): Int
   if (def.fields) return def.fields
   if (sectionKey === 'vehicle') return DEFAULT_VEHICLE_FIELDS
   if (sectionKey === 'customer') return DEFAULT_CUSTOMER_FIELDS
+  if (sectionKey === 'payment') return DEFAULT_PAYMENT_FIELDS
   return []
 }
 

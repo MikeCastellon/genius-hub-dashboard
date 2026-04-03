@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { X, Eye, EyeOff, Trash2, Plus, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
-import { IntakeSectionDef, IntakeFieldDef, IntakeSectionKey, getSectionFields } from '@/lib/types'
+import {
+  X, Eye, EyeOff, Trash2, Plus, GripVertical, ArrowUp, ArrowDown,
+  Banknote, Wallet, Smartphone, CreditCard, DollarSign, Receipt, QrCode, Landmark, Send, CircleDollarSign,
+} from 'lucide-react'
+import { IntakeSectionDef, IntakeFieldDef, IntakeSectionKey, getSectionFields, PAYMENT_ICONS, PAYMENT_GRADIENTS } from '@/lib/types'
 
 interface Props {
   sectionKey: IntakeSectionKey
@@ -12,6 +15,10 @@ interface Props {
 
 const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Banknote, Wallet, Smartphone, CreditCard, DollarSign, Receipt, QrCode, Landmark, Send, CircleDollarSign,
+}
+
 export default function SectionEditModal({ sectionKey, section, onSave, onDelete, onClose }: Props) {
   const [label, setLabel] = useState(section.label)
   const [visible, setVisible] = useState(section.visible)
@@ -19,17 +26,28 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
     JSON.parse(JSON.stringify(getSectionFields(sectionKey, section)))
   )
 
+  const isPayment = sectionKey === 'payment'
+
   // New field form
   const [showAddField, setShowAddField] = useState(false)
   const [newFieldLabel, setNewFieldLabel] = useState('')
   const [newFieldType, setNewFieldType] = useState<IntakeFieldDef['fieldType']>('text')
   const [newFieldRequired, setNewFieldRequired] = useState(false)
   const [newFieldOptions, setNewFieldOptions] = useState('')
+  const [newFieldIcon, setNewFieldIcon] = useState('Banknote')
+  const [newFieldGradient, setNewFieldGradient] = useState('from-zinc-400 to-zinc-500')
 
-  const hasFields = sectionKey === 'vehicle' || sectionKey === 'customer' || fields.length > 0
+  // Editing field inline (for payment label/icon/gradient)
+  const [editingFieldIdx, setEditingFieldIdx] = useState<number | null>(null)
+
+  const hasFields = sectionKey === 'vehicle' || sectionKey === 'customer' || sectionKey === 'payment' || fields.length > 0
 
   const toggleFieldVisibility = (idx: number) => {
     setFields(prev => prev.map((f, i) => i === idx ? { ...f, visible: !f.visible } : f))
+  }
+
+  const updateField = (idx: number, updates: Partial<IntakeFieldDef>) => {
+    setFields(prev => prev.map((f, i) => i === idx ? { ...f, ...updates } : f))
   }
 
   const removeField = (idx: number) => {
@@ -50,7 +68,7 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
 
   const addField = () => {
     if (!newFieldLabel.trim()) return
-    const key = `custom_${Date.now()}`
+    const key = isPayment ? newFieldLabel.trim().toLowerCase().replace(/\s+/g, '_') : `custom_${Date.now()}`
     const newField: IntakeFieldDef = {
       key,
       label: newFieldLabel.trim(),
@@ -58,6 +76,7 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
       required: newFieldRequired,
       visible: true,
       builtIn: false,
+      ...(isPayment ? { icon: newFieldIcon, gradient: newFieldGradient } : {}),
       ...(newFieldType === 'select' ? { options: newFieldOptions.split(',').map(s => s.trim()).filter(Boolean) } : {}),
     }
     setFields(prev => [...prev, newField])
@@ -65,6 +84,8 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
     setNewFieldType('text')
     setNewFieldRequired(false)
     setNewFieldOptions('')
+    setNewFieldIcon('Banknote')
+    setNewFieldGradient('from-zinc-400 to-zinc-500')
     setShowAddField(false)
   }
 
@@ -75,6 +96,15 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
       visible,
       fields: hasFields ? fields : undefined,
     })
+  }
+
+  const renderIconPreview = (iconName: string, gradient: string, size: number = 14) => {
+    const Icon = ICON_MAP[iconName] || Banknote
+    return (
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br ${gradient} shrink-0`}>
+        <Icon size={size} className="text-white" />
+      </div>
+    )
   }
 
   return (
@@ -112,99 +142,230 @@ export default function SectionEditModal({ sectionKey, section, onSave, onDelete
           {/* Fields list */}
           {hasFields && (
             <div>
-              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Fields</label>
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">
+                {isPayment ? 'Payment Methods' : 'Fields'}
+              </label>
               <div className="border border-zinc-200 rounded-xl overflow-hidden divide-y divide-zinc-100">
                 {fields.map((field, idx) => (
-                  <div key={field.key} className={`flex items-center gap-2 px-3 py-2.5 ${!field.visible ? 'opacity-50 bg-zinc-50' : ''}`}>
-                    <GripVertical size={12} className="text-zinc-300 shrink-0" />
+                  <div key={field.key}>
+                    <div className={`flex items-center gap-2 px-3 py-2.5 ${!field.visible ? 'opacity-50 bg-zinc-50' : ''}`}>
+                      <GripVertical size={12} className="text-zinc-300 shrink-0" />
 
-                    {/* Move buttons */}
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button onClick={() => moveField(idx, 'up')} disabled={idx === 0}
-                        className="p-0.5 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-20">
-                        <ArrowUp size={10} />
-                      </button>
-                      <button onClick={() => moveField(idx, 'down')} disabled={idx === fields.length - 1}
-                        className="p-0.5 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-20">
-                        <ArrowDown size={10} />
-                      </button>
-                    </div>
-
-                    {/* Field info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-800">{field.label}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[9px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded-full font-semibold uppercase">
-                          {field.fieldType}
-                        </span>
-                        {field.required && (
-                          <span className="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-semibold uppercase">
-                            Required
-                          </span>
-                        )}
-                        {field.builtIn && (
-                          <span className="text-[9px] bg-zinc-50 text-zinc-400 px-1.5 py-0.5 rounded-full font-semibold uppercase">
-                            Built-in
-                          </span>
-                        )}
+                      {/* Move buttons */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveField(idx, 'up')} disabled={idx === 0}
+                          className="p-0.5 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-20">
+                          <ArrowUp size={10} />
+                        </button>
+                        <button onClick={() => moveField(idx, 'down')} disabled={idx === fields.length - 1}
+                          className="p-0.5 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-20">
+                          <ArrowDown size={10} />
+                        </button>
                       </div>
+
+                      {/* Icon preview for payment methods */}
+                      {isPayment && field.icon && field.gradient && renderIconPreview(field.icon, field.gradient)}
+
+                      {/* Field info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-zinc-800">{field.label}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {!isPayment && (
+                            <span className="text-[9px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded-full font-semibold uppercase">
+                              {field.fieldType}
+                            </span>
+                          )}
+                          {field.required && (
+                            <span className="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-semibold uppercase">
+                              Required
+                            </span>
+                          )}
+                          {field.builtIn && (
+                            <span className="text-[9px] bg-zinc-50 text-zinc-400 px-1.5 py-0.5 rounded-full font-semibold uppercase">
+                              Built-in
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Edit button (payment methods - to change label/icon/gradient) */}
+                      {isPayment && (
+                        <button
+                          onClick={() => setEditingFieldIdx(editingFieldIdx === idx ? null : idx)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                            editingFieldIdx === idx ? 'bg-red-50 text-red-600' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
+                          }`}
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {/* Visibility toggle */}
+                      <button
+                        onClick={() => toggleFieldVisibility(idx)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          field.visible ? 'text-emerald-500 hover:bg-emerald-50' : 'text-zinc-300 hover:bg-zinc-100'
+                        }`}
+                        title={field.visible ? 'Hide' : 'Show'}
+                      >
+                        {field.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+
+                      {/* Delete (custom fields only) */}
+                      {!field.builtIn && (
+                        <button onClick={() => removeField(idx)}
+                          className="p-1.5 rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Visibility toggle */}
-                    <button
-                      onClick={() => toggleFieldVisibility(idx)}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        field.visible ? 'text-emerald-500 hover:bg-emerald-50' : 'text-zinc-300 hover:bg-zinc-100'
-                      }`}
-                      title={field.visible ? 'Hide field' : 'Show field'}
-                    >
-                      {field.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                    </button>
-
-                    {/* Delete (custom fields only) */}
-                    {!field.builtIn && (
-                      <button onClick={() => removeField(idx)}
-                        className="p-1.5 rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
+                    {/* Expanded edit row for payment methods */}
+                    {isPayment && editingFieldIdx === idx && (
+                      <div className="px-4 py-3 bg-zinc-50 border-t border-zinc-100 space-y-3">
+                        {/* Label */}
+                        <div>
+                          <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Label</label>
+                          <input
+                            className={inputClass}
+                            value={field.label}
+                            onChange={e => updateField(idx, { label: e.target.value })}
+                          />
+                        </div>
+                        {/* Icon picker */}
+                        <div>
+                          <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Icon</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.keys(PAYMENT_ICONS).map(iconName => {
+                              const Icon = ICON_MAP[iconName]
+                              const isActive = field.icon === iconName
+                              return (
+                                <button
+                                  key={iconName}
+                                  onClick={() => updateField(idx, { icon: iconName })}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                    isActive
+                                      ? 'bg-red-600 text-white shadow-sm'
+                                      : 'bg-white border border-zinc-200 text-zinc-500 hover:border-zinc-300'
+                                  }`}
+                                  title={iconName}
+                                >
+                                  <Icon size={14} />
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        {/* Gradient picker */}
+                        <div>
+                          <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Color</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(PAYMENT_GRADIENTS).map(([name, grad]) => {
+                              const isActive = field.gradient === grad
+                              return (
+                                <button
+                                  key={name}
+                                  onClick={() => updateField(idx, { gradient: grad })}
+                                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${grad} transition-all ${
+                                    isActive ? 'ring-2 ring-red-600 ring-offset-1 scale-110' : 'hover:scale-105'
+                                  }`}
+                                  title={name}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
 
-              {/* Add field */}
+              {/* Add field / payment method */}
               {!showAddField ? (
                 <button onClick={() => setShowAddField(true)}
                   className="flex items-center gap-1.5 text-sm text-red-600 font-semibold hover:text-red-700 mt-3">
-                  <Plus size={14} /> Add Field
+                  <Plus size={14} /> {isPayment ? 'Add Payment Method' : 'Add Field'}
                 </button>
               ) : (
                 <div className="mt-3 border border-zinc-200 rounded-xl p-3 space-y-2.5 bg-zinc-50">
                   <input
                     className={inputClass}
-                    placeholder="Field label (e.g. Company, Mileage...)"
+                    placeholder={isPayment ? 'Payment method name (e.g. Apple Pay, PayPal...)' : 'Field label (e.g. Company, Mileage...)'}
                     value={newFieldLabel}
                     onChange={e => setNewFieldLabel(e.target.value)}
                     autoFocus
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <select className={inputClass} value={newFieldType} onChange={e => setNewFieldType(e.target.value as any)}>
-                      <option value="text">Text</option>
-                      <option value="textarea">Text Area</option>
-                      <option value="number">Number</option>
-                      <option value="tel">Phone</option>
-                      <option value="email">Email</option>
-                      <option value="select">Dropdown</option>
-                      <option value="checkbox">Checkbox</option>
-                    </select>
-                    <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
-                      <input type="checkbox" checked={newFieldRequired} onChange={e => setNewFieldRequired(e.target.checked)}
-                        className="rounded border-zinc-300 text-red-600" />
-                      Required
-                    </label>
-                  </div>
-                  {newFieldType === 'select' && (
-                    <input className={inputClass} placeholder="Options (comma-separated)" value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} />
+                  {isPayment ? (
+                    <>
+                      {/* Icon picker for new payment method */}
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Icon</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.keys(PAYMENT_ICONS).map(iconName => {
+                            const Icon = ICON_MAP[iconName]
+                            const isActive = newFieldIcon === iconName
+                            return (
+                              <button
+                                key={iconName}
+                                type="button"
+                                onClick={() => setNewFieldIcon(iconName)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                  isActive
+                                    ? 'bg-red-600 text-white shadow-sm'
+                                    : 'bg-white border border-zinc-200 text-zinc-500 hover:border-zinc-300'
+                                }`}
+                                title={iconName}
+                              >
+                                <Icon size={14} />
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      {/* Gradient picker for new payment method */}
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Color</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(PAYMENT_GRADIENTS).map(([name, grad]) => {
+                            const isActive = newFieldGradient === grad
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setNewFieldGradient(grad)}
+                                className={`w-8 h-8 rounded-lg bg-gradient-to-br ${grad} transition-all ${
+                                  isActive ? 'ring-2 ring-red-600 ring-offset-1 scale-110' : 'hover:scale-105'
+                                }`}
+                                title={name}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select className={inputClass} value={newFieldType} onChange={e => setNewFieldType(e.target.value as any)}>
+                          <option value="text">Text</option>
+                          <option value="textarea">Text Area</option>
+                          <option value="number">Number</option>
+                          <option value="tel">Phone</option>
+                          <option value="email">Email</option>
+                          <option value="select">Dropdown</option>
+                          <option value="checkbox">Checkbox</option>
+                        </select>
+                        <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+                          <input type="checkbox" checked={newFieldRequired} onChange={e => setNewFieldRequired(e.target.checked)}
+                            className="rounded border-zinc-300 text-red-600" />
+                          Required
+                        </label>
+                      </div>
+                      {newFieldType === 'select' && (
+                        <input className={inputClass} placeholder="Options (comma-separated)" value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} />
+                      )}
+                    </>
                   )}
                   <div className="flex gap-2">
                     <button onClick={() => setShowAddField(false)} className="flex-1 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-600">Cancel</button>

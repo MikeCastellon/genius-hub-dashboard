@@ -283,7 +283,7 @@ export default function NewIntake() {
         )
       case 'payment':
         return wrapSection(key,
-          <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} />
+          <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} fields={getSectionFields('payment', def)} />
         )
       case 'notes':
         return wrapSection(key,
