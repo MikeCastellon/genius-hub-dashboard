@@ -20,6 +20,10 @@ import BookingPage from '@/pages/BookingPage'
 import Certify from '@/pages/Certify'
 import CertificateDetail from '@/pages/CertificateDetail'
 import VerifyCertificate from '@/pages/VerifyCertificate'
+import PortalLayout from './components/PortalLayout'
+import PortalBookings from './pages/portal/PortalBookings'
+import PortalHistory from './pages/portal/PortalHistory'
+import PortalProfile from './pages/portal/PortalProfile'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
@@ -61,6 +65,23 @@ export default function App() {
   }
 
   if (!user) return <Login />
+
+  // Customer portal — separate layout, auto-approved
+  if (user && profile?.role === 'customer') {
+    return (
+      <Routes>
+        <Route path="/book/:slug" element={<BookingPage />} />
+        <Route path="/verify/:certId" element={<VerifyCertificate />} />
+        <Route element={<PortalLayout />}>
+          <Route path="/portal" element={<PortalBookings />} />
+          <Route path="/portal/history" element={<PortalHistory />} />
+          <Route path="/portal/profile" element={<PortalProfile />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/portal" replace />} />
+      </Routes>
+    )
+  }
+
   if (!profile?.approved) return <PendingApproval />
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
