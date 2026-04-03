@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'admin' | 'user'
+export type UserRole = 'super_admin' | 'admin' | 'user' | 'customer'
 
 export interface Profile {
   id: string
@@ -6,6 +6,7 @@ export interface Profile {
   email: string | null
   role: UserRole
   business_id: string | null
+  preferred_contact: 'phone' | 'email' | 'sms'
   approved: boolean
   created_at: string
 }
@@ -38,7 +39,21 @@ export interface Customer {
   name: string
   phone: string
   email: string | null
+  business_id: string | null
+  profile_id: string | null
+  total_spend: number
+  last_visit: string | null
+  tags: string[]
   created_at: string
+}
+
+export interface CustomerNote {
+  id: string
+  customer_id: string
+  author_id: string | null
+  body: string
+  created_at: string
+  author?: { display_name: string }
 }
 
 export interface VehicleIntake {

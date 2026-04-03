@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import {
-  Profile, Business, Service, Customer, VehicleIntake,
+  Profile, Business, Service, Customer, CustomerNote, VehicleIntake,
   CartItem, PaymentMethod, UserRole,
   Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry,
   Certificate, CertificatePhoto,
@@ -160,21 +160,22 @@ export function useCustomers() {
   return { customers, refresh }
 }
 
-export async function upsertCustomer(customer: Omit<Customer, 'id' | 'created_at'>): Promise<Customer> {
+export async function upsertCustomer(
+  cust: { name: string; phone: string; email: string | null },
+  businessId?: string
+): Promise<Customer> {
   if (!isConfigured()) {
-    return { ...customer, id: `local-${Date.now()}`, created_at: new Date().toISOString() }
+    return { ...cust, id: `local-${Date.now()}`, business_id: businessId || null, profile_id: null, total_spend: 0, last_visit: null, tags: [], created_at: new Date().toISOString() }
   }
 
-  const { data: existing } = await supabase
-    .from('customers')
-    .select('*')
-    .eq('phone', customer.phone)
-    .maybeSingle()
+  const query = supabase.from('customers').select('*').eq('phone', cust.phone)
+  if (businessId) query.eq('business_id', businessId)
+  const { data: existing } = await query.maybeSingle()
 
   if (existing) {
     const { data, error } = await supabase
       .from('customers')
-      .update({ name: customer.name, email: customer.email })
+      .update({ name: cust.name, email: cust.email || existing.email })
       .eq('id', existing.id)
       .select()
       .single()
@@ -184,7 +185,7 @@ export async function upsertCustomer(customer: Omit<Customer, 'id' | 'created_at
 
   const { data, error } = await supabase
     .from('customers')
-    .insert(customer)
+    .insert({ ...cust, business_id: businessId || null })
     .select()
     .single()
   if (error) throw error
@@ -194,7 +195,7 @@ export async function upsertCustomer(customer: Omit<Customer, 'id' | 'created_at
 // ============ Vehicle Intakes ============
 
 export async function createIntake(
-  customer: Omit<Customer, 'id' | 'created_at'>,
+  customer: { name: string; phone: string; email: string | null },
   vehicle: { vin?: string; year?: number; make?: string; model?: string; color?: string; license_plate?: string },
   cart: CartItem[],
   paymentMethod: PaymentMethod,
@@ -222,7 +223,7 @@ export async function createIntake(
     }
   }
 
-  const savedCustomer = await upsertCustomer(customer)
+  const savedCustomer = await upsertCustomer(customer, businessId || undefined)
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
 
   const { data: intake, error: intakeError } = await supabase
@@ -776,4 +777,195 @@ export async function upsertBusinessSettings(businessId: string, intakeConfig: I
       .insert({ business_id: businessId, intake_config: intakeConfig })
     if (error) throw error
   }
+}
+
+// ============ Customer CRM ============
+
+export function useCustomerDetail(customerId: string | null) {
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [notes, setNotes] = useState<CustomerNote[]>([])
+  const [intakes, setIntakes] = useState<VehicleIntake[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!customerId || !isConfigured()) { setLoading(false); return }
+
+    const custRes = await supabase.from('customers').select('*').eq('id', customerId).single()
+    const cust = custRes.data
+
+    const [notesRes, intakesRes, invoicesRes] = await Promise.all([
+      supabase.from('customer_notes').select('*, author:profiles(display_name)').eq('customer_id', customerId).order('created_at', { ascending: false }),
+      supabase.from('vehicle_intakes').select('*, customer:customers(*), intake_services(*, service:services(*))').eq('customer_id', customerId).order('created_at', { ascending: false }),
+      supabase.from('invoices').select('*, items:invoice_items(*)').eq('customer_id', customerId).order('created_at', { ascending: false }),
+    ])
+
+    // Appointments need phone/email lookup
+    let apptsData: Appointment[] = []
+    if (cust) {
+      const filters = [cust.phone ? `customer_phone.eq.${cust.phone}` : null, cust.email ? `customer_email.eq.${cust.email}` : null].filter(Boolean).join(',')
+      if (filters) {
+        const { data } = await supabase.from('appointments').select('*').or(filters).order('scheduled_at', { ascending: false })
+        apptsData = data || []
+      }
+    }
+
+    setCustomer(cust)
+    setNotes(notesRes.data || [])
+    setIntakes(intakesRes.data || [])
+    setAppointments(apptsData)
+    setInvoices(invoicesRes.data || [])
+    setLoading(false)
+  }, [customerId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { customer, notes, intakes, appointments, invoices, loading, refresh }
+}
+
+export async function addCustomerNote(customerId: string, authorId: string, body: string) {
+  const { data, error } = await supabase
+    .from('customer_notes')
+    .insert({ customer_id: customerId, author_id: authorId, body })
+    .select('*, author:profiles(display_name)')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateCustomerTags(customerId: string, tags: string[]) {
+  const { error } = await supabase
+    .from('customers')
+    .update({ tags })
+    .eq('id', customerId)
+  if (error) throw error
+}
+
+export async function inviteCustomer(email: string, businessId: string) {
+  // Use supabase auth to invite - this sends the invite email
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+    data: { role: 'customer', business_id: businessId },
+    redirectTo: `${window.location.origin}/portal`,
+  })
+  if (error) throw error
+  return data
+}
+
+// ============ Customer Portal ============
+
+export function useMyCustomerRecord() {
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isConfigured()) { setLoading(false); return }
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setLoading(false); return }
+      const { data } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('profile_id', user.id)
+        .maybeSingle()
+      setCustomer(data)
+      setLoading(false)
+    })
+  }, [])
+
+  return { customer, loading }
+}
+
+export function useMyAppointments() {
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('phone, email')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    if (!customer) { setLoading(false); return }
+
+    const filters = [customer.phone ? `customer_phone.eq.${customer.phone}` : null, customer.email ? `customer_email.eq.${customer.email}` : null].filter(Boolean).join(',')
+    if (!filters) { setLoading(false); return }
+
+    const { data } = await supabase
+      .from('appointments')
+      .select('*')
+      .or(filters)
+      .order('scheduled_at', { ascending: true })
+
+    setAppointments(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { appointments, loading, refresh }
+}
+
+export function useMyIntakes() {
+  const [intakes, setIntakes] = useState<VehicleIntake[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    if (!customer) { setLoading(false); return }
+
+    const { data } = await supabase
+      .from('vehicle_intakes')
+      .select('*, intake_services(*, service:services(*))')
+      .eq('customer_id', customer.id)
+      .order('created_at', { ascending: false })
+
+    setIntakes(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { intakes, loading, refresh }
+}
+
+export function useMyInvoices() {
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    if (!customer) { setLoading(false); return }
+
+    const { data } = await supabase
+      .from('invoices')
+      .select('*, items:invoice_items(*)')
+      .eq('customer_id', customer.id)
+      .order('created_at', { ascending: false })
+
+    setInvoices(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { invoices, loading, refresh }
 }
