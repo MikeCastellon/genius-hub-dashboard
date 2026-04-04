@@ -17,6 +17,7 @@ import InvoiceDetail from '@/pages/InvoiceDetail'
 import Customers from '@/pages/Customers'
 import Schedule from '@/pages/Schedule'
 import Hours from '@/pages/Hours'
+import Queue from '@/pages/Queue'
 import BookingPage from '@/pages/BookingPage'
 import Certify from '@/pages/Certify'
 import CertificateDetail from '@/pages/CertificateDetail'
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/certify" element={<Certify />} />
         <Route path="/certify/:id" element={<CertificateDetail />} />
         <Route path="/schedule" element={<Schedule />} />
+        <Route path="/queue" element={<Queue />} />
         <Route path="/hours" element={<Hours />} />
         {isAdmin && <Route path="/admin" element={<Admin />} />}
         {isSuperAdmin && <Route path="/super-admin" element={<SuperAdmin />} />}
