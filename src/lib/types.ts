@@ -100,6 +100,7 @@ export interface Job {
   customer?: Customer
   intake?: VehicleIntake
   appointment?: Appointment
+  technician?: { display_name: string }
 }
 
 export interface JobPhoto {

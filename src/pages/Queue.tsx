@@ -99,7 +99,11 @@ function getCustomerName(job: Job): string {
 
 export default function Queue() {
   const { profile } = useAuth()
-  const { jobs, loading, refresh } = useJobs(profile?.business_id)
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+  const { jobs, loading, refresh } = useJobs(profile?.business_id, {
+    technicianId: profile?.id,
+    role: profile?.role,
+  })
   const { job: activeJob, refresh: refreshActive } = useActiveJob(profile?.id)
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [startingJob, setStartingJob] = useState<Job | null>(null)
@@ -193,6 +197,11 @@ export default function Queue() {
                   </div>
                   {vehicle && (
                     <p className="text-[12px] text-zinc-400 mt-0.5 truncate">{vehicle}</p>
+                  )}
+                  {isAdmin && job.technician?.display_name && (
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      <span className="font-medium text-zinc-500">Tech:</span> {job.technician.display_name}
+                    </p>
                   )}
                 </div>
 

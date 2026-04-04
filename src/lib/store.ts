@@ -1263,20 +1263,29 @@ export function useMyInvoices() {
 
 // ============ Jobs ============
 
-export function useJobs(businessId: string | null | undefined) {
+export function useJobs(businessId: string | null | undefined, opts?: { technicianId?: string | null; role?: string | null }) {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const techId = opts?.technicianId
+  const role = opts?.role
 
   const refresh = useCallback(async () => {
     if (!isConfigured() || !businessId) { setLoading(false); return }
-    const { data } = await supabase
+    let query = supabase
       .from('jobs')
-      .select('*, customer:customers(*), intake:vehicle_intakes(*), appointment:appointments(*)')
+      .select('*, customer:customers(*), intake:vehicle_intakes(*), appointment:appointments(*), technician:profiles!jobs_technician_id_fkey(display_name)')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false })
+
+    // Techs (role=user) only see their own jobs + unassigned queued jobs
+    if (role === 'user' && techId) {
+      query = query.or(`technician_id.eq.${techId},technician_id.is.null`)
+    }
+
+    const { data } = await query
     setJobs(data || [])
     setLoading(false)
-  }, [businessId])
+  }, [businessId, techId, role])
 
   useEffect(() => { refresh() }, [refresh])
   return { jobs, loading, refresh }

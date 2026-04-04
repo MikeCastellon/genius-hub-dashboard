@@ -34,7 +34,10 @@ function formatElapsed(seconds: number): string {
 export default function FloatingJobPill() {
   const { profile } = useAuth()
   const { job: activeJob, loading: activeLoading, refresh: refreshActive } = useActiveJob(profile?.id)
-  const { jobs: allJobs, loading: jobsLoading, refresh: refreshJobs } = useJobs(profile?.business_id)
+  const { jobs: allJobs, loading: jobsLoading, refresh: refreshJobs } = useJobs(profile?.business_id, {
+    technicianId: profile?.id,
+    role: profile?.role,
+  })
   const navigate = useNavigate()
 
   const [showQueue, setShowQueue] = useState(false)
