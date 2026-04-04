@@ -20,7 +20,7 @@ export default function CertifyWizardLayout({
   const isLast = currentStep === STEPS.length - 1
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
       {/* Step indicator */}
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2">
         {STEPS.map((label, i) => {
