@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/certify', icon: Award, label: 'Certify' },
   { to: '/schedule', icon: Calendar, label: 'Schedule' },
   { to: '/hours', icon: Clock, label: 'Hours' },
+  { to: '/forms', icon: FileCheck, label: 'Forms' },
   { to: '/services', icon: Wrench, label: 'Services' },
 ]
 
@@ -40,7 +41,10 @@ export default function Layout() {
   const allNavItems = [
     ...navItems,
     ...(profile?.role === 'admin' || profile?.role === 'super_admin'
-      ? [{ to: '/admin', icon: ShieldCheck, label: 'Admin' }]
+      ? [
+          { to: '/expenses', icon: Receipt, label: 'Expenses' },
+          { to: '/admin', icon: ShieldCheck, label: 'Admin' },
+        ]
       : []),
     ...(profile?.role === 'super_admin'
       ? [{ to: '/super-admin', icon: Building2, label: 'Businesses' }]

@@ -515,3 +515,75 @@ export interface BusinessSettings {
   intake_config: IntakeConfig
   updated_at: string
 }
+
+// ── Custom Forms ─────────────────────────────────────────
+
+export type FormFieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'signature' | 'photo'
+export type FormStatus = 'draft' | 'active' | 'archived'
+
+export interface FormFieldDef {
+  id: string
+  label: string
+  type: FormFieldType
+  required: boolean
+  options?: string[]
+  position: number
+}
+
+export interface FormTemplate {
+  id: string
+  business_id: string
+  name: string
+  description: string | null
+  fields: FormFieldDef[]
+  status: FormStatus
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FormSubmission {
+  id: string
+  form_template_id: string
+  business_id: string
+  responses: Record<string, any>
+  customer_id: string | null
+  intake_id: string | null
+  submitted_by: string | null
+  created_at: string
+  form_template?: FormTemplate
+  customer?: Customer
+}
+
+// ── Expenses ─────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = [
+  'supplies', 'products', 'equipment', 'rent', 'utilities', 'marketing', 'labor', 'other',
+] as const
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  supplies: 'Supplies',
+  products: 'Products',
+  equipment: 'Equipment',
+  rent: 'Rent',
+  utilities: 'Utilities',
+  marketing: 'Marketing',
+  labor: 'Labor',
+  other: 'Other',
+}
+
+export interface Expense {
+  id: string
+  business_id: string
+  amount: number
+  description: string
+  category: ExpenseCategory
+  vendor: string | null
+  date: string
+  receipt_url: string | null
+  is_recurring: boolean
+  created_by: string | null
+  created_at: string
+  creator?: { display_name: string }
+}

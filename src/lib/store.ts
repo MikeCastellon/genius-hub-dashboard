@@ -7,7 +7,8 @@ import {
   Certificate, CertificatePhoto, Vehicle, WarrantyClaim,
   BusinessType, DETAIL_TABLE_MAP,
   Job, JobPhoto,
-  BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG
+  BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG,
+  FormTemplate, FormSubmission, Expense
 } from './types'
 
 const isConfigured = () => {
@@ -1452,4 +1453,122 @@ export function useCustomerPhotos(customerId: string | null | undefined) {
   }, [customerId])
 
   return { photos, jobs, loading }
+}
+
+// ============ Form Templates ============
+
+export function useFormTemplates() {
+  const [templates, setTemplates] = useState<FormTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data } = await supabase
+      .from('form_templates')
+      .select('*')
+      .order('name')
+    setTemplates(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { templates, loading, refresh }
+}
+
+export async function createFormTemplate(template: Omit<FormTemplate, 'id' | 'created_at' | 'updated_at'>) {
+  const { error } = await supabase.from('form_templates').insert(template)
+  if (error) throw error
+}
+
+export async function updateFormTemplate(id: string, updates: Partial<FormTemplate>) {
+  const { error } = await supabase
+    .from('form_templates')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteFormTemplate(id: string) {
+  const { error } = await supabase.from('form_templates').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ============ Form Submissions ============
+
+export function useFormSubmissions(templateId?: string) {
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    let query = supabase
+      .from('form_submissions')
+      .select('*, form_template:form_templates(*), customer:customers(*)')
+      .order('created_at', { ascending: false })
+    if (templateId) query = query.eq('form_template_id', templateId)
+    const { data } = await query
+    setSubmissions(data || [])
+    setLoading(false)
+  }, [templateId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { submissions, loading, refresh }
+}
+
+export async function createFormSubmission(submission: Omit<FormSubmission, 'id' | 'created_at' | 'form_template' | 'customer'>) {
+  const { error } = await supabase.from('form_submissions').insert(submission)
+  if (error) throw error
+}
+
+export async function uploadFormFile(file: File, businessId: string): Promise<string> {
+  const ext = file.name.split('.').pop() || 'png'
+  const path = `${businessId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('form-uploads').upload(path, file, { contentType: file.type })
+  if (error) throw error
+  const { data } = supabase.storage.from('form-uploads').getPublicUrl(path)
+  return data.publicUrl
+}
+
+// ============ Expenses ============
+
+export function useExpenses() {
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured()) { setLoading(false); return }
+    const { data } = await supabase
+      .from('expenses')
+      .select('*, creator:profiles!created_by(display_name)')
+      .order('date', { ascending: false })
+    setExpenses(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { expenses, loading, refresh }
+}
+
+export async function createExpense(expense: Omit<Expense, 'id' | 'created_at' | 'creator'>) {
+  const { error } = await supabase.from('expenses').insert(expense)
+  if (error) throw error
+}
+
+export async function updateExpense(id: string, updates: Partial<Expense>) {
+  const { error } = await supabase.from('expenses').update(updates).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteExpense(id: string) {
+  const { error } = await supabase.from('expenses').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function uploadExpenseReceipt(file: File, businessId: string): Promise<string> {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${businessId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('expense-receipts').upload(path, file, { contentType: file.type })
+  if (error) throw error
+  const { data } = supabase.storage.from('expense-receipts').getPublicUrl(path)
+  return data.publicUrl
 }
