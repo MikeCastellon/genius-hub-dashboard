@@ -41,6 +41,20 @@ export default function FloatingJobPill() {
   const [elapsed, setElapsed] = useState(0)
   const [startingJob, setStartingJob] = useState<Job | null>(null)
   const [showFinish, setShowFinish] = useState(false)
+  const [hidden, setHidden] = useState(() => localStorage.getItem('floatingPillHidden') === 'true')
+
+  const isAdminRole = profile?.role === 'admin' || profile?.role === 'super_admin'
+
+  const handleHide = () => {
+    setHidden(true)
+    setShowQueue(false)
+    localStorage.setItem('floatingPillHidden', 'true')
+  }
+
+  const handleShow = () => {
+    setHidden(false)
+    localStorage.removeItem('floatingPillHidden')
+  }
 
   // Timer for active job
   useEffect(() => {
@@ -93,6 +107,19 @@ export default function FloatingJobPill() {
   }
 
   // ── No active job — FAB + queue drawer ──
+  // Admin/super_admin can hide the pill
+  if (hidden && isAdminRole) {
+    return (
+      <button
+        onClick={handleShow}
+        className="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full bg-zinc-200 hover:bg-zinc-300 shadow-sm flex items-center justify-center transition-colors"
+        title="Show job queue"
+      >
+        <ClipboardList size={16} className="text-zinc-500" />
+      </button>
+    )
+  }
+
   return (
     <>
       {/* Mini queue drawer */}
@@ -158,12 +185,23 @@ export default function FloatingJobPill() {
       )}
 
       {/* FAB */}
-      <button
-        onClick={() => setShowQueue((v) => !v)}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-red-500 shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
-      >
-        <ClipboardList size={22} className="text-white" />
-      </button>
+      <div className="fixed bottom-6 right-6 z-40">
+        {isAdminRole && (
+          <button
+            onClick={handleHide}
+            className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-zinc-600 text-white flex items-center justify-center text-[10px] font-bold hover:bg-zinc-800 transition-colors shadow-sm z-10"
+            title="Hide queue button"
+          >
+            ✕
+          </button>
+        )}
+        <button
+          onClick={() => setShowQueue((v) => !v)}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-red-500 shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
+        >
+          <ClipboardList size={22} className="text-white" />
+        </button>
+      </div>
 
       {/* Start Job Modal */}
       {startingJob && profile && (
