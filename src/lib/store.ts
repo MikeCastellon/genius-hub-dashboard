@@ -1273,7 +1273,7 @@ export function useJobs(businessId: string | null | undefined, opts?: { technici
     if (!isConfigured() || !businessId) { setLoading(false); return }
     let query = supabase
       .from('jobs')
-      .select('*, customer:customers(*), intake:vehicle_intakes(*), appointment:appointments(*), technician:profiles!jobs_technician_id_fkey(display_name)')
+      .select('*, customer:customers(*), intake:vehicle_intakes(*, intake_services(*, service:services(name))), appointment:appointments(*), technician:profiles!jobs_technician_id_fkey(display_name)')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false })
 

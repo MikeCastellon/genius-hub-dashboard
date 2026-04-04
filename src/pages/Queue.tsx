@@ -97,6 +97,14 @@ function getCustomerName(job: Job): string {
   return 'Unknown Customer'
 }
 
+function getServices(job: Job): string[] {
+  if (job.intake?.intake_services?.length) {
+    return job.intake.intake_services
+      .map(s => s.service?.name || 'Unknown Service')
+  }
+  return []
+}
+
 export default function Queue() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
@@ -173,6 +181,7 @@ export default function Queue() {
             const avatarColor = nameToColor(name)
             const isWalkIn = !!job.intake_id
             const isScheduled = !!job.appointment_id
+            const services = getServices(job)
 
             return (
               <div
@@ -198,8 +207,15 @@ export default function Queue() {
                   {vehicle && (
                     <p className="text-[12px] text-zinc-400 mt-0.5 truncate">{vehicle}</p>
                   )}
+                  {services.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {services.map((s, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-600">{s}</span>
+                      ))}
+                    </div>
+                  )}
                   {isAdmin && job.technician?.display_name && (
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                    <p className="text-[11px] text-zinc-400 mt-1">
                       <span className="font-medium text-zinc-500">Tech:</span> {job.technician.display_name}
                     </p>
                   )}
