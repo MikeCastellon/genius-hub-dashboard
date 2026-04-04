@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings, inviteCustomer, startJob, useActiveJob, uploadJobPhoto } from '@/lib/store'
 import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef, Customer } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, Loader2, FileText, Car, Pencil, Play, Camera } from 'lucide-react'
+import { CheckCircle, Loader2, FileText, Car, Pencil, Play } from 'lucide-react'
 import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
 import CustomerForm from '@/components/CustomerForm'
@@ -11,7 +11,6 @@ import IntakeSummary from '@/components/IntakeSummary'
 import PaymentSelector from '@/components/PaymentSelector'
 import BarkoderScanner from '@/components/BarkoderScanner'
 import SectionEditModal from '@/components/SectionEditModal'
-import PhotoUploader from '@/components/PhotoUploader'
 import { decodeVin, isLikelyVin } from '@/lib/utils'
 
 interface VehicleData {
@@ -42,7 +41,7 @@ export default function NewIntake() {
   const [showScanner, setShowScanner] = useState(false)
   const [editingSection, setEditingSection] = useState<IntakeSectionKey | null>(null)
   const [savedCustomer, setSavedCustomer] = useState<Customer | null>(null)
-  const [savedIntakeId, setSavedIntakeId] = useState<string | null>(null)
+  const [, setSavedIntakeId] = useState<string | null>(null)
   const [inviteSent, setInviteSent] = useState(false)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
@@ -143,6 +142,21 @@ export default function NewIntake() {
     }
   }
 
+  const handleStartJob = async () => {
+    if (!jobId || !profile?.id) return
+    setJobStarting(true)
+    try {
+      await startJob(jobId, profile.id)
+      await hapticSuccess()
+      setJobStarted(true)
+    } catch (err: any) {
+      await hapticError()
+      alert('Error starting job: ' + err.message)
+    } finally {
+      setJobStarting(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (needsCustomer && (!customer.name || !customer.phone)) {
       alert('Please fill in customer name and phone.')
@@ -212,9 +226,10 @@ export default function NewIntake() {
       setInviteError('')
       refreshCustomers()
 
-      // Only auto-reset if no invite prompt is shown
+      // Only auto-reset if no invite prompt and no start-job button shown
       const hasInvitePrompt = needsCustomer && customer.email
-      if (!hasInvitePrompt) {
+      const hasStartJobBtn = profile?.role === 'user' && jobRow
+      if (!hasInvitePrompt && !hasStartJobBtn) {
         setTimeout(() => {
           setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
           setCustomer({ name: '', phone: '', email: '', company: '' })
@@ -225,6 +240,9 @@ export default function NewIntake() {
           setBeforePhotos([])
           setSuccess(false)
           setSavedCustomer(null)
+          setSavedIntakeId(null)
+          setJobId(null)
+          setJobStarted(false)
         }, 2200)
       }
     } catch (err: any) {
@@ -429,6 +447,9 @@ export default function NewIntake() {
     setBeforePhotos([])
     setSuccess(false)
     setSavedCustomer(null)
+    setSavedIntakeId(null)
+    setJobId(null)
+    setJobStarted(false)
     setInviteSent(false)
     setInviteError('')
   }
@@ -440,12 +461,52 @@ export default function NewIntake() {
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-500/25">
             <CheckCircle size={36} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-zinc-900">Intake Saved!</h2>
+          <h2 className="text-2xl font-bold text-zinc-900">
+            {jobStarted ? 'Job Started!' : 'Intake Saved!'}
+          </h2>
           <p className="text-zinc-400 mt-2 text-sm">
-            {savedCustomer && savedCustomer.email && !savedCustomer.profile_id
-              ? 'Would you like to invite this customer?'
-              : 'Preparing new intake form...'}
+            {jobStarted
+              ? 'You are now working on this vehicle.'
+              : savedCustomer && savedCustomer.email && !savedCustomer.profile_id
+                ? 'Would you like to invite this customer?'
+                : profile?.role === 'user' && jobId
+                  ? 'Ready to start working on this vehicle?'
+                  : 'Preparing new intake form...'}
           </p>
+
+          {/* Start Job button — only for tech role with a queued job */}
+          {profile?.role === 'user' && jobId && !jobStarted && (
+            <div className="mt-4">
+              <button
+                onClick={handleStartJob}
+                disabled={jobStarting || hasActiveJob}
+                className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-red-700/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                title={hasActiveJob ? 'Finish current job first' : undefined}
+              >
+                {jobStarting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Play size={16} />
+                    Start Job
+                  </>
+                )}
+              </button>
+              {hasActiveJob && (
+                <p className="text-xs text-zinc-400 mt-2">Finish current job first</p>
+              )}
+            </div>
+          )}
+
+          {/* Job started confirmation */}
+          {jobStarted && (
+            <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-4 mt-4 text-sm text-emerald-700 font-medium">
+              Job is now in progress!
+            </div>
+          )}
 
           {savedCustomer && savedCustomer.email && !savedCustomer.profile_id && !inviteSent && (
             <div className="bg-zinc-50 rounded-2xl border border-zinc-100 p-5 mt-4 text-left">
@@ -469,7 +530,8 @@ export default function NewIntake() {
             </div>
           )}
 
-          {savedCustomer && savedCustomer.email && !savedCustomer.profile_id && (
+          {/* Show "Start New Intake" when there's a reason to stay on this screen */}
+          {(jobId || (savedCustomer && savedCustomer.email && !savedCustomer.profile_id)) && (
             <button
               onClick={resetForm}
               className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-50 transition-colors"
@@ -526,21 +588,6 @@ export default function NewIntake() {
             )}
 
             {rightSections.map(key => renderSection(key))}
-
-            <div className="glass rounded-2xl p-4 md:p-5">
-              <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Camera size={13} className="text-blue-500" />
-                </div>
-                Before Photos <span className="text-zinc-400 font-normal">(optional)</span>
-              </h3>
-              <PhotoUploader
-                photos={beforePhotos}
-                onChange={setBeforePhotos}
-                label="Upload before photos"
-                maxPhotos={10}
-              />
-            </div>
 
             <button
               onClick={handleSubmit}
