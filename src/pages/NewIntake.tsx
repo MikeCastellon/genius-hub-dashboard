@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings, inviteCustomer } from '@/lib/store'
+import { useState, useEffect } from 'react'
+import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings, inviteCustomer, startJob, useActiveJob, uploadJobPhoto } from '@/lib/store'
 import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef, Customer } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, Loader2, FileText, Car, Pencil } from 'lucide-react'
+import { CheckCircle, Loader2, FileText, Car, Pencil, Play, Camera } from 'lucide-react'
 import { hapticSuccess, hapticError } from '@/lib/haptics'
 import VehicleForm from '@/components/VehicleForm'
 import CustomerForm from '@/components/CustomerForm'
@@ -11,6 +11,7 @@ import IntakeSummary from '@/components/IntakeSummary'
 import PaymentSelector from '@/components/PaymentSelector'
 import BarkoderScanner from '@/components/BarkoderScanner'
 import SectionEditModal from '@/components/SectionEditModal'
+import PhotoUploader from '@/components/PhotoUploader'
 import { decodeVin, isLikelyVin } from '@/lib/utils'
 
 interface VehicleData {
@@ -41,9 +42,17 @@ export default function NewIntake() {
   const [showScanner, setShowScanner] = useState(false)
   const [editingSection, setEditingSection] = useState<IntakeSectionKey | null>(null)
   const [savedCustomer, setSavedCustomer] = useState<Customer | null>(null)
+  const [savedIntakeId, setSavedIntakeId] = useState<string | null>(null)
   const [inviteSent, setInviteSent] = useState(false)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [beforePhotos, setBeforePhotos] = useState<File[]>([])
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobStarted, setJobStarted] = useState(false)
+  const [jobStarting, setJobStarting] = useState(false)
+
+  const { job: activeJob } = useActiveJob(profile?.role === 'user' ? profile?.id : null)
+  const hasActiveJob = !!activeJob && !jobStarted
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
 
@@ -150,7 +159,7 @@ export default function NewIntake() {
 
     setSubmitting(true)
     try {
-      await createIntake(
+      const intake = await createIntake(
         needsCustomer
           ? { name: customer.name, phone: customer.phone, email: customer.email || null, company: customer.company || null }
           : { name: 'Walk-in', phone: '', email: null },
@@ -168,6 +177,23 @@ export default function NewIntake() {
         user?.id,
         profile?.business_id
       )
+
+      setSavedIntakeId(intake.id)
+
+      // Query for the auto-created job linked to this intake
+      const { data: jobRow } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('intake_id', intake.id)
+        .maybeSingle()
+      if (jobRow) setJobId(jobRow.id)
+
+      // Upload before photos if any were added
+      if (beforePhotos.length > 0 && jobRow && profile?.business_id) {
+        for (const file of beforePhotos) {
+          await uploadJobPhoto(jobRow.id, profile.business_id, file, 'before')
+        }
+      }
 
       // Fetch the saved customer record to check for invite eligibility
       if (needsCustomer && customer.phone && profile?.business_id) {
@@ -196,6 +222,7 @@ export default function NewIntake() {
           setPaymentMethod(null)
           setNotes('')
           setCustomFields({})
+          setBeforePhotos([])
           setSuccess(false)
           setSavedCustomer(null)
         }, 2200)
@@ -399,6 +426,7 @@ export default function NewIntake() {
     setPaymentMethod(null)
     setNotes('')
     setCustomFields({})
+    setBeforePhotos([])
     setSuccess(false)
     setSavedCustomer(null)
     setInviteSent(false)
@@ -498,6 +526,21 @@ export default function NewIntake() {
             )}
 
             {rightSections.map(key => renderSection(key))}
+
+            <div className="glass rounded-2xl p-4 md:p-5">
+              <h3 className="text-[13px] font-semibold text-zinc-800 flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Camera size={13} className="text-blue-500" />
+                </div>
+                Before Photos <span className="text-zinc-400 font-normal">(optional)</span>
+              </h3>
+              <PhotoUploader
+                photos={beforePhotos}
+                onChange={setBeforePhotos}
+                label="Upload before photos"
+                maxPhotos={10}
+              />
+            </div>
 
             <button
               onClick={handleSubmit}
