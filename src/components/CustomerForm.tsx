@@ -6,6 +6,7 @@ interface CustomerData {
   name: string
   phone: string
   email: string
+  company: string
 }
 
 interface Props {
@@ -64,6 +65,7 @@ export default function CustomerForm({ customers, value, onChange, hiddenFields 
       name: c.name,
       phone: c.phone,
       email: c.email || '',
+      company: c.company || '',
     })
     setShowSuggestions(false)
   }
@@ -105,7 +107,7 @@ export default function CustomerForm({ customers, value, onChange, hiddenFields 
           </div>
         )}
         {show('email') && (
-          <div className="sm:col-span-2">
+          <div>
             <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Email</label>
             <input
               type="email"
@@ -116,6 +118,16 @@ export default function CustomerForm({ customers, value, onChange, hiddenFields 
             />
           </div>
         )}
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Company</label>
+          <input
+            type="text"
+            value={value.company}
+            onChange={e => onChange({ ...value, company: e.target.value })}
+            placeholder="Company name"
+            className={inputClass}
+          />
+        </div>
       </div>
 
       {/* Autocomplete suggestions */}

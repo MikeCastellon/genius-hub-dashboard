@@ -69,7 +69,7 @@ export default function BookingPage() {
 
   // Form (step after selecting time)
   const [step, setStep] = useState<'calendar' | 'details'>('calendar')
-  const [form, setForm] = useState({ name: '', phone: '', email: '', year: '', make: '', model: '', color: '', notes: '' })
+  const [form, setForm] = useState({ name: '', phone: '', email: '', company: '', year: '', make: '', model: '', color: '', notes: '' })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
@@ -343,6 +343,7 @@ export default function BookingPage() {
           <input className={inputClass} placeholder="Full name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           <input className={inputClass} placeholder="Phone number *" type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
           <input className={inputClass} placeholder="Email (optional)" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <input className={inputClass} placeholder="Company (optional)" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
         </div>
 
         {/* Vehicle */}

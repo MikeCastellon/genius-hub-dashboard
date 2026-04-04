@@ -161,11 +161,11 @@ export function useCustomers() {
 }
 
 export async function upsertCustomer(
-  cust: { name: string; phone: string; email: string | null },
+  cust: { name: string; phone: string; email: string | null; address?: string | null; company?: string | null; vehicle_year?: string | null; vehicle_make?: string | null; vehicle_model?: string | null; vehicle_color?: string | null },
   businessId?: string
 ): Promise<Customer> {
   if (!isConfigured()) {
-    return { ...cust, id: `local-${Date.now()}`, business_id: businessId || null, profile_id: null, total_spend: 0, last_visit: null, tags: [], created_at: new Date().toISOString() }
+    return { ...cust, id: `local-${Date.now()}`, address: cust.address || null, company: cust.company || null, vehicle_year: cust.vehicle_year || null, vehicle_make: cust.vehicle_make || null, vehicle_model: cust.vehicle_model || null, vehicle_color: cust.vehicle_color || null, business_id: businessId || null, profile_id: null, total_spend: 0, last_visit: null, tags: [], created_at: new Date().toISOString() }
   }
 
   const query = supabase.from('customers').select('*').eq('phone', cust.phone)
@@ -173,9 +173,16 @@ export async function upsertCustomer(
   const { data: existing } = await query.maybeSingle()
 
   if (existing) {
+    const updates: Record<string, any> = { name: cust.name, email: cust.email || existing.email }
+    if (cust.address !== undefined) updates.address = cust.address
+    if (cust.company !== undefined) updates.company = cust.company
+    if (cust.vehicle_year !== undefined) updates.vehicle_year = cust.vehicle_year
+    if (cust.vehicle_make !== undefined) updates.vehicle_make = cust.vehicle_make
+    if (cust.vehicle_model !== undefined) updates.vehicle_model = cust.vehicle_model
+    if (cust.vehicle_color !== undefined) updates.vehicle_color = cust.vehicle_color
     const { data, error } = await supabase
       .from('customers')
-      .update({ name: cust.name, email: cust.email || existing.email })
+      .update(updates)
       .eq('id', existing.id)
       .select()
       .single()
@@ -195,7 +202,7 @@ export async function upsertCustomer(
 // ============ Vehicle Intakes ============
 
 export async function createIntake(
-  customer: { name: string; phone: string; email: string | null },
+  customer: { name: string; phone: string; email: string | null; company?: string | null },
   vehicle: { vin?: string; year?: number; make?: string; model?: string; color?: string; license_plate?: string },
   cart: CartItem[],
   paymentMethod: PaymentMethod,

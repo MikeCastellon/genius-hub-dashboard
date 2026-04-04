@@ -31,7 +31,7 @@ export default function NewIntake() {
   const { config, refresh: refreshConfig } = useIntakeConfig()
 
   const [vehicle, setVehicle] = useState<VehicleData>({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
-  const [customer, setCustomer] = useState({ name: '', phone: '', email: '' })
+  const [customer, setCustomer] = useState({ name: '', phone: '', email: '', company: '' })
   const [cart, setCart] = useState<CartItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [notes, setNotes] = useState('')
@@ -152,7 +152,7 @@ export default function NewIntake() {
     try {
       await createIntake(
         needsCustomer
-          ? { name: customer.name, phone: customer.phone, email: customer.email || null }
+          ? { name: customer.name, phone: customer.phone, email: customer.email || null, company: customer.company || null }
           : { name: 'Walk-in', phone: '', email: null },
         {
           vin: vehicle.vin || undefined,
@@ -191,7 +191,7 @@ export default function NewIntake() {
       if (!hasInvitePrompt) {
         setTimeout(() => {
           setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
-          setCustomer({ name: '', phone: '', email: '' })
+          setCustomer({ name: '', phone: '', email: '', company: '' })
           setCart([])
           setPaymentMethod(null)
           setNotes('')
@@ -394,7 +394,7 @@ export default function NewIntake() {
 
   const resetForm = () => {
     setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
-    setCustomer({ name: '', phone: '', email: '' })
+    setCustomer({ name: '', phone: '', email: '', company: '' })
     setCart([])
     setPaymentMethod(null)
     setNotes('')

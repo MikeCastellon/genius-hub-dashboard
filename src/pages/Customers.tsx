@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, inviteCustomer, useAuth, upsertCustomer } from '@/lib/store'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt } from 'lucide-react'
+import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2 } from 'lucide-react'
 
 const AVATAR_COLORS = [
   'bg-red-100 text-red-700',
@@ -375,7 +375,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <div className="w-full py-6 space-y-6">
 
         {/* Profile Header */}
         <div className="flex items-start gap-4">
@@ -384,7 +384,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-zinc-900">{customer.name}</h2>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-[13px] text-zinc-500">
                 <Phone size={12} />
                 {customer.phone}
@@ -396,6 +396,24 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 </span>
               )}
             </div>
+            {customer.address && (
+              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
+                <MapPin size={12} />
+                <span className="truncate">{customer.address}</span>
+              </div>
+            )}
+            {customer.company && (
+              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
+                <Building2 size={12} />
+                <span>{customer.company}</span>
+              </div>
+            )}
+            {(customer.vehicle_year || customer.vehicle_make || customer.vehicle_model) && (
+              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
+                <Car size={12} />
+                <span>{[customer.vehicle_year, customer.vehicle_make, customer.vehicle_model].filter(Boolean).join(' ')}{customer.vehicle_color ? ` · ${customer.vehicle_color}` : ''}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-2">
               {customer.profile_id ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
@@ -694,6 +712,12 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [company, setCompany] = useState('')
+  const [vYear, setVYear] = useState('')
+  const [vMake, setVMake] = useState('')
+  const [vModel, setVModel] = useState('')
+  const [vColor, setVColor] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -705,7 +729,12 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
     setSaving(true)
     setError('')
     try {
-      await upsertCustomer({ name: name.trim(), phone: phone.trim(), email: email.trim() || null }, businessId)
+      await upsertCustomer({
+        name: name.trim(), phone: phone.trim(), email: email.trim() || null,
+        address: address.trim() || null, company: company.trim() || null,
+        vehicle_year: vYear.trim() || null, vehicle_make: vMake.trim() || null,
+        vehicle_model: vModel.trim() || null, vehicle_color: vColor.trim() || null,
+      }, businessId)
       onSaved()
     } catch (err: any) {
       setError(err.message || 'Failed to save customer.')
@@ -754,6 +783,37 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
               placeholder="john@example.com"
               className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
             />
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Address</label>
+            <input
+              type="text"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="123 Main St, City, PR 00901"
+              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Company</label>
+            <input
+              type="text"
+              value={company}
+              onChange={e => setCompany(e.target.value)}
+              placeholder="Company name"
+              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
+            />
+          </div>
+
+          {/* Vehicle Info */}
+          <div>
+            <label className="block text-[12px] font-semibold text-zinc-600 mb-1 flex items-center gap-1"><Car size={12} /> Vehicle</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" value={vYear} onChange={e => setVYear(e.target.value)} placeholder="Year" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vMake} onChange={e => setVMake(e.target.value)} placeholder="Make" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vModel} onChange={e => setVModel(e.target.value)} placeholder="Model" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Color" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+            </div>
           </div>
         </div>
 

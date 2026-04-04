@@ -39,6 +39,12 @@ export interface Customer {
   name: string
   phone: string
   email: string | null
+  address: string | null
+  company: string | null
+  vehicle_year: string | null
+  vehicle_make: string | null
+  vehicle_model: string | null
+  vehicle_color: string | null
   business_id: string | null
   profile_id: string | null
   total_spend: number
