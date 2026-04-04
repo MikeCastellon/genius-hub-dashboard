@@ -566,7 +566,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                       <span className="text-[12px] font-semibold text-zinc-700">
                         {note.author?.display_name || 'Staff'}
                       </span>
-                      <span className="text-[11px] text-zinc-400">{timeAgo(note.created_at)}</span>
+                      <span className="text-[11px] text-zinc-400">{formatDateTime(note.created_at)}</span>
                     </div>
                     <p className="text-[13px] text-zinc-600 mt-0.5">{note.body}</p>
                   </div>
