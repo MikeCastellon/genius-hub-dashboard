@@ -26,6 +26,7 @@ import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
 import PortalHistory from './pages/portal/PortalHistory'
 import PortalProfile from './pages/portal/PortalProfile'
+import FloatingJobPill from '@/components/FloatingJobPill'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
@@ -90,26 +91,29 @@ export default function App() {
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<NewIntake />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/history" element={<IntakeHistory />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoices/:id" element={<InvoiceDetail />} />
-        <Route path="/certify" element={<Certify />} />
-        <Route path="/certify/:id" element={<CertificateDetail />} />
-        <Route path="/schedule" element={<Schedule />} />
-        <Route path="/queue" element={<Queue />} />
-        <Route path="/hours" element={<Hours />} />
-        {isAdmin && <Route path="/admin" element={<Admin />} />}
-        {isSuperAdmin && <Route path="/super-admin" element={<SuperAdmin />} />}
-      </Route>
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/book/:slug" element={<BookingPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<NewIntake />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/history" element={<IntakeHistory />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/invoices/:id" element={<InvoiceDetail />} />
+          <Route path="/certify" element={<Certify />} />
+          <Route path="/certify/:id" element={<CertificateDetail />} />
+          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/queue" element={<Queue />} />
+          <Route path="/hours" element={<Hours />} />
+          {isAdmin && <Route path="/admin" element={<Admin />} />}
+          {isSuperAdmin && <Route path="/super-admin" element={<SuperAdmin />} />}
+        </Route>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/book/:slug" element={<BookingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <FloatingJobPill />
+    </>
   )
 }
