@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
-import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, inviteCustomer, useAuth, upsertCustomer } from '@/lib/store'
+import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer } from '@/lib/store'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2 } from 'lucide-react'
+import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check } from 'lucide-react'
 
 const AVATAR_COLORS = [
   'bg-red-100 text-red-700',
@@ -396,24 +396,6 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 </span>
               )}
             </div>
-            {customer.address && (
-              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
-                <MapPin size={12} />
-                <span className="truncate">{customer.address}</span>
-              </div>
-            )}
-            {customer.company && (
-              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
-                <Building2 size={12} />
-                <span>{customer.company}</span>
-              </div>
-            )}
-            {(customer.vehicle_year || customer.vehicle_make || customer.vehicle_model) && (
-              <div className="flex items-center gap-1 mt-1 text-[13px] text-zinc-400">
-                <Car size={12} />
-                <span>{[customer.vehicle_year, customer.vehicle_make, customer.vehicle_model].filter(Boolean).join(' ')}{customer.vehicle_color ? ` · ${customer.vehicle_color}` : ''}</span>
-              </div>
-            )}
             <div className="flex items-center gap-2 mt-2">
               {customer.profile_id ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
@@ -488,6 +470,9 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
             <span className="text-[11px] font-semibold text-zinc-600">Text</span>
           </a>
         </div>
+
+        {/* Customer Details Card */}
+        <CustomerDetailsCard customer={customer} onSaved={refresh} />
 
         {/* Tags Section */}
         <div className="bg-white rounded-2xl border border-zinc-200 p-4">
@@ -704,6 +689,128 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
         </div>
 
       </div>
+    </div>
+  )
+}
+
+function CustomerDetailsCard({ customer, onSaved }: { customer: import('@/lib/types').Customer; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [address, setAddress] = useState(customer.address || '')
+  const [company, setCompany] = useState(customer.company || '')
+  const [vYear, setVYear] = useState(customer.vehicle_year || '')
+  const [vMake, setVMake] = useState(customer.vehicle_make || '')
+  const [vModel, setVModel] = useState(customer.vehicle_model || '')
+  const [vColor, setVColor] = useState(customer.vehicle_color || '')
+
+  // Sync when customer changes
+  useState(() => {
+    setAddress(customer.address || '')
+    setCompany(customer.company || '')
+    setVYear(customer.vehicle_year || '')
+    setVMake(customer.vehicle_make || '')
+    setVModel(customer.vehicle_model || '')
+    setVColor(customer.vehicle_color || '')
+  })
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateCustomerFields(customer.id, {
+        address: address.trim() || null,
+        company: company.trim() || null,
+        vehicle_year: vYear.trim() || null,
+        vehicle_make: vMake.trim() || null,
+        vehicle_model: vModel.trim() || null,
+        vehicle_color: vColor.trim() || null,
+      })
+      setEditing(false)
+      onSaved()
+    } catch (err) {
+      console.error('Failed to update customer:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setAddress(customer.address || '')
+    setCompany(customer.company || '')
+    setVYear(customer.vehicle_year || '')
+    setVMake(customer.vehicle_make || '')
+    setVModel(customer.vehicle_model || '')
+    setVColor(customer.vehicle_color || '')
+    setEditing(false)
+  }
+
+  const hasData = customer.address || customer.company || customer.vehicle_year || customer.vehicle_make || customer.vehicle_model
+
+  const inputClass = 'w-full px-3 py-1.5 rounded-lg border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all'
+
+  return (
+    <div className="bg-white rounded-2xl border border-zinc-200 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[13px] font-bold text-zinc-700">Details</h3>
+        {!editing ? (
+          <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors">
+            <Pencil size={11} /> Edit
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button onClick={handleCancel} className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-700 transition-colors">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="flex items-center gap-1 text-[11px] font-semibold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50">
+              {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Save
+            </button>
+          </div>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Company</label>
+              <input type="text" value={company} onChange={e => setCompany(e.target.value)} placeholder="Company name" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Address</label>
+              <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Street address" className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Vehicle</label>
+            <div className="grid grid-cols-4 gap-2">
+              <input type="text" value={vYear} onChange={e => setVYear(e.target.value)} placeholder="Year" className={inputClass} />
+              <input type="text" value={vMake} onChange={e => setVMake(e.target.value)} placeholder="Make" className={inputClass} />
+              <input type="text" value={vModel} onChange={e => setVModel(e.target.value)} placeholder="Model" className={inputClass} />
+              <input type="text" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Color" className={inputClass} />
+            </div>
+          </div>
+        </div>
+      ) : hasData ? (
+        <div className="space-y-1.5">
+          {customer.company && (
+            <div className="flex items-center gap-1.5 text-[13px] text-zinc-500">
+              <Building2 size={12} className="text-zinc-400 shrink-0" />
+              <span>{customer.company}</span>
+            </div>
+          )}
+          {customer.address && (
+            <div className="flex items-center gap-1.5 text-[13px] text-zinc-500">
+              <MapPin size={12} className="text-zinc-400 shrink-0" />
+              <span>{customer.address}</span>
+            </div>
+          )}
+          {(customer.vehicle_year || customer.vehicle_make || customer.vehicle_model) && (
+            <div className="flex items-center gap-1.5 text-[13px] text-zinc-500">
+              <Car size={12} className="text-zinc-400 shrink-0" />
+              <span>{[customer.vehicle_year, customer.vehicle_make, customer.vehicle_model].filter(Boolean).join(' ')}{customer.vehicle_color ? ` · ${customer.vehicle_color}` : ''}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-[12px] text-zinc-400">No details yet. Click Edit to add company, address, or vehicle info.</p>
+      )}
     </div>
   )
 }

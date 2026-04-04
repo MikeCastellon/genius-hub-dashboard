@@ -853,6 +853,14 @@ export async function addCustomerNote(customerId: string, authorId: string, body
   return data
 }
 
+export async function updateCustomerFields(customerId: string, fields: Record<string, any>) {
+  const { error } = await supabase
+    .from('customers')
+    .update(fields)
+    .eq('id', customerId)
+  if (error) throw error
+}
+
 export async function updateCustomerTags(customerId: string, tags: string[]) {
   const { error } = await supabase
     .from('customers')
