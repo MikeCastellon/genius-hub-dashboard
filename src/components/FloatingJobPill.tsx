@@ -4,6 +4,7 @@ import { ClipboardList } from 'lucide-react'
 import { useAuth, useActiveJob, useJobs } from '@/lib/store'
 import { Job } from '@/lib/types'
 import StartJobModal from './StartJobModal'
+import FinishJobModal from './FinishJobModal'
 
 function getCustomerName(job: Job): string {
   if (job.customer?.name) return job.customer.name
@@ -39,9 +40,7 @@ export default function FloatingJobPill() {
   const [showQueue, setShowQueue] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [startingJob, setStartingJob] = useState<Job | null>(null)
-  // TODO: wire showFinish to FinishJobModal when it exists
   const [showFinish, setShowFinish] = useState(false)
-  void showFinish // suppress unused warning until FinishJobModal is wired
 
   // Timer for active job
   useEffect(() => {
@@ -82,7 +81,13 @@ export default function FloatingJobPill() {
             {getCustomerName(activeJob)}
           </span>
         </button>
-        {/* TODO: render FinishJobModal when showFinish is true */}
+        {showFinish && (
+          <FinishJobModal
+            job={activeJob}
+            onClose={() => setShowFinish(false)}
+            onFinished={() => { setShowFinish(false); refreshActive() }}
+          />
+        )}
       </>
     )
   }

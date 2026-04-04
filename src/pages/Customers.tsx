@@ -46,19 +46,6 @@ function tagBgColor(index: number): string {
   return TAG_BG_CYCLE[index % TAG_BG_CYCLE.length]
 }
 
-function timeAgo(date: string): string {
-  const now = new Date()
-  const d = new Date(date)
-  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000)
-  if (seconds < 60) return 'Just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return d.toLocaleDateString()
-}
 
 type HistoryTab = 'intakes' | 'bookings' | 'invoices'
 
