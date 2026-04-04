@@ -20,8 +20,10 @@ import Hours from '@/pages/Hours'
 import Queue from '@/pages/Queue'
 import BookingPage from '@/pages/BookingPage'
 import Certify from '@/pages/Certify'
+import CertifyNew from '@/pages/CertifyNew'
 import CertificateDetail from '@/pages/CertificateDetail'
 import VerifyCertificate from '@/pages/VerifyCertificate'
+import VinHistory from '@/pages/VinHistory'
 import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
 import PortalHistory from './pages/portal/PortalHistory'
@@ -51,6 +53,14 @@ export default function App() {
     return (
       <Routes>
         <Route path="/verify/:certId" element={<VerifyCertificate />} />
+      </Routes>
+    )
+  }
+
+  if (window.location.pathname.startsWith('/vin/')) {
+    return (
+      <Routes>
+        <Route path="/vin/:vin" element={<VinHistory />} />
       </Routes>
     )
   }
@@ -102,6 +112,7 @@ export default function App() {
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/invoices/:id" element={<InvoiceDetail />} />
           <Route path="/certify" element={<Certify />} />
+          <Route path="/certify/new" element={<CertifyNew />} />
           <Route path="/certify/:id" element={<CertificateDetail />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/queue" element={<Queue />} />

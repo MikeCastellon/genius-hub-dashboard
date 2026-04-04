@@ -11,6 +11,26 @@ export interface Profile {
   created_at: string
 }
 
+// ── Business Types (Warranty Verticals) ──────────────────
+export const BUSINESS_TYPES = [
+  'CERAMIC_COATING',
+  'WINDOW_TINT',
+  'PPF',
+  'AUDIO_ELECTRONICS',
+  'MECHANICAL',
+  'WHEELS_TIRES',
+] as const
+export type BusinessType = (typeof BUSINESS_TYPES)[number]
+
+export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  CERAMIC_COATING: 'Ceramic Coating',
+  WINDOW_TINT: 'Window Tint',
+  PPF: 'Paint Protection Film',
+  AUDIO_ELECTRONICS: 'Audio & Electronics',
+  MECHANICAL: 'Mechanical',
+  WHEELS_TIRES: 'Wheels & Tires',
+}
+
 export interface Business {
   id: string
   name: string
@@ -20,6 +40,7 @@ export interface Business {
   website?: string | null
   phone?: string | null
   address?: string | null
+  business_types?: BusinessType[]
   created_at: string
 }
 
@@ -215,29 +236,61 @@ export interface TimeEntry {
   employee?: { display_name: string }
 }
 
+// ── Vehicles (Global, VIN-indexed) ────────────────────────
+
+export interface Vehicle {
+  id: string
+  vin: string
+  year: number | null
+  make: string | null
+  model: string | null
+  trim: string | null
+  color: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ── Certify (Certificates) ────────────────────────────────
 
 export interface Certificate {
   id: string
   business_id: string
-  intake_id: string
   certificate_number: string
-  coating_brand: string
-  coating_product: string
-  odometer: number | null
-  warranty_years: number
-  warranty_expiry: string
-  technician_id: string | null
   status: 'active' | 'expired' | 'voided'
   is_public: boolean
   notes: string | null
   created_at: string
   updated_at: string
+  // Legacy fields (nullable for backward compat)
+  intake_id: string | null
+  coating_brand: string | null
+  coating_product: string | null
+  odometer: number | null
+  warranty_years: number
+  warranty_expiry: string
+  technician_id: string | null
+  // New warranty fields
+  business_type: BusinessType | null
+  vehicle_id: string | null
+  customer_id: string | null
+  service_date: string | null
+  warranty_duration_months: number | null
+  warranty_mileage_cap: number | null
+  odometer_at_service: number | null
+  technician_name: string | null
+  void_conditions: string[] | null
+  void_reason: string | null
   // Eager-loaded relations
   intake?: VehicleIntake
   customer?: Customer
   technician?: { display_name: string }
   photos?: CertificatePhoto[]
+  vehicle?: Vehicle
+  business?: Business
+  // Loaded separately based on business_type
+  details?: CeramicCoatingDetails | WindowTintDetails | PpfDetails
+    | AudioElectronicsDetails | MechanicalDetails | WheelsTiresDetails
+  claims?: WarrantyClaim[]
 }
 
 export interface CertificatePhoto {
@@ -246,6 +299,111 @@ export interface CertificatePhoto {
   storage_path: string
   photo_type: 'before' | 'after' | 'product' | 'other'
   created_at: string
+}
+
+// ── Certificate Detail Tables (1:1 per business type) ────
+
+export interface CeramicCoatingDetails {
+  certificate_id: string
+  coating_brand: string
+  coating_product: string
+  layers_applied: number | null
+  surfaces_coated: string[]
+  prep_method: string | null
+  cure_temp_f: number | null
+  cure_humidity: number | null
+  cure_method: string | null
+  manufacturer_cert_id: string | null
+  maintenance_required: boolean
+}
+
+export interface WindowTintDetails {
+  certificate_id: string
+  film_brand: string
+  film_product: string
+  film_type: string | null
+  vlt_windshield: number | null
+  vlt_front: number | null
+  vlt_rear: number | null
+  vlt_back: number | null
+  vlt_sunroof: number | null
+  windows_covered: string[]
+  uv_rejection_pct: number | null
+  ir_rejection_pct: number | null
+  state_compliant: boolean
+}
+
+export interface PpfDetails {
+  certificate_id: string
+  film_brand: string
+  film_product: string
+  coverage_areas: string[]
+  finish_type: string | null
+  edge_technique: string | null
+  self_healing_confirmed: boolean | null
+  manufacturer_cert_id: string | null
+}
+
+export interface AudioElectronicsDetails {
+  certificate_id: string
+  install_type: string[]
+  equipment_list: { brand: string; model: string; serial_number: string; category: string }[]
+  labor_scope: string | null
+  oem_integration: boolean | null
+  wiring_diagram_url: string | null
+  parts_warranty_months: number | null
+  labor_warranty_months: number | null
+}
+
+export interface MechanicalDetails {
+  certificate_id: string
+  service_category: string
+  parts_used: { part_name: string; part_number: string; brand: string; oem_or_aftermarket: string; new_or_reman: string; cost: number }[]
+  labor_description: string | null
+  dtc_codes_cleared: string[]
+  torque_specs_confirmed: boolean | null
+  fluids_used: { fluid_type: string; brand: string; spec: string }[]
+  maintenance_schedule: string | null
+}
+
+export interface WheelsTiresDetails {
+  certificate_id: string
+  service_type: string
+  tire_specs: { brand: string; model: string; size: string; dot_number: string; speed_rating: string; load_index: string }[] | null
+  wheel_specs: { brand: string; size: string; offset: string; bolt_pattern: string; finish_type: string }[] | null
+  tread_depth_32nds: number | null
+  lug_torque_ft_lbs: number | null
+  tpms_reset: boolean | null
+  road_hazard_coverage: boolean | null
+  prorate_method: string | null
+}
+
+// Map business type to its detail table name
+export const DETAIL_TABLE_MAP: Record<BusinessType, string> = {
+  CERAMIC_COATING: 'ceramic_coating_details',
+  WINDOW_TINT: 'window_tint_details',
+  PPF: 'ppf_details',
+  AUDIO_ELECTRONICS: 'audio_electronics_details',
+  MECHANICAL: 'mechanical_details',
+  WHEELS_TIRES: 'wheels_tires_details',
+}
+
+// ── Warranty Claims ───────────────────────────────────────
+
+export type ClaimStatus = 'pending' | 'approved' | 'denied' | 'resolved'
+
+export interface WarrantyClaim {
+  id: string
+  certificate_id: string
+  business_id: string
+  claim_date: string
+  description: string
+  status: ClaimStatus
+  resolution: string | null
+  resolved_date: string | null
+  odometer_at_claim: number | null
+  created_at: string
+  updated_at: string
 }
 
 // ── Business Settings (Intake Config) ─────────────────────

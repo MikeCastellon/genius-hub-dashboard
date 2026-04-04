@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCertificate, updateCertificate, getCertificatePhotoUrl } from '@/lib/store'
-import { Certificate } from '@/lib/types'
-import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle } from 'lucide-react'
+import { Certificate, BUSINESS_TYPE_LABELS, type WarrantyClaim } from '@/lib/types'
+import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle, FileWarning, AlertTriangle, ExternalLink } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
+import ClaimModal from '@/components/certify/ClaimModal'
 
 const STATUS_COLORS: Record<Certificate['status'], string> = {
   active: 'bg-emerald-100 text-emerald-700',
   expired: 'bg-amber-100 text-amber-700',
   voided: 'bg-red-100 text-red-600',
+}
+
+const CLAIM_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700',
+  approved: 'bg-emerald-100 text-emerald-700',
+  denied: 'bg-red-100 text-red-600',
+  resolved: 'bg-blue-100 text-blue-700',
 }
 
 export default function CertificateDetail() {
@@ -19,6 +27,7 @@ export default function CertificateDetail() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [showClaimModal, setShowClaimModal] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -48,8 +57,9 @@ export default function CertificateDetail() {
 
   const handleVoid = async () => {
     if (!cert || !confirm('Are you sure you want to void this certificate? This cannot be undone.')) return
+    const reason = prompt('Reason for voiding:')
     setUpdating(true)
-    await updateCertificate(cert.id, { status: 'voided' })
+    await updateCertificate(cert.id, { status: 'voided', void_reason: reason || undefined })
     await load()
     setUpdating(false)
   }
@@ -64,10 +74,20 @@ export default function CertificateDetail() {
     <div className="p-6 text-center text-zinc-400">Certificate not found</div>
   )
 
+  // Support both legacy (intake-based) and new (vehicle-based) certs
+  const isNewFormat = !!cert.vehicle_id
   const intake = (cert as any).intake
-  const customer = intake?.customer
-  const photos = (cert as any).photos || []
-  const vehicleLabel = [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
+  const customer = cert.customer || intake?.customer
+  const vehicle = cert.vehicle
+  const photos = cert.photos || []
+  const claims = cert.claims || []
+
+  const vehicleLabel = vehicle
+    ? [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(' ')
+    : [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
+  const vin = vehicle?.vin || intake?.vin
+  const vehicleColor = vehicle?.color || intake?.color
+
   const isWarrantyActive = cert.status === 'active' && new Date(cert.warranty_expiry) > new Date()
   const warrantyDaysLeft = Math.max(0, Math.ceil((new Date(cert.warranty_expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 
@@ -103,9 +123,16 @@ export default function CertificateDetail() {
               <Award size={20} className="text-red-600" />
               <h1 className="text-2xl font-bold text-zinc-900">{cert.certificate_number}</h1>
             </div>
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[cert.status]}`}>
-              {cert.status.toUpperCase()}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[cert.status]}`}>
+                {cert.status.toUpperCase()}
+              </span>
+              {cert.business_type && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600">
+                  {BUSINESS_TYPE_LABELS[cert.business_type]}
+                </span>
+              )}
+            </div>
           </div>
           <div className="bg-white p-2 rounded-xl border border-zinc-100 shadow-sm">
             <QRCodeSVG value={verifyUrl} size={100} />
@@ -114,10 +141,17 @@ export default function CertificateDetail() {
 
         {/* Vehicle info */}
         <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Vehicle</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Vehicle</p>
+            {vin && (
+              <Link to={`/vin/${vin}`} className="text-[11px] text-red-600 hover:text-red-700 flex items-center gap-1">
+                VIN History <ExternalLink size={10} />
+              </Link>
+            )}
+          </div>
           <p className="font-semibold text-zinc-900">{vehicleLabel}</p>
-          {intake?.vin && <p className="text-sm text-zinc-500 font-mono">{intake.vin}</p>}
-          {intake?.color && <p className="text-sm text-zinc-500 capitalize">{intake.color}</p>}
+          {vin && <p className="text-sm text-zinc-500 font-mono">{vin}</p>}
+          {vehicleColor && <p className="text-sm text-zinc-500 capitalize">{vehicleColor}</p>}
         </div>
 
         {/* Customer */}
@@ -130,33 +164,32 @@ export default function CertificateDetail() {
           </div>
         )}
 
-        {/* Coating details */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="p-4 bg-zinc-50 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Coating Brand</p>
-            <p className="font-semibold text-zinc-900">{cert.coating_brand}</p>
+        {/* Service details - legacy */}
+        {!isNewFormat && (
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <InfoBox label="Coating Brand" value={cert.coating_brand} />
+            <InfoBox label="Coating Product" value={cert.coating_product} />
+            {cert.odometer && <InfoBox label="Odometer" value={`${cert.odometer.toLocaleString()} mi`} />}
+            <InfoBox label="Install Date" value={formatDate(cert.created_at)} />
           </div>
-          <div className="p-4 bg-zinc-50 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Coating Product</p>
-            <p className="font-semibold text-zinc-900">{cert.coating_product}</p>
-          </div>
-          {cert.odometer && (
-            <div className="p-4 bg-zinc-50 rounded-xl">
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Odometer</p>
-              <p className="font-semibold text-zinc-900">{cert.odometer.toLocaleString()} mi</p>
+        )}
+
+        {/* Service details - new format */}
+        {isNewFormat && (
+          <div className="mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <InfoBox label="Service Date" value={cert.service_date ? formatDate(cert.service_date) : formatDate(cert.created_at)} />
+              {cert.odometer_at_service && <InfoBox label="Odometer at Service" value={`${cert.odometer_at_service.toLocaleString()} mi`} />}
             </div>
-          )}
-          <div className="p-4 bg-zinc-50 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Install Date</p>
-            <p className="font-semibold text-zinc-900">{formatDate(cert.created_at)}</p>
+            {cert.details && <DetailSection businessType={cert.business_type!} details={cert.details} />}
           </div>
-        </div>
+        )}
 
         {/* Technician */}
-        {(cert as any).technician?.display_name && (
+        {(cert.technician_name || (cert as any).technician?.display_name) && (
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Installer / Technician</p>
-            <p className="font-semibold text-zinc-900">{(cert as any).technician.display_name}</p>
+            <p className="font-semibold text-zinc-900">{cert.technician_name || (cert as any).technician?.display_name}</p>
           </div>
         )}
 
@@ -172,6 +205,11 @@ export default function CertificateDetail() {
             <span className="text-zinc-600">{cert.warranty_years} year{cert.warranty_years > 1 ? 's' : ''}</span>
             <span className="text-zinc-600">Expires {formatDate(cert.warranty_expiry)}</span>
           </div>
+          {cert.warranty_mileage_cap && (
+            <p className="text-xs text-zinc-500 mt-1">
+              Mileage cap: {cert.warranty_mileage_cap.toLocaleString()} miles
+            </p>
+          )}
           {isWarrantyActive && (
             <div className="mt-2 h-2 bg-emerald-200 rounded-full overflow-hidden">
               <div
@@ -181,6 +219,21 @@ export default function CertificateDetail() {
             </div>
           )}
         </div>
+
+        {/* Void conditions */}
+        {cert.void_conditions && cert.void_conditions.length > 0 && (
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Void Conditions</p>
+            <ul className="space-y-1.5">
+              {cert.void_conditions.map((cond, i) => (
+                <li key={i} className="text-xs text-zinc-600 flex items-start gap-1.5">
+                  <AlertTriangle size={10} className="text-amber-500 shrink-0 mt-0.5" />
+                  {cond}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Photos gallery */}
         {photos.length > 0 && (
@@ -204,11 +257,53 @@ export default function CertificateDetail() {
         )}
 
         {cert.notes && (
-          <div className="pt-4 border-t border-zinc-100">
+          <div className="pt-4 border-t border-zinc-100 mb-6">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Notes</p>
             <p className="text-sm text-zinc-600">{cert.notes}</p>
           </div>
         )}
+
+        {cert.void_reason && (
+          <div className="pt-4 border-t border-zinc-100 mb-6">
+            <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1">Void Reason</p>
+            <p className="text-sm text-red-600">{cert.void_reason}</p>
+          </div>
+        )}
+
+        {/* Warranty Claims */}
+        <div className="pt-4 border-t border-zinc-100">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Warranty Claims</p>
+            {cert.status === 'active' && isWarrantyActive && (
+              <button
+                onClick={() => setShowClaimModal(true)}
+                className="flex items-center gap-1 text-xs text-red-600 font-medium hover:text-red-700"
+              >
+                <FileWarning size={12} /> File Claim
+              </button>
+            )}
+          </div>
+          {claims.length === 0 ? (
+            <p className="text-xs text-zinc-400">No claims filed</p>
+          ) : (
+            <div className="space-y-2">
+              {claims.map((claim: WarrantyClaim) => (
+                <div key={claim.id} className="p-3 bg-zinc-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-zinc-500">{formatDate(claim.claim_date)}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${CLAIM_STATUS_COLORS[claim.status]}`}>
+                      {claim.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-700">{claim.description}</p>
+                  {claim.resolution && (
+                    <p className="text-xs text-zinc-500 mt-1">Resolution: {claim.resolution}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -224,6 +319,49 @@ export default function CertificateDetail() {
           </button>
         </div>
       )}
+
+      {showClaimModal && (
+        <ClaimModal
+          certificateId={cert.id}
+          businessId={cert.business_id}
+          onClose={() => setShowClaimModal(false)}
+          onSaved={() => { setShowClaimModal(false); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function InfoBox({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="p-4 bg-zinc-50 rounded-xl">
+      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className="font-semibold text-zinc-900">{value || '—'}</p>
+    </div>
+  )
+}
+
+function DetailSection({ details }: { businessType: string; details: Record<string, any> }) {
+  const entries = Object.entries(details).filter(([key, val]) => {
+    if (key === 'certificate_id' || key === 'created_at') return false
+    if (val === null || val === undefined || val === '') return false
+    if (Array.isArray(val) && val.length === 0) return false
+    return true
+  })
+
+  if (entries.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {entries.map(([key, val]) => {
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        let display: string
+        if (typeof val === 'boolean') display = val ? 'Yes' : 'No'
+        else if (Array.isArray(val) && typeof val[0] === 'string') display = val.map((s: string) => s.replace(/_/g, ' ')).join(', ')
+        else if (Array.isArray(val)) display = `${val.length} item(s)`
+        else display = String(val)
+        return <InfoBox key={key} label={label} value={display} />
+      })}
     </div>
   )
 }

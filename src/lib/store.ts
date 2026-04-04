@@ -4,7 +4,8 @@ import {
   Profile, Business, Service, Customer, CustomerNote, VehicleIntake,
   CartItem, PaymentMethod, UserRole,
   Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry,
-  Certificate, CertificatePhoto,
+  Certificate, CertificatePhoto, Vehicle, WarrantyClaim,
+  BusinessType, DETAIL_TABLE_MAP,
   Job, JobPhoto,
   BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG
 } from './types'
@@ -663,7 +664,7 @@ export function useCertificates() {
     if (!isConfigured()) { setLoading(false); return }
     const { data } = await supabase
       .from('certificates')
-      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*)')
+      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url)')
       .order('created_at', { ascending: false })
     setCertificates(data || [])
     setLoading(false)
@@ -676,19 +677,57 @@ export function useCertificates() {
 export async function getCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*)')
+    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url)')
     .eq('id', id)
     .maybeSingle()
+  if (!data) return null
+
+  // Load business-type-specific details if present
+  if (data.business_type && data.id) {
+    const tableName = DETAIL_TABLE_MAP[data.business_type as BusinessType]
+    if (tableName) {
+      const { data: details } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('certificate_id', data.id)
+        .maybeSingle()
+      if (details) data.details = details
+    }
+  }
+
+  // Load warranty claims
+  const { data: claims } = await supabase
+    .from('warranty_claims')
+    .select('*')
+    .eq('certificate_id', id)
+    .order('claim_date', { ascending: false })
+  if (claims) data.claims = claims
+
   return data
 }
 
 export async function getPublicCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*)')
+    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(name), business:businesses(name, slug, logo_url)')
     .eq('id', id)
     .eq('is_public', true)
     .maybeSingle()
+  if (!data) return null
+
+  // Load public-facing details
+  if (data.business_type && data.id) {
+    const tableName = DETAIL_TABLE_MAP[data.business_type as BusinessType]
+    if (tableName) {
+      const { data: details } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('certificate_id', data.id)
+        .maybeSingle()
+      if (details) data.details = details
+    }
+  }
+
   return data
 }
 
@@ -746,6 +785,183 @@ export async function uploadCertificatePhoto(
 export function getCertificatePhotoUrl(storagePath: string): string {
   const { data } = supabase.storage.from('certificate-photos').getPublicUrl(storagePath)
   return data.publicUrl
+}
+
+// ============ Vehicles (Global) ============
+
+export async function searchVehicles(query: string): Promise<Vehicle[]> {
+  if (!query || query.length < 2) return []
+  const { data } = await supabase
+    .from('vehicles')
+    .select('*')
+    .ilike('vin', `%${query}%`)
+    .order('updated_at', { ascending: false })
+    .limit(10)
+  return data || []
+}
+
+export async function upsertVehicle(vehicle: Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>): Promise<Vehicle> {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .upsert(
+      { ...vehicle, updated_at: new Date().toISOString() },
+      { onConflict: 'vin' }
+    )
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function decodeVin(vin: string): Promise<{ year: number | null; make: string | null; model: string | null; trim: string | null } | null> {
+  try {
+    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`)
+    const json = await res.json()
+    const results = json.Results || []
+    const get = (id: number) => {
+      const r = results.find((r: any) => r.VariableId === id)
+      return r?.Value && r.Value !== 'Not Applicable' ? r.Value : null
+    }
+    return {
+      year: get(29) ? parseInt(get(29)) : null,
+      make: get(26),
+      model: get(28),
+      trim: get(38),
+    }
+  } catch {
+    return null
+  }
+}
+
+// ============ Warranty Certificates (New Flow) ============
+
+export async function createWarrantyCertificate(params: {
+  businessId: string
+  businessType: BusinessType
+  vehicle: Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>
+  customerId: string
+  serviceDate: string
+  warrantyDurationMonths: number
+  warrantyMileageCap?: number | null
+  odometerAtService?: number | null
+  technicianId?: string | null
+  technicianName?: string | null
+  isPublic?: boolean
+  notes?: string | null
+  voidConditions: string[]
+  details: Record<string, any>
+  photos: { file: File; type: CertificatePhoto['photo_type'] }[]
+}): Promise<Certificate> {
+  // 1. Upsert vehicle
+  const vehicle = await upsertVehicle(params.vehicle)
+
+  // 2. Generate cert number via RPC
+  const { data: certNumber, error: rpcError } = await supabase
+    .rpc('generate_cert_number', { p_business_id: params.businessId })
+  if (rpcError) throw rpcError
+
+  // 3. Compute warranty expiry
+  const serviceDate = new Date(params.serviceDate)
+  const expiryDate = new Date(serviceDate)
+  expiryDate.setMonth(expiryDate.getMonth() + params.warrantyDurationMonths)
+  const expiryStr = expiryDate.toISOString().split('T')[0]
+
+  // 4. Insert certificate
+  const { data: cert, error: certError } = await supabase
+    .from('certificates')
+    .insert({
+      business_id: params.businessId,
+      certificate_number: certNumber,
+      business_type: params.businessType,
+      vehicle_id: vehicle.id,
+      customer_id: params.customerId,
+      service_date: params.serviceDate,
+      warranty_duration_months: params.warrantyDurationMonths,
+      warranty_years: Math.ceil(params.warrantyDurationMonths / 12),
+      warranty_expiry: expiryStr,
+      warranty_mileage_cap: params.warrantyMileageCap || null,
+      odometer_at_service: params.odometerAtService || null,
+      technician_id: params.technicianId || null,
+      technician_name: params.technicianName || null,
+      status: 'active',
+      is_public: params.isPublic ?? true,
+      notes: params.notes || null,
+      void_conditions: params.voidConditions,
+      void_reason: null,
+      // Legacy fields null for new flow
+      intake_id: null,
+      coating_brand: null,
+      coating_product: null,
+      odometer: null,
+    })
+    .select()
+    .single()
+  if (certError) throw certError
+
+  // 5. Insert detail row into the appropriate table
+  const tableName = DETAIL_TABLE_MAP[params.businessType]
+  const { error: detailError } = await supabase
+    .from(tableName)
+    .insert({ certificate_id: cert.id, ...params.details })
+  if (detailError) throw detailError
+
+  // 6. Upload photos
+  for (const photo of params.photos) {
+    await uploadCertificatePhoto(cert.id, params.businessId, photo.file, photo.type)
+  }
+
+  return cert
+}
+
+// ============ VIN History (Public) ============
+
+export async function getVinHistory(vin: string): Promise<Certificate[]> {
+  const { data } = await supabase
+    .from('certificates')
+    .select('*, vehicle:vehicles!inner(*), business:businesses(name, slug, logo_url), customer:customers(name)')
+    .eq('vehicles.vin', vin.toUpperCase())
+    .eq('is_public', true)
+    .order('service_date', { ascending: false })
+  return data || []
+}
+
+// ============ Warranty Claims ============
+
+export function useWarrantyClaims(certificateId: string) {
+  const [claims, setClaims] = useState<WarrantyClaim[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !certificateId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('warranty_claims')
+      .select('*')
+      .eq('certificate_id', certificateId)
+      .order('claim_date', { ascending: false })
+    setClaims(data || [])
+    setLoading(false)
+  }, [certificateId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { claims, loading, refresh }
+}
+
+export async function createWarrantyClaim(claim: Omit<WarrantyClaim, 'id' | 'created_at' | 'updated_at'>): Promise<WarrantyClaim> {
+  const { data, error } = await supabase
+    .from('warranty_claims')
+    .insert(claim)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateWarrantyClaim(id: string, updates: Partial<WarrantyClaim>) {
+  const { error } = await supabase
+    .from('warranty_claims')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
 }
 
 // ============ Business Settings (Intake Config) ============

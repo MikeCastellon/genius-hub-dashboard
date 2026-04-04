@@ -85,6 +85,17 @@ export default function CertificateBuilder({ preselectedIntakeId, onClose, onSav
         status: 'active',
         is_public: true,
         notes: notes || null,
+        // New fields (null for legacy flow)
+        business_type: null,
+        vehicle_id: null,
+        customer_id: null,
+        service_date: null,
+        warranty_duration_months: null,
+        warranty_mileage_cap: null,
+        odometer_at_service: null,
+        technician_name: null,
+        void_conditions: null,
+        void_reason: null,
       })
 
       // Upload photos

@@ -4,7 +4,7 @@ import {
   useBusinesses, useBusinessSettings, upsertBusinessSettings, updateBusiness,
   useBusinessHours, upsertBusinessHours, uploadBusinessLogo
 } from '@/lib/store'
-import { UserRole, IntakeConfig, IntakeSectionKey, IntakeSectionDef, DEFAULT_INTAKE_CONFIG, BusinessHours } from '@/lib/types'
+import { UserRole, IntakeConfig, IntakeSectionKey, IntakeSectionDef, DEFAULT_INTAKE_CONFIG, BusinessHours, BUSINESS_TYPES, BUSINESS_TYPE_LABELS, type BusinessType } from '@/lib/types'
 import {
   ShieldCheck, Clock, CheckCircle2, XCircle, Loader2,
   Users, Shield, Building2, Settings, Eye, EyeOff, GripVertical,
@@ -18,7 +18,7 @@ export default function Admin() {
   const { businesses } = useBusinesses()
   const { settings, refresh: refreshSettings } = useBusinessSettings()
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'users' | 'business' | 'intake'>('users')
+  const [tab, setTab] = useState<'users' | 'business' | 'intake' | 'warranty'>('users')
 
   const isSuperAdmin = myProfile?.role === 'super_admin'
   const isAdmin = myProfile?.role === 'admin' || isSuperAdmin
@@ -78,6 +78,9 @@ export default function Admin() {
         </button>
         <button onClick={() => setTab('intake')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Settings size={14} /> Intake Form
+        </button>
+        <button onClick={() => setTab('warranty')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'warranty' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+          <Shield size={14} /> Warranty
         </button>
       </div>
 
@@ -229,6 +232,13 @@ export default function Admin() {
           businessId={myProfile?.business_id || ''}
           currentConfig={settings?.intake_config || DEFAULT_INTAKE_CONFIG}
           onSaved={refreshSettings}
+        />
+      )}
+
+      {tab === 'warranty' && isAdmin && (
+        <BusinessTypesPanel
+          businessId={myProfile?.business_id || ''}
+          businesses={businesses}
         />
       )}
     </div>
@@ -674,6 +684,94 @@ function BusinessInfoPanel({ businessId, businesses }: {
           {savingHours ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Hours'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════
+// Business Types (Warranty) Sub-Component
+// ═══════════════════════════════════════════
+
+function BusinessTypesPanel({ businessId, businesses }: {
+  businessId: string
+  businesses: any[]
+}) {
+  const business = businesses.find(b => b.id === businessId)
+  const [selectedTypes, setSelectedTypes] = useState<BusinessType[]>(
+    (business?.business_types || []) as BusinessType[]
+  )
+  const [saving, setSaving] = useState(false)
+
+  const toggle = (type: BusinessType) => {
+    setSelectedTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    )
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      await supabase
+        .from('businesses')
+        .update({ business_types: selectedTypes })
+        .eq('id', businessId)
+      alert('Business types saved!')
+    } catch (e: any) {
+      alert('Error: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-zinc-700 mb-1">Business Types</h3>
+        <p className="text-xs text-zinc-400 mb-4">
+          Select the service types your business offers. This controls which warranty certificate types are available.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {BUSINESS_TYPES.map(type => {
+            const selected = selectedTypes.includes(type)
+            return (
+              <button
+                key={type}
+                onClick={() => toggle(type)}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                  selected
+                    ? 'border-red-500 bg-red-50'
+                    : 'border-zinc-200 bg-white hover:border-zinc-300'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                  selected ? 'border-red-500 bg-red-500' : 'border-zinc-300'
+                }`}>
+                  {selected && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${selected ? 'text-red-700' : 'text-zinc-700'}`}>
+                    {BUSINESS_TYPE_LABELS[type]}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+      >
+        {saving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Business Types'}
+      </button>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCertificates } from '@/lib/store'
-import { Certificate } from '@/lib/types'
+import { Certificate, BUSINESS_TYPE_LABELS, type BusinessType } from '@/lib/types'
 import { Award, Plus, Loader2, Search } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import CertificateBuilder from '@/components/CertificateBuilder'
@@ -19,19 +19,30 @@ export default function Certify() {
   const preselectedIntake = searchParams.get('intake')
   const [showBuilder, setShowBuilder] = useState(!!preselectedIntake)
   const [filter, setFilter] = useState<Certificate['status'] | 'all'>('all')
+  const [typeFilter, setTypeFilter] = useState<BusinessType | 'all'>('all')
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
     return certificates.filter(cert => {
       const matchStatus = filter === 'all' || cert.status === filter
-      const customer = (cert as any).intake?.customer
+      const matchType = typeFilter === 'all' || cert.business_type === typeFilter
+      // Support both legacy (intake-based) and new (vehicle/customer-based) certs
+      const customer = cert.customer || (cert as any).intake?.customer
+      const vin = cert.vehicle?.vin || (cert as any).intake?.vin
       const matchSearch = !search ||
         cert.certificate_number.toLowerCase().includes(search.toLowerCase()) ||
         customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        (cert as any).intake?.vin?.toLowerCase().includes(search.toLowerCase())
-      return matchStatus && matchSearch
+        vin?.toLowerCase().includes(search.toLowerCase())
+      return matchStatus && matchType && matchSearch
     })
-  }, [certificates, filter, search])
+  }, [certificates, filter, typeFilter, search])
+
+  // Collect unique business types present in certs
+  const presentTypes = useMemo(() => {
+    const types = new Set<BusinessType>()
+    certificates.forEach(c => { if (c.business_type) types.add(c.business_type) })
+    return Array.from(types)
+  }, [certificates])
 
   return (
     <div className="p-4 md:p-6">
@@ -43,7 +54,7 @@ export default function Certify() {
           <p className="text-[12px] text-zinc-400 mt-0.5">{certificates.length} total certificates</p>
         </div>
         <button
-          onClick={() => setShowBuilder(true)}
+          onClick={() => navigate('/certify/new')}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
         >
           <Plus size={15} /> New Certificate
@@ -51,7 +62,7 @@ export default function Certify() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[160px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
@@ -72,6 +83,27 @@ export default function Certify() {
         ))}
       </div>
 
+      {/* Business type filter */}
+      {presentTypes.length > 0 && (
+        <div className="flex gap-1.5 mb-4 flex-wrap">
+          <button
+            onClick={() => setTypeFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === 'all' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+          >
+            All Types
+          </button>
+          {presentTypes.map(t => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === t ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+            >
+              {BUSINESS_TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={24} className="animate-spin text-red-600" />
@@ -85,10 +117,17 @@ export default function Certify() {
       ) : (
         <div className="space-y-3">
           {filtered.map(cert => {
-            const customer = (cert as any).intake?.customer
+            // Support both legacy and new cert formats
+            const customer = cert.customer || (cert as any).intake?.customer
             const intake = (cert as any).intake
-            const vehicleLabel = [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
+            const vehicle = cert.vehicle
+            const vehicleLabel = vehicle
+              ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+              : [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
             const isWarrantyActive = cert.status === 'active' && new Date(cert.warranty_expiry) > new Date()
+            const serviceLabel = cert.business_type
+              ? BUSINESS_TYPE_LABELS[cert.business_type]
+              : cert.coating_brand || ''
 
             return (
               <div
@@ -103,13 +142,20 @@ export default function Certify() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLORS[cert.status]}`}>
                         {cert.status}
                       </span>
+                      {cert.business_type && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 font-medium">
+                          {BUSINESS_TYPE_LABELS[cert.business_type]}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-600">{customer?.name || 'Unknown'}</p>
                     <p className="text-[11px] text-zinc-400">{vehicleLabel}</p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
-                    <p className="text-xs font-medium text-zinc-700">{cert.coating_brand}</p>
-                    <p className="text-[11px] text-zinc-400">{cert.coating_product}</p>
+                    <p className="text-xs font-medium text-zinc-700">{serviceLabel}</p>
+                    {cert.coating_product && !cert.business_type && (
+                      <p className="text-[11px] text-zinc-400">{cert.coating_product}</p>
+                    )}
                     <p className={`text-[10px] mt-1 font-semibold ${isWarrantyActive ? 'text-emerald-600' : 'text-red-500'}`}>
                       {isWarrantyActive ? `Warranty until ${formatDate(cert.warranty_expiry)}` : `Expired ${formatDate(cert.warranty_expiry)}`}
                     </p>
@@ -121,6 +167,7 @@ export default function Certify() {
         </div>
       )}
 
+      {/* Legacy builder modal for intake-based certs */}
       {showBuilder && (
         <CertificateBuilder
           preselectedIntakeId={preselectedIntake || undefined}

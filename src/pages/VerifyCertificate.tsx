@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { getPublicCertificate, getCertificatePhotoUrl } from '@/lib/store'
-import { Certificate } from '@/lib/types'
-import { Loader2, ShieldCheck, ShieldOff, Lock } from 'lucide-react'
+import { Certificate, BUSINESS_TYPE_LABELS } from '@/lib/types'
+import { Loader2, ShieldCheck, ShieldOff, Lock, ExternalLink } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export default function VerifyCertificate() {
@@ -29,7 +29,6 @@ export default function VerifyCertificate() {
     </div>
   )
 
-  // Private certificate
   if (notFound) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
       <div className="text-center max-w-sm">
@@ -44,10 +43,18 @@ export default function VerifyCertificate() {
 
   if (!cert) return null
 
+  // Support both legacy and new formats
+  const isNewFormat = !!cert.vehicle_id
   const intake = (cert as any).intake
-  const customer = intake?.customer
-  const photos = (cert as any).photos || []
-  const vehicleLabel = [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
+  const customer = cert.customer || intake?.customer
+  const vehicle = cert.vehicle
+  const photos = cert.photos || []
+  const business = cert.business
+
+  const vehicleLabel = vehicle
+    ? [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(' ')
+    : [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
+  const vin = vehicle?.vin || intake?.vin
   const isWarrantyActive = cert.status === 'active' && new Date(cert.warranty_expiry) > new Date()
 
   return (
@@ -60,25 +67,41 @@ export default function VerifyCertificate() {
         <h1 className="text-xl font-bold text-white">
           {isWarrantyActive ? 'Verified Installation' : cert.status === 'voided' ? 'Certificate Voided' : 'Warranty Expired'}
         </h1>
-        <p className="text-white/80 text-sm mt-1">Verified by Pro Hub</p>
-        <div className="mt-3 flex justify-center">
-          <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-6 opacity-90" />
-        </div>
+        {business?.name && (
+          <p className="text-white/80 text-sm mt-1">Verified by {business.name}</p>
+        )}
+        {business?.logo_url && (
+          <div className="mt-3 flex justify-center">
+            <img src={business.logo_url} alt={business.name} className="h-6 opacity-90" />
+          </div>
+        )}
       </div>
 
       <div className="max-w-lg mx-auto p-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-lg p-5 space-y-5">
-          {/* Certificate number */}
+          {/* Certificate number + type badge */}
           <div className="text-center pb-4 border-b border-zinc-100">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Certificate</p>
             <p className="text-lg font-bold text-zinc-900">{cert.certificate_number}</p>
+            {cert.business_type && (
+              <span className="inline-block mt-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                {BUSINESS_TYPE_LABELS[cert.business_type]}
+              </span>
+            )}
           </div>
 
           {/* Vehicle */}
           <div>
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Vehicle</p>
             <p className="font-semibold text-zinc-900">{vehicleLabel}</p>
-            {intake?.vin && <p className="text-xs text-zinc-400 font-mono">{intake.vin}</p>}
+            {vin && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-zinc-400 font-mono">{vin}</p>
+                <Link to={`/vin/${vin}`} className="text-[10px] text-red-600 hover:text-red-700 flex items-center gap-0.5">
+                  History <ExternalLink size={8} />
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Customer */}
@@ -89,21 +112,25 @@ export default function VerifyCertificate() {
             </div>
           )}
 
-          {/* Coating */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Coating</p>
-              <p className="text-sm font-semibold text-zinc-900">{cert.coating_brand}</p>
-              <p className="text-xs text-zinc-500">{cert.coating_product}</p>
+          {/* Service details */}
+          {isNewFormat && cert.details ? (
+            <PublicDetailSection businessType={cert.business_type!} details={cert.details} serviceDate={cert.service_date} technicianName={cert.technician_name || (cert as any).technician?.display_name} />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Coating</p>
+                <p className="text-sm font-semibold text-zinc-900">{cert.coating_brand}</p>
+                <p className="text-xs text-zinc-500">{cert.coating_product}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Installed</p>
+                <p className="text-sm font-semibold text-zinc-900">{formatDate(cert.created_at)}</p>
+                {(cert as any).technician?.display_name && (
+                  <p className="text-xs text-zinc-500">by {(cert as any).technician.display_name}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Installed</p>
-              <p className="text-sm font-semibold text-zinc-900">{formatDate(cert.created_at)}</p>
-              {(cert as any).technician?.display_name && (
-                <p className="text-xs text-zinc-500">by {(cert as any).technician.display_name}</p>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Warranty status */}
           <div className={`p-4 rounded-xl ${isWarrantyActive ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
@@ -117,6 +144,9 @@ export default function VerifyCertificate() {
               <div className="text-right">
                 <p className="text-sm text-zinc-600">{cert.warranty_years} year{cert.warranty_years > 1 ? 's' : ''}</p>
                 <p className="text-xs text-zinc-400">{isWarrantyActive ? 'Expires' : 'Expired'} {formatDate(cert.warranty_expiry)}</p>
+                {cert.warranty_mileage_cap && (
+                  <p className="text-xs text-zinc-400">or {cert.warranty_mileage_cap.toLocaleString()} mi</p>
+                )}
               </div>
             </div>
           </div>
@@ -146,9 +176,58 @@ export default function VerifyCertificate() {
         {/* Footer branding */}
         <div className="text-center mt-6 pb-8">
           <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Powered by</p>
-          <p className="text-sm font-bold text-zinc-600 mt-0.5">Pro Hub</p>
-          <p className="text-[10px] text-zinc-400">Sales & Service by Auto Care Genius</p>
+          <p className="text-sm font-bold text-zinc-600 mt-0.5">{business?.name || 'Pro Hub'}</p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function PublicDetailSection({ businessType, details, serviceDate, technicianName }: {
+  businessType: string
+  details: Record<string, any>
+  serviceDate: string | null
+  technicianName: string | null
+}) {
+  // Show key fields based on business type
+  const keyFields: Record<string, any> = {}
+  const d = details as any
+
+  if (businessType === 'CERAMIC_COATING') {
+    if (d.coating_brand) keyFields['Brand'] = d.coating_brand
+    if (d.coating_product) keyFields['Product'] = d.coating_product
+    if (d.layers_applied) keyFields['Layers'] = d.layers_applied
+    if (d.surfaces_coated?.length) keyFields['Surfaces'] = d.surfaces_coated.map((s: string) => s.replace(/_/g, ' ')).join(', ')
+  } else if (businessType === 'WINDOW_TINT') {
+    if (d.film_brand) keyFields['Brand'] = d.film_brand
+    if (d.film_product) keyFields['Product'] = d.film_product
+    if (d.film_type) keyFields['Type'] = d.film_type
+  } else if (businessType === 'PPF') {
+    if (d.film_brand) keyFields['Brand'] = d.film_brand
+    if (d.film_product) keyFields['Product'] = d.film_product
+    if (d.coverage_areas?.length) keyFields['Coverage'] = d.coverage_areas.map((s: string) => s.replace(/_/g, ' ')).join(', ')
+  } else if (businessType === 'AUDIO_ELECTRONICS') {
+    if (d.install_type?.length) keyFields['Install Type'] = d.install_type.map((s: string) => s.replace(/_/g, ' ')).join(', ')
+    if (d.labor_scope) keyFields['Scope'] = d.labor_scope
+  } else if (businessType === 'MECHANICAL') {
+    if (d.service_category) keyFields['Category'] = d.service_category
+    if (d.labor_description) keyFields['Work'] = d.labor_description
+  } else if (businessType === 'WHEELS_TIRES') {
+    if (d.service_type) keyFields['Service'] = d.service_type.replace(/_/g, ' ')
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {Object.entries(keyFields).map(([label, val]) => (
+        <div key={label}>
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">{label}</p>
+          <p className="text-sm font-semibold text-zinc-900">{val}</p>
+        </div>
+      ))}
+      <div>
+        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Service Date</p>
+        <p className="text-sm font-semibold text-zinc-900">{serviceDate ? formatDate(serviceDate) : '—'}</p>
+        {technicianName && <p className="text-xs text-zinc-500">by {technicianName}</p>}
       </div>
     </div>
   )
