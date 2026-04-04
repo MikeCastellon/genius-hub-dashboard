@@ -62,6 +62,34 @@ export interface CustomerNote {
   author?: { display_name: string }
 }
 
+export interface Job {
+  id: string
+  business_id: string
+  intake_id: string | null
+  appointment_id: string | null
+  customer_id: string | null
+  technician_id: string | null
+  status: 'queued' | 'in_progress' | 'completed'
+  started_at: string | null
+  finished_at: string | null
+  duration_minutes: number | null
+  notes: string | null
+  created_at: string
+  // Joined data
+  customer?: Customer
+  intake?: VehicleIntake
+  appointment?: Appointment
+}
+
+export interface JobPhoto {
+  id: string
+  job_id: string
+  business_id: string
+  photo_type: 'before' | 'after'
+  storage_path: string
+  created_at: string
+}
+
 export interface VehicleIntake {
   id: string
   customer_id: string

@@ -5,6 +5,7 @@ import {
   CartItem, PaymentMethod, UserRole,
   Invoice, InvoiceItem, Appointment, BusinessHours, Shift, TimeEntry,
   Certificate, CertificatePhoto,
+  Job, JobPhoto,
   BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG
 } from './types'
 
@@ -264,6 +265,15 @@ export async function createIntake(
 
   const { error: itemsError } = await supabase.from('intake_services').insert(items)
   if (itemsError) throw itemsError
+
+  // Auto-create a queued job for this intake
+  if (isConfigured() && intake && businessId) {
+    await createJob({
+      business_id: businessId,
+      intake_id: intake.id,
+      customer_id: savedCustomer.id,
+    })
+  }
 
   return intake
 }
@@ -1033,4 +1043,188 @@ export function useMyInvoices() {
 
   useEffect(() => { refresh() }, [refresh])
   return { invoices, loading, refresh }
+}
+
+// ============ Jobs ============
+
+export function useJobs(businessId: string | null | undefined) {
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !businessId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('jobs')
+      .select('*, customer:customers(*), intake:vehicle_intakes(*), appointment:appointments(*)')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+    setJobs(data || [])
+    setLoading(false)
+  }, [businessId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { jobs, loading, refresh }
+}
+
+export function useActiveJob(technicianId: string | null | undefined) {
+  const [job, setJob] = useState<Job | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !technicianId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('jobs')
+      .select('*, customer:customers(*), intake:vehicle_intakes(*), appointment:appointments(*)')
+      .eq('technician_id', technicianId)
+      .eq('status', 'in_progress')
+      .maybeSingle()
+    setJob(data)
+    setLoading(false)
+  }, [technicianId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { job, loading, refresh }
+}
+
+export async function createJob(params: {
+  business_id: string
+  intake_id?: string | null
+  appointment_id?: string | null
+  customer_id: string
+  technician_id?: string | null
+}): Promise<Job> {
+  const { data, error } = await supabase
+    .from('jobs')
+    .insert({
+      business_id: params.business_id,
+      intake_id: params.intake_id || null,
+      appointment_id: params.appointment_id || null,
+      customer_id: params.customer_id,
+      technician_id: params.technician_id || null,
+      status: 'queued',
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function startJob(jobId: string, technicianId: string) {
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+      technician_id: technicianId,
+    })
+    .eq('id', jobId)
+  if (error) throw error
+}
+
+export async function finishJob(jobId: string, notes?: string) {
+  const { data: job, error: fetchError } = await supabase
+    .from('jobs')
+    .select('started_at')
+    .eq('id', jobId)
+    .single()
+  if (fetchError) throw fetchError
+
+  const now = new Date()
+  const startedAt = job.started_at ? new Date(job.started_at) : now
+  const durationMinutes = Math.round((now.getTime() - startedAt.getTime()) / 60000)
+
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      status: 'completed',
+      finished_at: now.toISOString(),
+      duration_minutes: durationMinutes,
+      notes: notes || null,
+    })
+    .eq('id', jobId)
+  if (error) throw error
+}
+
+export async function uploadJobPhoto(
+  jobId: string,
+  businessId: string,
+  file: File,
+  photoType: JobPhoto['photo_type']
+): Promise<JobPhoto> {
+  const timestamp = Date.now()
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${businessId}/${jobId}/${photoType}_${timestamp}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('job-photos')
+    .upload(path, file, { contentType: file.type })
+  if (uploadError) throw uploadError
+
+  const { data, error } = await supabase
+    .from('job_photos')
+    .insert({ job_id: jobId, business_id: businessId, storage_path: path, photo_type: photoType })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export function getJobPhotoUrl(storagePath: string): string {
+  const { data } = supabase.storage.from('job-photos').getPublicUrl(storagePath)
+  return data.publicUrl
+}
+
+export function useJobPhotos(jobId: string | null | undefined) {
+  const [photos, setPhotos] = useState<JobPhoto[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !jobId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('job_photos')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false })
+    setPhotos(data || [])
+    setLoading(false)
+  }, [jobId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { photos, loading, refresh }
+}
+
+export function useCustomerPhotos(customerId: string | null | undefined) {
+  const [photos, setPhotos] = useState<JobPhoto[]>([])
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isConfigured() || !customerId) { setLoading(false); return }
+
+    ;(async () => {
+      const { data: customerJobs } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('customer_id', customerId)
+      const jobList = customerJobs || []
+      setJobs(jobList)
+
+      if (jobList.length === 0) {
+        setPhotos([])
+        setLoading(false)
+        return
+      }
+
+      const jobIds = jobList.map(j => j.id)
+      const { data: jobPhotos } = await supabase
+        .from('job_photos')
+        .select('*')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending: false })
+      setPhotos(jobPhotos || [])
+      setLoading(false)
+    })()
+  }, [customerId])
+
+  return { photos, jobs, loading }
 }
