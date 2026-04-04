@@ -57,8 +57,8 @@ export default function FloatingJobPill() {
     if (activeJob) setShowQueue(false)
   }, [activeJob])
 
-  // Role gate — only visible for technicians (role === 'user')
-  if (profile?.role !== 'user') return null
+  // Role gate — visible for all staff (not customers)
+  if (!profile || profile.role === 'customer') return null
 
   const queuedJobs = allJobs.filter((j) => j.status === 'queued')
 

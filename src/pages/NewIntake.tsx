@@ -228,7 +228,7 @@ export default function NewIntake() {
 
       // Only auto-reset if no invite prompt and no start-job button shown
       const hasInvitePrompt = needsCustomer && customer.email
-      const hasStartJobBtn = profile?.role === 'user' && jobRow
+      const hasStartJobBtn = !!jobRow
       if (!hasInvitePrompt && !hasStartJobBtn) {
         setTimeout(() => {
           setVehicle({ vin: '', year: '', make: '', model: '', color: '', license_plate: '' })
@@ -469,13 +469,13 @@ export default function NewIntake() {
               ? 'You are now working on this vehicle.'
               : savedCustomer && savedCustomer.email && !savedCustomer.profile_id
                 ? 'Would you like to invite this customer?'
-                : profile?.role === 'user' && jobId
+                : jobId
                   ? 'Ready to start working on this vehicle?'
                   : 'Preparing new intake form...'}
           </p>
 
-          {/* Start Job button — only for tech role with a queued job */}
-          {profile?.role === 'user' && jobId && !jobStarted && (
+          {/* Start Job button */}
+          {jobId && !jobStarted && (
             <div className="mt-4">
               <button
                 onClick={handleStartJob}
