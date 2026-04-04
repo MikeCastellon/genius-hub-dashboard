@@ -1,8 +1,10 @@
 import { useState, useMemo, useRef } from 'react'
-import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinesses } from '@/lib/store'
-import { Appointment, AppointmentStatus } from '@/lib/types'
-import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check } from 'lucide-react'
+import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinesses, createJob, upsertCustomer } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
+import { Appointment, AppointmentStatus, Job } from '@/lib/types'
+import { Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Link2, Check, Play } from 'lucide-react'
 import AppointmentModal from '@/components/AppointmentModal'
+import StartJobModal from '@/components/StartJobModal'
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
   pending: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -43,6 +45,9 @@ export default function Schedule() {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [startingJob, setStartingJob] = useState<Job | null>(null)
+  const [jobStatuses, setJobStatuses] = useState<Record<string, 'in_progress' | 'completed'>>({})
+  const [loadingApptId, setLoadingApptId] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
   // Week grid
@@ -92,6 +97,65 @@ export default function Schedule() {
   }
 
   const today = new Date()
+  const todayStr = today.toDateString()
+
+  const isApptToday = (appt: Appointment) =>
+    new Date(appt.scheduled_at).toDateString() === todayStr
+
+  const handleStartJob = async (appt: Appointment) => {
+    if (!profile?.business_id) return
+    const businessId = profile.business_id
+    setLoadingApptId(appt.id)
+    try {
+      // Check if a job already exists for this appointment
+      const { data: existingJob } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('appointment_id', appt.id)
+        .maybeSingle()
+
+      if (existingJob) {
+        if (existingJob.status === 'in_progress') {
+          setJobStatuses(s => ({ ...s, [appt.id]: 'in_progress' }))
+          return
+        }
+        if (existingJob.status === 'completed') {
+          setJobStatuses(s => ({ ...s, [appt.id]: 'completed' }))
+          return
+        }
+        // queued — open modal
+        setStartingJob(existingJob as Job)
+        return
+      }
+
+      // No job exists — upsert customer then create job
+      const customer = await upsertCustomer(
+        {
+          name: appt.customer_name,
+          phone: appt.customer_phone,
+          email: appt.customer_email,
+          vehicle_year: appt.vehicle_year || undefined,
+          vehicle_make: appt.vehicle_make || undefined,
+          vehicle_model: appt.vehicle_model || undefined,
+          vehicle_color: appt.vehicle_color || undefined,
+        },
+        businessId
+      )
+
+      const job = await createJob({
+        business_id: businessId,
+        appointment_id: appt.id,
+        customer_id: customer.id,
+        technician_id: appt.technician_id,
+      })
+      setStartingJob(job)
+    } catch (e: any) {
+      alert(e.message || 'Failed to start job')
+    } finally {
+      setLoadingApptId(null)
+    }
+  }
+
   const ROW_HEIGHT = 60 // px per hour
 
   return (
@@ -196,25 +260,53 @@ export default function Schedule() {
                             const duration = (appt.duration_minutes || 60) / 60
                             const top = (startHour - HOURS[0]) * ROW_HEIGHT
                             const height = Math.max(duration * ROW_HEIGHT, 28)
+                            const apptIsToday = isApptToday(appt)
+                            const jobStatus = jobStatuses[appt.id]
 
                             return (
-                              <button
+                              <div
                                 key={appt.id}
-                                onClick={() => setSelected(appt)}
-                                className={`absolute left-1 right-1 rounded-lg border px-2 py-1 text-left overflow-hidden transition-shadow hover:shadow-md z-10 ${STATUS_COLORS[appt.status]}`}
+                                className={`absolute left-1 right-1 rounded-lg border text-left overflow-hidden transition-shadow hover:shadow-md z-10 ${STATUS_COLORS[appt.status]}`}
                                 style={{ top: Math.max(top, 0), height }}
                               >
-                                <div className="flex items-center gap-1">
-                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[appt.status]}`} />
-                                  <p className="text-[11px] font-semibold truncate">{appt.customer_name}</p>
-                                </div>
-                                <p className="text-[10px] opacity-70 truncate">{formatTime(appt.scheduled_at)}</p>
-                                {height > 48 && appt.vehicle_make && (
-                                  <p className="text-[9px] opacity-60 truncate mt-0.5">
-                                    {[appt.vehicle_year, appt.vehicle_make, appt.vehicle_model].filter(Boolean).join(' ')}
-                                  </p>
+                                <button
+                                  onClick={() => setSelected(appt)}
+                                  className="w-full text-left px-2 py-1"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[appt.status]}`} />
+                                    <p className="text-[11px] font-semibold truncate">{appt.customer_name}</p>
+                                  </div>
+                                  <p className="text-[10px] opacity-70 truncate">{formatTime(appt.scheduled_at)}</p>
+                                  {height > 48 && appt.vehicle_make && (
+                                    <p className="text-[9px] opacity-60 truncate mt-0.5">
+                                      {[appt.vehicle_year, appt.vehicle_make, appt.vehicle_model].filter(Boolean).join(' ')}
+                                    </p>
+                                  )}
+                                </button>
+                                {apptIsToday && appt.status !== 'cancelled' && height > 48 && (
+                                  <div className="px-1.5 pb-1">
+                                    {jobStatus === 'in_progress' ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-violet-100 text-violet-700">In Progress</span>
+                                    ) : jobStatus === 'completed' ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 text-emerald-700">Completed</span>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleStartJob(appt) }}
+                                        disabled={loadingApptId === appt.id}
+                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-gradient-to-r from-red-700 to-red-600 text-white text-[9px] font-semibold shadow-sm hover:shadow transition-all disabled:opacity-50"
+                                      >
+                                        {loadingApptId === appt.id ? (
+                                          <Loader2 size={8} className="animate-spin" />
+                                        ) : (
+                                          <Play size={8} />
+                                        )}
+                                        Start Job
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
-                              </button>
+                              </div>
                             )
                           })}
 
@@ -290,6 +382,21 @@ export default function Schedule() {
           businessId={profile?.business_id || ''}
           onClose={() => setShowNew(false)}
           onCreate={handleCreate}
+        />
+      )}
+
+      {startingJob && profile && (
+        <StartJobModal
+          job={startingJob}
+          technicianId={profile.id}
+          onClose={() => setStartingJob(null)}
+          onStarted={() => {
+            if (startingJob.appointment_id) {
+              setJobStatuses(s => ({ ...s, [startingJob.appointment_id!]: 'in_progress' }))
+            }
+            setStartingJob(null)
+            refresh()
+          }}
         />
       )}
     </div>
