@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
-import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer } from '@/lib/store'
+import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer, useCustomerPhotos, getJobPhotoUrl } from '@/lib/store'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check } from 'lucide-react'
+import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check, Camera, Clock } from 'lucide-react'
+import type { JobPhoto, Job } from '@/lib/types'
 
 const AVATAR_COLORS = [
   'bg-red-100 text-red-700',
@@ -47,7 +48,7 @@ function tagBgColor(index: number): string {
 }
 
 
-type HistoryTab = 'intakes' | 'bookings' | 'invoices'
+type HistoryTab = 'intakes' | 'bookings' | 'invoices' | 'gallery'
 
 type SortOption = 'name' | 'last_visit' | 'total_spend'
 
@@ -268,6 +269,32 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
   const [activeTab, setActiveTab] = useState<HistoryTab>('intakes')
   const [inviting, setInviting] = useState(false)
   const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const { photos: customerPhotos, jobs: customerJobs, loading: photosLoading } = useCustomerPhotos(customer?.id)
+
+  // Group photos by job, most recent first
+  const photoGroups = useMemo(() => {
+    if (!customerPhotos.length) return []
+    const jobMap = new Map<string, Job>()
+    customerJobs.forEach(j => jobMap.set(j.id, j))
+
+    const grouped = new Map<string, { job: Job; before: JobPhoto[]; after: JobPhoto[] }>()
+    customerPhotos.forEach(p => {
+      if (!grouped.has(p.job_id)) {
+        const job = jobMap.get(p.job_id)
+        if (!job) return
+        grouped.set(p.job_id, { job, before: [], after: [] })
+      }
+      const group = grouped.get(p.job_id)!
+      if (p.photo_type === 'before') group.before.push(p)
+      else group.after.push(p)
+    })
+
+    return Array.from(grouped.values()).sort(
+      (a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime()
+    )
+  }, [customerPhotos, customerJobs])
 
   if (loading) {
     return (
@@ -570,6 +597,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
               { key: 'intakes' as HistoryTab, label: 'Intakes', icon: Car },
               { key: 'bookings' as HistoryTab, label: 'Bookings', icon: Calendar },
               { key: 'invoices' as HistoryTab, label: 'Invoices', icon: Receipt },
+              { key: 'gallery' as HistoryTab, label: 'Gallery', icon: Camera },
             ]).map(tab => (
               <button
                 key={tab.key}
@@ -585,7 +613,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
                   activeTab === tab.key ? 'bg-red-100 text-red-600' : 'bg-zinc-100 text-zinc-500'
                 }`}>
-                  {tab.key === 'intakes' ? intakes.length : tab.key === 'bookings' ? appointments.length : invoices.length}
+                  {tab.key === 'intakes' ? intakes.length : tab.key === 'bookings' ? appointments.length : tab.key === 'invoices' ? invoices.length : customerPhotos.length}
                 </span>
               </button>
             ))}
@@ -598,22 +626,46 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 <p className="text-[12px] text-zinc-400 text-center py-6">No intakes yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {intakes.map(intake => (
+                  {intakes.map(intake => {
+                    const linkedJob = customerJobs.find(j => j.intake_id === intake.id)
+                    return (
                     <div key={intake.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
                       <div>
                         <p className="text-[13px] font-semibold text-zinc-800">
                           {[intake.year, intake.make, intake.model].filter(Boolean).join(' ') || 'Vehicle'}
                         </p>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">
-                          {formatDate(intake.created_at)}
-                          {intake.intake_services && intake.intake_services.length > 0 && (
-                            <> &middot; {intake.intake_services.map(s => s.service?.name || 'Service').join(', ')}</>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[11px] text-zinc-400">
+                            {formatDate(intake.created_at)}
+                            {intake.intake_services && intake.intake_services.length > 0 && (
+                              <> &middot; {intake.intake_services.map(s => s.service?.name || 'Service').join(', ')}</>
+                            )}
+                          </p>
+                          {linkedJob && linkedJob.status === 'completed' && linkedJob.duration_minutes != null && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 text-[10px] font-semibold">
+                              <Clock size={10} />
+                              {linkedJob.duration_minutes >= 60
+                                ? `${Math.floor(linkedJob.duration_minutes / 60)}h ${linkedJob.duration_minutes % 60}m`
+                                : `${linkedJob.duration_minutes}m`}
+                            </span>
                           )}
-                        </p>
+                          {linkedJob && linkedJob.status === 'in_progress' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 text-[10px] font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              In Progress
+                            </span>
+                          )}
+                          {linkedJob && linkedJob.status === 'queued' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-semibold">
+                              Queued
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="text-[13px] font-semibold text-zinc-700">{formatCurrency(intake.subtotal)}</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             )}
@@ -672,8 +724,97 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 </div>
               )
             )}
+
+            {/* Gallery Tab */}
+            {activeTab === 'gallery' && (
+              photosLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={20} className="animate-spin text-zinc-400" />
+                </div>
+              ) : photoGroups.length === 0 ? (
+                <p className="text-[12px] text-zinc-400 text-center py-6">No photos yet.</p>
+              ) : (
+                <div className="space-y-5">
+                  {photoGroups.map(group => {
+                    const intake = group.job.intake
+                    const vehicleLabel = intake
+                      ? [intake.year, intake.make, intake.model].filter(Boolean).join(' ')
+                      : 'Vehicle'
+                    return (
+                      <div key={group.job.id}>
+                        <p className="text-[12px] font-semibold text-zinc-600 mb-2">
+                          {formatDate(group.job.created_at)}
+                          {vehicleLabel && <> &middot; {vehicleLabel}</>}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Before column */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Before</p>
+                            {group.before.length === 0 ? (
+                              <p className="text-[11px] text-zinc-300 italic">None</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                {group.before.map(photo => (
+                                  <img
+                                    key={photo.id}
+                                    src={getJobPhotoUrl(photo.storage_path)}
+                                    alt="Before"
+                                    className="rounded-xl aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity w-full"
+                                    onClick={() => setLightboxUrl(getJobPhotoUrl(photo.storage_path))}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {/* After column */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">After</p>
+                            {group.after.length === 0 ? (
+                              <p className="text-[11px] text-zinc-300 italic">None</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                {group.after.map(photo => (
+                                  <img
+                                    key={photo.id}
+                                    src={getJobPhotoUrl(photo.storage_path)}
+                                    alt="After"
+                                    className="rounded-xl aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity w-full"
+                                    onClick={() => setLightboxUrl(getJobPhotoUrl(photo.storage_path))}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            )}
           </div>
         </div>
+
+        {/* Photo Lightbox */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={lightboxUrl}
+              alt="Full size"
+              className="max-w-full max-h-full rounded-xl object-contain"
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        )}
 
       </div>
     </div>
