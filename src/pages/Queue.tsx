@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useJobs, useActiveJob, startJob, useAuth } from '@/lib/store'
+import { useJobs, useActiveJob, useAuth } from '@/lib/store'
 import { Job } from '@/lib/types'
 import { ClipboardList, Loader2 } from 'lucide-react'
+import StartJobModal from '@/components/StartJobModal'
 
 const AVATAR_COLORS = [
   'bg-red-100 text-red-700',
@@ -101,27 +102,19 @@ export default function Queue() {
   const { jobs, loading, refresh } = useJobs(profile?.business_id)
   const { job: activeJob, refresh: refreshActive } = useActiveJob(profile?.id)
   const [filter, setFilter] = useState<StatusFilter>('all')
-  const [starting, setStarting] = useState<string | null>(null)
+  const [startingJob, setStartingJob] = useState<Job | null>(null)
 
   const filtered = useMemo(() => {
     if (filter === 'all') return jobs
     return jobs.filter(j => j.status === filter)
   }, [jobs, filter])
 
-  const handleStartJob = async (jobId: string) => {
+  const handleStartJob = (job: Job) => {
     if (activeJob) {
       alert('Finish your current job first')
       return
     }
-    setStarting(jobId)
-    try {
-      await startJob(jobId, profile!.id)
-      await Promise.all([refresh(), refreshActive()])
-    } catch (e: any) {
-      alert(e.message || 'Failed to start job')
-    } finally {
-      setStarting(null)
-    }
+    setStartingJob(job)
   }
 
   const filterTabs: { key: StatusFilter; label: string }[] = [
@@ -236,13 +229,9 @@ export default function Queue() {
                   {/* Start button for queued */}
                   {job.status === 'queued' && (
                     <button
-                      onClick={() => handleStartJob(job.id)}
-                      disabled={starting === job.id}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all disabled:opacity-50"
+                      onClick={() => handleStartJob(job)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
                     >
-                      {starting === job.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : null}
                       Start Job
                     </button>
                   )}
@@ -251,6 +240,18 @@ export default function Queue() {
             )
           })}
         </div>
+      )}
+
+      {startingJob && profile && (
+        <StartJobModal
+          job={startingJob}
+          technicianId={profile.id}
+          onClose={() => setStartingJob(null)}
+          onStarted={async () => {
+            setStartingJob(null)
+            await Promise.all([refresh(), refreshActive()])
+          }}
+        />
       )}
     </div>
   )
