@@ -1371,6 +1371,20 @@ export async function finishJob(jobId: string, notes?: string) {
   if (error) throw error
 }
 
+export async function cancelJob(jobId: string) {
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      status: 'queued',
+      started_at: null,
+      finished_at: null,
+      duration_minutes: null,
+      technician_id: null,
+    })
+    .eq('id', jobId)
+  if (error) throw error
+}
+
 export async function uploadJobPhoto(
   jobId: string,
   businessId: string,
@@ -1476,8 +1490,10 @@ export function useFormTemplates() {
 }
 
 export async function createFormTemplate(template: Omit<FormTemplate, 'id' | 'created_at' | 'updated_at'>) {
-  const { error } = await supabase.from('form_templates').insert(template)
+  const { data, error } = await supabase.from('form_templates').insert(template).select().single()
   if (error) throw error
+  if (!data) throw new Error('Form template was not created — check business assignment')
+  return data
 }
 
 export async function updateFormTemplate(id: string, updates: Partial<FormTemplate>) {
@@ -1516,8 +1532,10 @@ export function useFormSubmissions(templateId?: string) {
 }
 
 export async function createFormSubmission(submission: Omit<FormSubmission, 'id' | 'created_at' | 'form_template' | 'customer'>) {
-  const { error } = await supabase.from('form_submissions').insert(submission)
+  const { data, error } = await supabase.from('form_submissions').insert(submission).select().single()
   if (error) throw error
+  if (!data) throw new Error('Form submission was not created — check business assignment')
+  return data
 }
 
 export async function uploadFormFile(file: File, businessId: string): Promise<string> {
@@ -1550,8 +1568,10 @@ export function useExpenses() {
 }
 
 export async function createExpense(expense: Omit<Expense, 'id' | 'created_at' | 'creator'>) {
-  const { error } = await supabase.from('expenses').insert(expense)
+  const { data, error } = await supabase.from('expenses').insert(expense).select().single()
   if (error) throw error
+  if (!data) throw new Error('Expense was not created — check business assignment')
+  return data
 }
 
 export async function updateExpense(id: string, updates: Partial<Expense>) {

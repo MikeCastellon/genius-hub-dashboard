@@ -41,37 +41,42 @@ export default function Expenses() {
     amount: number; description: string; category: ExpenseCategory
     vendor: string | null; date: string; is_recurring: boolean; receiptFile?: File
   }) => {
-    let receipt_url = editing?.receipt_url || null
-    if (data.receiptFile && profile?.business_id) {
-      receipt_url = await uploadExpenseReceipt(data.receiptFile, profile.business_id)
-    }
+    if (!profile?.business_id) { alert('No business assigned to your profile.'); return }
+    try {
+      let receipt_url = editing?.receipt_url || null
+      if (data.receiptFile) {
+        receipt_url = await uploadExpenseReceipt(data.receiptFile, profile.business_id)
+      }
 
-    if (editing) {
-      await updateExpense(editing.id, {
-        amount: data.amount,
-        description: data.description,
-        category: data.category,
-        vendor: data.vendor,
-        date: data.date,
-        is_recurring: data.is_recurring,
-        receipt_url,
-      })
-    } else {
-      await createExpense({
-        amount: data.amount,
-        description: data.description,
-        category: data.category,
-        vendor: data.vendor,
-        date: data.date,
-        is_recurring: data.is_recurring,
-        receipt_url,
-        business_id: profile?.business_id || '',
-        created_by: profile?.id || null,
-      })
+      if (editing) {
+        await updateExpense(editing.id, {
+          amount: data.amount,
+          description: data.description,
+          category: data.category,
+          vendor: data.vendor,
+          date: data.date,
+          is_recurring: data.is_recurring,
+          receipt_url,
+        })
+      } else {
+        await createExpense({
+          amount: data.amount,
+          description: data.description,
+          category: data.category,
+          vendor: data.vendor,
+          date: data.date,
+          is_recurring: data.is_recurring,
+          receipt_url,
+          business_id: profile.business_id,
+          created_by: profile.id,
+        })
+      }
+      setShowModal(false)
+      setEditing(undefined)
+      refresh()
+    } catch (err: any) {
+      alert(err.message || 'Failed to save expense')
     }
-    setShowModal(false)
-    setEditing(undefined)
-    refresh()
   }
 
   const handleDelete = async (id: string) => {

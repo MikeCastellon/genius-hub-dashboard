@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useJobs, useActiveJob, useAuth } from '@/lib/store'
+import { useJobs, useActiveJob, useAuth, cancelJob } from '@/lib/store'
 import { Job } from '@/lib/types'
-import { ClipboardList, Loader2 } from 'lucide-react'
+import { ClipboardList, Loader2, Square } from 'lucide-react'
 import StartJobModal from '@/components/StartJobModal'
 
 const AVATAR_COLORS = [
@@ -249,6 +249,21 @@ export default function Queue() {
                         <p className="text-[11px] text-zinc-400">{formatDate(job.finished_at)}</p>
                       )}
                     </div>
+                  )}
+
+                  {/* Stop button for in-progress */}
+                  {job.status === 'in_progress' && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Stop this job and return it to the queue?')) return
+                        await cancelJob(job.id)
+                        await Promise.all([refresh(), refreshActive()])
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-all"
+                    >
+                      <Square size={12} className="fill-red-500" />
+                      Stop
+                    </button>
                   )}
 
                   {/* Start button for queued */}

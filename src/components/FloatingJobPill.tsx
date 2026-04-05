@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList } from 'lucide-react'
-import { useAuth, useActiveJob, useJobs } from '@/lib/store'
+import { ClipboardList, Square } from 'lucide-react'
+import { useAuth, useActiveJob, useJobs, cancelJob } from '@/lib/store'
 import { Job } from '@/lib/types'
 import StartJobModal from './StartJobModal'
 import FinishJobModal from './FinishJobModal'
@@ -82,22 +82,42 @@ export default function FloatingJobPill() {
   // Loading state — don't show anything yet
   if (activeLoading) return null
 
+  const handleCancelJob = async () => {
+    if (!activeJob) return
+    if (!confirm('Stop this job and return it to the queue?')) return
+    await cancelJob(activeJob.id)
+    refreshActive()
+    refreshJobs()
+  }
+
   // ── Active job pill ──
   if (activeJob?.status === 'in_progress') {
     return (
       <>
-        <button
-          onClick={() => setShowFinish(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg bg-white border border-green-200 hover:shadow-xl transition-shadow cursor-pointer"
-        >
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="font-bold text-zinc-900 tabular-nums font-mono text-sm">
-            {formatElapsed(elapsed)}
-          </span>
-          <span className="text-zinc-500 text-sm truncate max-w-[120px]">
-            {getCustomerName(activeJob)}
-          </span>
-        </button>
+        <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2">
+          {/* Stop button */}
+          <button
+            onClick={handleCancelJob}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-full shadow-lg bg-white border border-red-200 hover:shadow-xl hover:bg-red-50 transition-all cursor-pointer"
+            title="Stop job"
+          >
+            <Square size={12} className="text-red-500 fill-red-500" />
+            <span className="text-xs font-semibold text-red-600">Stop</span>
+          </button>
+          {/* Finish button */}
+          <button
+            onClick={() => setShowFinish(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg bg-white border border-green-200 hover:shadow-xl transition-shadow cursor-pointer"
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="font-bold text-zinc-900 tabular-nums font-mono text-sm">
+              {formatElapsed(elapsed)}
+            </span>
+            <span className="text-zinc-500 text-sm truncate max-w-[120px]">
+              {getCustomerName(activeJob)}
+            </span>
+          </button>
+        </div>
         {showFinish && (
           <FinishJobModal
             job={activeJob}

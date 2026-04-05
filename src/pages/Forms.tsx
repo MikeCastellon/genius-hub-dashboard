@@ -49,18 +49,23 @@ export default function Forms() {
   })
 
   const handleSaveTemplate = async (data: { name: string; description: string | null; fields: any[]; status: FormStatus }) => {
-    if (editingTemplate) {
-      await updateFormTemplate(editingTemplate.id, data)
-    } else {
-      await createFormTemplate({
-        ...data,
-        business_id: profile?.business_id || '',
-        created_by: profile?.id || null,
-      })
+    if (!profile?.business_id) { alert('No business assigned to your profile.'); return }
+    try {
+      if (editingTemplate) {
+        await updateFormTemplate(editingTemplate.id, data)
+      } else {
+        await createFormTemplate({
+          ...data,
+          business_id: profile.business_id,
+          created_by: profile.id,
+        })
+      }
+      setShowBuilder(false)
+      setEditingTemplate(undefined)
+      refreshTemplates()
+    } catch (err: any) {
+      alert(err.message || 'Failed to save form template')
     }
-    setShowBuilder(false)
-    setEditingTemplate(undefined)
-    refreshTemplates()
   }
 
   const handleDeleteTemplate = async (id: string) => {
@@ -74,17 +79,21 @@ export default function Forms() {
   }
 
   const handleSubmitForm = async (responses: Record<string, any>, customerId: string | null) => {
-    if (!fillingTemplate) return
-    await createFormSubmission({
-      form_template_id: fillingTemplate.id,
-      business_id: profile?.business_id || '',
-      responses,
-      customer_id: customerId,
-      intake_id: null,
-      submitted_by: profile?.id || null,
-    })
-    setFillingTemplate(null)
-    refreshSubmissions()
+    if (!fillingTemplate || !profile?.business_id) return
+    try {
+      await createFormSubmission({
+        form_template_id: fillingTemplate.id,
+        business_id: profile.business_id,
+        responses,
+        customer_id: customerId,
+        intake_id: null,
+        submitted_by: profile.id,
+      })
+      setFillingTemplate(null)
+      refreshSubmissions()
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit form')
+    }
   }
 
   if (tLoading) {
