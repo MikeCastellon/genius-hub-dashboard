@@ -7,8 +7,9 @@ import { formatDate } from '@/lib/utils'
 import CertificateBuilder from '@/components/CertificateBuilder'
 
 const STATUS_COLORS: Record<Certificate['status'], string> = {
+  pending: 'bg-amber-100 text-amber-700',
   active: 'bg-emerald-100 text-emerald-700',
-  expired: 'bg-amber-100 text-amber-700',
+  expired: 'bg-zinc-100 text-zinc-500',
   voided: 'bg-red-100 text-red-600',
 }
 

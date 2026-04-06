@@ -264,7 +264,7 @@ export interface Certificate {
   id: string
   business_id: string
   certificate_number: string
-  status: 'active' | 'expired' | 'voided'
+  status: 'pending' | 'active' | 'expired' | 'voided'
   is_public: boolean
   notes: string | null
   created_at: string

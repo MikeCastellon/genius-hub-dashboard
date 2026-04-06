@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCertificate, updateCertificate, getCertificatePhotoUrl } from '@/lib/store'
+import { getCertificate, updateCertificate, getCertificatePhotoUrl, saveCustomerSignature } from '@/lib/store'
 import { Certificate, BUSINESS_TYPE_LABELS, type WarrantyClaim } from '@/lib/types'
-import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle, FileWarning, AlertTriangle, ExternalLink, Printer } from 'lucide-react'
+import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle, FileWarning, AlertTriangle, ExternalLink, ExternalLink as ViewIcon } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import ClaimModal from '@/components/certify/ClaimModal'
 
 const STATUS_COLORS: Record<Certificate['status'], string> = {
+  pending: 'bg-amber-100 text-amber-700',
   active: 'bg-emerald-100 text-emerald-700',
   expired: 'bg-amber-100 text-amber-700',
   voided: 'bg-red-100 text-red-600',
@@ -28,6 +29,77 @@ export default function CertificateDetail() {
   const [copied, setCopied] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
+
+  // Signature canvas state
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [hasSigned, setHasSigned] = useState(false)
+  const [savingSignature, setSavingSignature] = useState(false)
+
+  const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    if ('touches' in e) {
+      const touch = e.touches[0]
+      return { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }
+  }, [])
+
+  const startDrawing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = getCanvasCoords(e)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    setIsDrawing(true)
+    setHasSigned(true)
+  }, [getCanvasCoords])
+
+  const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return
+    e.preventDefault()
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = getCanvasCoords(e)
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }, [isDrawing, getCanvasCoords])
+
+  const stopDrawing = useCallback(() => setIsDrawing(false), [])
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasSigned(false)
+  }, [])
+
+  const handleSignAndActivate = useCallback(async () => {
+    if (!canvasRef.current || !id || !cert) return
+    setSavingSignature(true)
+    try {
+      const dataUrl = canvasRef.current.toDataURL('image/png')
+      await saveCustomerSignature(id, dataUrl)
+      // Flip status to active
+      await updateCertificate(id, { status: 'active', is_public: true })
+      await load()
+    } catch (err) {
+      console.error('Failed to save signature:', err)
+    } finally {
+      setSavingSignature(false)
+    }
+  }, [id, cert])
 
   const load = async () => {
     if (!id) return
@@ -99,21 +171,30 @@ export default function CertificateDetail() {
           <ArrowLeft size={15} /> Back
         </button>
         <div className="flex items-center gap-2">
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 print:hidden">
-            <Printer size={14} /> Print
-          </button>
-          <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
-            {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
-            {copied ? 'Copied!' : 'Share Link'}
-          </button>
-          <button
-            onClick={handleTogglePublic}
-            disabled={updating}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-          >
-            {cert.is_public ? <Eye size={14} /> : <EyeOff size={14} />}
-            {cert.is_public ? 'Public' : 'Private'}
-          </button>
+          {cert.status !== 'pending' && (
+            <>
+              <a
+                href={verifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold hover:from-red-800 hover:to-red-700"
+              >
+                <ViewIcon size={14} /> View Certificate
+              </a>
+              <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
+                {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
+                {copied ? 'Copied!' : 'Copy Link'}
+              </button>
+              <button
+                onClick={handleTogglePublic}
+                disabled={updating}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              >
+                {cert.is_public ? <Eye size={14} /> : <EyeOff size={14} />}
+                {cert.is_public ? 'Public' : 'Private'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -325,6 +406,49 @@ export default function CertificateDetail() {
             </div>
           )}
         </div>
+
+        {/* Customer Signature - only for pending certs */}
+        {cert.status === 'pending' && (
+          <div className="mt-6 pt-6 border-t border-zinc-200">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Customer Signature</p>
+            <p className="text-[10px] text-zinc-400 mb-3">Have the customer sign below to activate this certificate.</p>
+            <canvas
+              ref={canvasRef}
+              width={500}
+              height={120}
+              className="w-full h-28 border border-zinc-200 rounded-xl cursor-crosshair bg-white touch-none"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+            <div className="flex items-center gap-2 mt-3">
+              <button onClick={clearCanvas} className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-500 hover:bg-zinc-50">
+                Clear
+              </button>
+              <button
+                onClick={handleSignAndActivate}
+                disabled={!hasSigned || savingSignature}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {savingSignature ? <><Loader2 size={14} className="animate-spin" /> Activating...</> : 'Sign & Activate Certificate'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Customer signature display - for active certs that have been signed */}
+        {cert.status !== 'pending' && cert.customer_signature_url && (
+          <div className="mt-6 pt-6 border-t border-zinc-200">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Customer Signature</p>
+            <div className="h-20 flex items-end">
+              <img src={cert.customer_signature_url} alt="Customer Signature" className="max-h-20 object-contain" />
+            </div>
+          </div>
+        )}
 
         {/* Pro Hub Footer */}
         <div className="mt-6 pt-6 border-t border-zinc-200 text-center">

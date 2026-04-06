@@ -82,8 +82,8 @@ export default function CertificateBuilder({ preselectedIntakeId, onClose, onSav
         warranty_years: warrantyYears,
         warranty_expiry: expiryStr,
         technician_id: profile.id || null,
-        status: 'active',
-        is_public: true,
+        status: 'pending',
+        is_public: false,
         notes: notes || null,
         // New fields (null for legacy flow)
         business_type: null,

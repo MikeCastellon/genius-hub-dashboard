@@ -120,6 +120,19 @@ export default function VerifyCertificate() {
 
   if (!cert) return null
 
+  // Block access to pending certificates
+  if (cert.status === 'pending') return (
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
+          <Lock size={28} className="text-amber-500" />
+        </div>
+        <h1 className="text-xl font-bold text-zinc-900 mb-2">Certificate Pending</h1>
+        <p className="text-sm text-zinc-500">This certificate is awaiting customer signature and is not yet active.</p>
+      </div>
+    </div>
+  )
+
   // Support both legacy and new formats
   const isNewFormat = !!cert.vehicle_id
   const intake = (cert as any).intake
