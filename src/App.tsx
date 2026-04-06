@@ -26,6 +26,7 @@ import VerifyCertificate from '@/pages/VerifyCertificate'
 import VinHistory from '@/pages/VinHistory'
 import Forms from '@/pages/Forms'
 import Expenses from '@/pages/Expenses'
+import Repairs from '@/pages/Repairs'
 import PublicForm from '@/pages/PublicForm'
 import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
@@ -127,6 +128,8 @@ export default function App() {
           <Route path="/certify/:id" element={<CertificateDetail />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/queue" element={<Queue />} />
+          <Route path="/repairs" element={<Repairs />} />
+          <Route path="/repairs/:vin" element={<Repairs />} />
           <Route path="/hours" element={<Hours />} />
           <Route path="/forms" element={<Forms />} />
           {isAdmin && <Route path="/expenses" element={<Expenses />} />}
