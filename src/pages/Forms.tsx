@@ -29,6 +29,7 @@ export default function Forms() {
   const [templateFilter, setTemplateFilter] = useState<string>('all')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [sendMenuId, setSendMenuId] = useState<string | null>(null)
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
 
@@ -44,17 +45,15 @@ export default function Forms() {
     const link = getFormLink(templateId)
     const body = encodeURIComponent(`Please fill out this form: ${formName}\n${link}`)
     window.open(`sms:?body=${body}`, '_self')
+    setSendMenuId(null)
   }
 
-  const shareForm = async (templateId: string, formName: string) => {
+  const sendFormViaEmail = (templateId: string, formName: string) => {
     const link = getFormLink(templateId)
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: formName, text: `Please fill out this form: ${formName}`, url: link })
-      } catch { /* user cancelled */ }
-    } else {
-      sendFormViaSms(templateId, formName)
-    }
+    const subject = encodeURIComponent(`Please fill out: ${formName}`)
+    const body = encodeURIComponent(`Hi,\n\nPlease fill out the following form:\n\n${formName}\n${link}\n\nThank you!`)
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_self')
+    setSendMenuId(null)
   }
 
   // For responses tab
@@ -215,13 +214,36 @@ export default function Forms() {
                   <div className="flex items-center gap-1 shrink-0">
                     {template.status === 'active' && (
                       <>
-                        <button
-                          onClick={() => shareForm(template.id, template.name)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                          title="Send via SMS or share"
-                        >
-                          <Send size={12} /> Send
-                        </button>
+                        {/* Send dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setSendMenuId(sendMenuId === template.id ? null : template.id)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                          >
+                            <Send size={12} /> Send
+                          </button>
+                          {sendMenuId === template.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setSendMenuId(null)} />
+                              <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-white rounded-xl shadow-xl border border-zinc-200 overflow-hidden">
+                                <button
+                                  onClick={() => sendFormViaSms(template.id, template.name)}
+                                  className="w-full px-3 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 flex items-center gap-2 transition-colors"
+                                >
+                                  <Send size={13} className="text-emerald-500" />
+                                  SMS / Text
+                                </button>
+                                <button
+                                  onClick={() => sendFormViaEmail(template.id, template.name)}
+                                  className="w-full px-3 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 flex items-center gap-2 border-t border-zinc-100 transition-colors"
+                                >
+                                  <Send size={13} className="text-blue-500 -rotate-12" />
+                                  Email
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                         <button
                           onClick={() => copyFormLink(template.id)}
                           className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
