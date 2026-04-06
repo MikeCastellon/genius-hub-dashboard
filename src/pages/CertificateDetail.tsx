@@ -119,15 +119,20 @@ export default function CertificateDetail() {
 
       {/* Certificate document */}
       <div className="glass rounded-2xl p-6 md:p-8" id="certificate-printable">
-        {/* Company Header */}
-        {cert.business && (
-          <div className="text-center mb-6 pb-6 border-b border-zinc-200">
-            {cert.business.logo_url && (
-              <img src={cert.business.logo_url} alt={cert.business.name} className="h-12 mx-auto mb-2" />
-            )}
-            <h2 className="text-lg font-bold text-zinc-900">{cert.business.name}</h2>
-          </div>
-        )}
+        {/* Pro Hub Branding + Company Header */}
+        <div className="text-center mb-6 pb-6 border-b border-zinc-200">
+          <p className="text-sm font-bold text-zinc-900">Pro Hub</p>
+          <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Sales & Service by</p>
+          <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-7 mx-auto mt-1 mb-3" />
+          {cert.business && (
+            <>
+              {cert.business.logo_url && (
+                <img src={cert.business.logo_url} alt={cert.business.name} className="h-10 mx-auto mb-1" />
+              )}
+              <h2 className="text-lg font-bold text-zinc-900">{cert.business.name}</h2>
+            </>
+          )}
+        </div>
 
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
