@@ -464,12 +464,13 @@ const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function BusinessInfoPanel({ businessId, businesses }: {
   businessId: string
-  businesses: { id: string; name: string; slug?: string; logo_url?: string | null; website?: string | null; phone?: string | null; address?: string | null }[]
+  businesses: { id: string; name: string; slug?: string; logo_url?: string | null; website?: string | null; phone?: string | null; address?: string | null; signature_url?: string | null }[]
   refreshBusinesses: () => Promise<void>
 }) {
   const biz = businesses.find(b => b.id === businessId)
   const { hours, refresh: refreshHours } = useBusinessHours()
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const sigInputRef = useRef<HTMLInputElement>(null)
 
   const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 transition-all'
 
@@ -478,8 +479,10 @@ function BusinessInfoPanel({ businessId, businesses }: {
   const [website, setWebsite] = useState(biz?.website || '')
   const [phone, setPhone] = useState(biz?.phone || '')
   const [address, setAddress] = useState(biz?.address || '')
+  const [signatureUrl, setSignatureUrl] = useState(biz?.signature_url || '')
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingSig, setUploadingSig] = useState(false)
 
   // Business hours state
   const [localHours, setLocalHours] = useState<Partial<BusinessHours>[]>([])
@@ -494,6 +497,7 @@ function BusinessInfoPanel({ businessId, businesses }: {
       setWebsite(biz.website || '')
       setPhone(biz.phone || '')
       setAddress(biz.address || '')
+      setSignatureUrl(biz.signature_url || '')
     }
   }, [biz?.id])
 
@@ -524,6 +528,28 @@ function BusinessInfoPanel({ businessId, businesses }: {
     } finally {
       setUploadingLogo(false)
       if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !businessId) return
+    setUploadingSig(true)
+    try {
+      const path = `signatures/${businessId}-${Date.now()}.${file.name.split('.').pop()}`
+      const { data, error: uploadErr } = await (await import('@/lib/supabase')).supabase.storage
+        .from('certificate-photos')
+        .upload(path, file, { upsert: true })
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = (await import('@/lib/supabase')).supabase.storage.from('certificate-photos').getPublicUrl(data.path)
+      const url = urlData.publicUrl
+      setSignatureUrl(url)
+      await updateBusiness(businessId, { signature_url: url })
+    } catch (err: any) {
+      alert('Error uploading signature: ' + err.message)
+    } finally {
+      setUploadingSig(false)
+      if (sigInputRef.current) sigInputRef.current.value = ''
     }
   }
 
@@ -634,6 +660,41 @@ function BusinessInfoPanel({ businessId, businesses }: {
               <MapPin size={11} /> Address
             </label>
             <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, State 00000" />
+          </div>
+
+          {/* Shop Signature Upload */}
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
+              <Upload size={11} /> Shop Signature
+            </label>
+            <p className="text-[10px] text-zinc-400 mb-2">This signature appears on all warranty certificates.</p>
+            <input ref={sigInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+            <div className="flex items-center gap-3">
+              {signatureUrl ? (
+                <div className="w-40 h-16 rounded-xl border border-zinc-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                  <img src={signatureUrl} alt="Shop Signature" className="max-w-full max-h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-40 h-16 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] text-zinc-300">No signature</span>
+                </div>
+              )}
+              <div className="flex-1 space-y-1.5">
+                <button
+                  onClick={() => sigInputRef.current?.click()}
+                  disabled={uploadingSig}
+                  className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {uploadingSig ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {signatureUrl ? 'Change' : 'Upload'}</>}
+                </button>
+                {signatureUrl && (
+                  <button onClick={() => { setSignatureUrl(''); updateBusiness(businessId, { signature_url: null }) }}
+                    className="text-[10px] text-zinc-400 hover:text-red-500">
+                    Remove signature
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

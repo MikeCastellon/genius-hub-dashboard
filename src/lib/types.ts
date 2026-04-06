@@ -41,6 +41,7 @@ export interface Business {
   phone?: string | null
   address?: string | null
   business_types?: BusinessType[]
+  signature_url?: string | null
   created_at: string
 }
 
@@ -287,6 +288,7 @@ export interface Certificate {
   technician_name: string | null
   void_conditions: string[] | null
   void_reason: string | null
+  customer_signature_url?: string | null
   // Eager-loaded relations
   intake?: VehicleIntake
   customer?: Customer

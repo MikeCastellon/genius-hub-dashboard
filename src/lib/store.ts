@@ -389,7 +389,7 @@ export async function createBusiness(name: string) {
   if (error) throw error
 }
 
-export async function updateBusiness(id: string, updates: Partial<Pick<Business, 'name' | 'slug' | 'logo_url' | 'primary_color' | 'website' | 'phone' | 'address'>>) {
+export async function updateBusiness(id: string, updates: Partial<Pick<Business, 'name' | 'slug' | 'logo_url' | 'primary_color' | 'website' | 'phone' | 'address' | 'signature_url'>>) {
   const { error } = await supabase.from('businesses').update(updates).eq('id', id)
   if (error) throw error
 }
@@ -666,7 +666,7 @@ export function useCertificates() {
     if (!isConfigured()) { setLoading(false); return }
     const { data } = await supabase
       .from('certificates')
-      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website)')
+      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website, signature_url)')
       .order('created_at', { ascending: false })
     setCertificates(data || [])
     setLoading(false)
@@ -679,7 +679,7 @@ export function useCertificates() {
 export async function getCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website)')
+    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website, signature_url)')
     .eq('id', id)
     .maybeSingle()
   if (!data) return null
@@ -711,7 +711,7 @@ export async function getCertificate(id: string): Promise<Certificate | null> {
 export async function getPublicCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(name), business:businesses(name, slug, logo_url, phone, address, website)')
+    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(name), business:businesses(name, slug, logo_url, phone, address, website, signature_url)')
     .eq('id', id)
     .eq('is_public', true)
     .maybeSingle()
@@ -758,6 +758,25 @@ export async function updateCertificate(id: string, updates: Partial<Certificate
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+}
+
+export async function saveCustomerSignature(certId: string, signatureDataUrl: string): Promise<string> {
+  // Convert data URL to blob
+  const res = await fetch(signatureDataUrl)
+  const blob = await res.blob()
+  const path = `signatures/customer-${certId}-${Date.now()}.png`
+  const { data, error: uploadErr } = await supabase.storage
+    .from('certificate-photos')
+    .upload(path, blob, { contentType: 'image/png', upsert: true })
+  if (uploadErr) throw uploadErr
+  const { data: urlData } = supabase.storage.from('certificate-photos').getPublicUrl(data.path)
+  const url = urlData.publicUrl
+  const { error } = await supabase
+    .from('certificates')
+    .update({ customer_signature_url: url })
+    .eq('id', certId)
+  if (error) throw error
+  return url
 }
 
 export async function uploadCertificatePhoto(
@@ -920,7 +939,7 @@ export async function createWarrantyCertificate(params: {
 export async function getVinHistory(vin: string): Promise<Certificate[]> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, vehicle:vehicles!inner(*), business:businesses(name, slug, logo_url, phone, address, website), customer:customers(name)')
+    .select('*, vehicle:vehicles!inner(*), business:businesses(name, slug, logo_url, phone, address, website, signature_url), customer:customers(name)')
     .eq('vehicles.vin', vin.toUpperCase())
     .eq('is_public', true)
     .order('service_date', { ascending: false })

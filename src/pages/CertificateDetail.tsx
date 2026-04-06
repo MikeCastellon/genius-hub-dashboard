@@ -398,6 +398,8 @@ function DetailSection({ details }: { businessType: string; details: Record<stri
         else if (Array.isArray(val) && typeof val[0] === 'string') display = val.map((s: string) => s.replace(/_/g, ' ')).join(', ')
         else if (Array.isArray(val)) display = `${val.length} item(s)`
         else display = String(val)
+        // Add % for VLT and rejection percentage fields
+        if (key.startsWith('vlt_') || key.endsWith('_pct')) display = `${display}%`
         return <InfoBox key={key} label={label} value={display} />
       })}
     </div>
