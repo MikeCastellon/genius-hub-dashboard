@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Wrench, Search, Loader2, AlertTriangle } from 'lucide-react'
-import { useAuth, useVehicle, upsertVehicle, decodeVin } from '@/lib/store'
-import { Vehicle } from '@/lib/types'
+import { Wrench, Search, Loader2, AlertTriangle, X } from 'lucide-react'
+import {
+  useAuth, useVehicle, upsertVehicle, decodeVin,
+  callRepairsCarMD, callRepairsVehicleDB,
+  useRecallLookups, useMaintenanceLookups, usePartsOrders,
+} from '@/lib/store'
+import { Vehicle, MaintenanceLookup } from '@/lib/types'
 import { sanitizeVin, isLikelyVin } from '@/lib/utils'
 import VehicleProfileCard from '@/components/repairs/VehicleProfileCard'
+import RepairsOverview from '@/components/repairs/RepairsOverview'
+import MaintenanceTimeline from '@/components/repairs/MaintenanceTimeline'
+import DiagnosticsTool from '@/components/repairs/DiagnosticsTool'
+import RecallsPanel from '@/components/repairs/RecallsPanel'
+import PartsSearch from '@/components/repairs/PartsSearch'
+import RepairGuidePanel from '@/components/repairs/RepairGuidePanel'
 
 type RepairTab = 'overview' | 'maintenance' | 'diagnostics' | 'recalls' | 'parts'
 
@@ -26,7 +36,24 @@ export default function Repairs() {
   const [error, setError] = useState<string | null>(null)
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null)
 
+  // Cross-tab navigation state
+  const [partsSearchTerm, setPartsSearchTerm] = useState<string | undefined>(undefined)
+  const [showGuidePanel, setShowGuidePanel] = useState(false)
+  const [guideContext, setGuideContext] = useState<{ repairDescription?: string; dtcCode?: string }>({})
+
   const { refresh: refreshVehicle } = useVehicle(currentVehicle?.vin)
+
+  // Badge data hooks
+  const { recalls } = useRecallLookups(currentVehicle?.id)
+  const { maintenance } = useMaintenanceLookups(currentVehicle?.id)
+  const { orders } = usePartsOrders(currentVehicle?.id)
+
+  // Badge counts
+  const recallCount = recalls.filter(r => r.type === 'recall').length
+  const overdueCount = currentVehicle?.mileage
+    ? maintenance.filter(m => m.due_mileage != null && m.due_mileage < (currentVehicle.mileage ?? 0)).length
+    : 0
+  const pendingOrderCount = orders.filter(o => o.status === 'pending').length
 
   // Auto-decode if route param present
   useEffect(() => {
@@ -34,6 +61,17 @@ export default function Repairs() {
       handleDecode(routeVin)
     }
   }, [routeVin])
+
+  const triggerParallelLookups = (vin: string, mileage?: number) => {
+    const mileageParam = mileage ?? undefined
+    Promise.allSettled([
+      callRepairsCarMD({ action: 'maintenance', vin, mileage: mileageParam }),
+      callRepairsCarMD({ action: 'recall', vin }),
+      callRepairsCarMD({ action: 'tsb', vin }),
+      callRepairsCarMD({ action: 'upcoming', vin, mileage: mileageParam }),
+      callRepairsVehicleDB({ action: 'warranty', vin }),
+    ])
+  }
 
   const handleDecode = async (rawVin?: string) => {
     const vin = sanitizeVin(rawVin || vinInput)
@@ -74,6 +112,9 @@ export default function Repairs() {
 
       setCurrentVehicle(vehicle)
       refreshVehicle()
+
+      // Fire parallel data lookups in background
+      triggerParallelLookups(vin, mileage ?? undefined)
     } catch (err: any) {
       setError(err.message || 'Failed to decode VIN')
     } finally {
@@ -99,9 +140,41 @@ export default function Repairs() {
         created_by: currentVehicle.created_by ?? null,
       })
       setCurrentVehicle(updated)
+
+      // Re-trigger maintenance and upcoming lookups with new mileage
+      callRepairsCarMD({ action: 'maintenance', vin: currentVehicle.vin, mileage })
+      callRepairsCarMD({ action: 'upcoming', vin: currentVehicle.vin, mileage })
     } catch (err: any) {
       alert(err.message || 'Failed to update mileage')
     }
+  }
+
+  // Cross-tab: Order parts from Maintenance or Diagnostics
+  const handleOrderParts = (partNameOrItem: string | MaintenanceLookup) => {
+    const searchTerm = typeof partNameOrItem === 'string'
+      ? partNameOrItem
+      : partNameOrItem.description
+    setPartsSearchTerm(searchTerm)
+    setActiveTab('parts')
+  }
+
+  // Cross-tab: Generate AI guide from Diagnostics
+  const handleGenerateGuide = (repairDescription: string, dtcCode: string) => {
+    setGuideContext({ repairDescription, dtcCode })
+    setShowGuidePanel(true)
+  }
+
+  const getBadge = (tabKey: RepairTab) => {
+    if (tabKey === 'recalls' && recallCount > 0) {
+      return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">{recallCount}</span>
+    }
+    if (tabKey === 'maintenance' && overdueCount > 0) {
+      return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">{overdueCount}</span>
+    }
+    if (tabKey === 'parts' && pendingOrderCount > 0) {
+      return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-yellow-500 text-white rounded-full">{pendingOrderCount}</span>
+    }
+    return null
   }
 
   return (
@@ -170,48 +243,73 @@ export default function Repairs() {
             {TABS.map(t => (
               <button
                 key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                onClick={() => {
+                  setActiveTab(t.key)
+                  // Clear parts search when navigating away from parts tab
+                  if (t.key !== 'parts') setPartsSearchTerm(undefined)
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center ${
                   activeTab === t.key
                     ? 'bg-white text-zinc-900 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-600'
                 }`}
               >
                 {t.label}
+                {getBadge(t.key)}
               </button>
             ))}
           </div>
 
-          {/* Tab Content - placeholder for now, components will be added in later tasks */}
+          {/* Tab Content */}
           <div className="glass rounded-2xl p-6">
             {activeTab === 'overview' && (
-              <div className="text-center text-zinc-400 py-10">
-                <Wrench size={32} className="mx-auto mb-3 text-zinc-300" />
-                <p className="text-sm">Overview tab — coming soon</p>
-              </div>
+              <RepairsOverview vehicle={currentVehicle} />
             )}
             {activeTab === 'maintenance' && (
-              <div className="text-center text-zinc-400 py-10">
-                <p className="text-sm">Maintenance tab — coming soon</p>
-              </div>
+              <MaintenanceTimeline
+                vehicleId={currentVehicle.id}
+                mileage={currentVehicle.mileage ?? null}
+                onOrderParts={handleOrderParts}
+              />
             )}
             {activeTab === 'diagnostics' && (
-              <div className="text-center text-zinc-400 py-10">
-                <p className="text-sm">Diagnostics tab — coming soon</p>
-              </div>
+              <DiagnosticsTool
+                vehicle={currentVehicle}
+                onOrderParts={(partName: string) => handleOrderParts(partName)}
+                onGenerateGuide={handleGenerateGuide}
+              />
             )}
             {activeTab === 'recalls' && (
-              <div className="text-center text-zinc-400 py-10">
-                <p className="text-sm">Recalls & TSBs tab — coming soon</p>
-              </div>
+              <RecallsPanel vehicleId={currentVehicle.id} />
             )}
             {activeTab === 'parts' && (
-              <div className="text-center text-zinc-400 py-10">
-                <p className="text-sm">Parts tab — coming soon</p>
-              </div>
+              <PartsSearch
+                vehicle={currentVehicle}
+                initialSearch={partsSearchTerm}
+              />
             )}
           </div>
         </>
+      )}
+
+      {/* AI Guide Modal Overlay */}
+      {showGuidePanel && currentVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 bg-white rounded-2xl shadow-2xl">
+            <button
+              onClick={() => setShowGuidePanel(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-zinc-100 transition-colors z-10"
+            >
+              <X size={18} className="text-zinc-500" />
+            </button>
+            <RepairGuidePanel
+              vehicle={currentVehicle}
+              repairDescription={guideContext.repairDescription}
+              dtcCode={guideContext.dtcCode}
+              onClose={() => setShowGuidePanel(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
