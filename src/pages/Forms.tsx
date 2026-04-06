@@ -93,7 +93,8 @@ export default function Forms() {
     }
   }
 
-  const handleDeleteTemplate = async (id: string) => {
+  const handleDeleteTemplate = async (id: string, name: string) => {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
     setDeleting(id)
     try {
       await deleteFormTemplate(id)
@@ -271,7 +272,7 @@ export default function Forms() {
                           <Pencil size={13} className="text-zinc-400" />
                         </button>
                         <button
-                          onClick={() => handleDeleteTemplate(template.id)}
+                          onClick={() => handleDeleteTemplate(template.id, template.name)}
                           disabled={deleting === template.id}
                           className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                         >

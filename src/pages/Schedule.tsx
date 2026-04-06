@@ -169,9 +169,9 @@ export default function Schedule() {
           <p className="text-[12px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={copyBookingLink} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
+          <button onClick={copyBookingLink} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'}`}>
             {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
-            <span className="hidden sm:inline">{copied ? 'Copied!' : 'Booking Link'}</span>
+            <span className={copied ? '' : 'hidden sm:inline'}>{copied ? 'Copied!' : 'Booking Link'}</span>
           </button>
           <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm">
             <Plus size={14} /> New
