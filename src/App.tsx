@@ -26,6 +26,7 @@ import VerifyCertificate from '@/pages/VerifyCertificate'
 import VinHistory from '@/pages/VinHistory'
 import Forms from '@/pages/Forms'
 import Expenses from '@/pages/Expenses'
+import PublicForm from '@/pages/PublicForm'
 import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
 import PortalHistory from './pages/portal/PortalHistory'
@@ -63,6 +64,14 @@ export default function App() {
     return (
       <Routes>
         <Route path="/vin/:vin" element={<VinHistory />} />
+      </Routes>
+    )
+  }
+
+  if (window.location.pathname.startsWith('/form/')) {
+    return (
+      <Routes>
+        <Route path="/form/:templateId" element={<PublicForm />} />
       </Routes>
     )
   }

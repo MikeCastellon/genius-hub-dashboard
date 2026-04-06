@@ -1522,7 +1522,8 @@ export function useFormSubmissions(templateId?: string) {
       .select('*, form_template:form_templates(*), customer:customers(*)')
       .order('created_at', { ascending: false })
     if (templateId) query = query.eq('form_template_id', templateId)
-    const { data } = await query
+    const { data, error } = await query
+    if (error) console.error('useFormSubmissions error:', error)
     setSubmissions(data || [])
     setLoading(false)
   }, [templateId])
@@ -1547,6 +1548,44 @@ export async function uploadFormFile(file: File, businessId: string): Promise<st
   return data.publicUrl
 }
 
+// ============ Public Forms ============
+
+export async function getPublicFormTemplate(templateId: string): Promise<{ template: FormTemplate; business: any } | null> {
+  const { data: template } = await supabase
+    .from('form_templates')
+    .select('*')
+    .eq('id', templateId)
+    .eq('status', 'active')
+    .maybeSingle()
+  if (!template) return null
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id, name, slug, logo_url, primary_color')
+    .eq('id', template.business_id)
+    .maybeSingle()
+  return { template, business }
+}
+
+export async function submitPublicForm(submission: {
+  form_template_id: string
+  business_id: string
+  responses: Record<string, any>
+  customer_id?: string | null
+}) {
+  const { data, error } = await supabase
+    .from('form_submissions')
+    .insert({
+      ...submission,
+      customer_id: submission.customer_id || null,
+      intake_id: null,
+      submitted_by: null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 // ============ Expenses ============
 
 export function useExpenses() {
@@ -1555,10 +1594,11 @@ export function useExpenses() {
 
   const refresh = useCallback(async () => {
     if (!isConfigured()) { setLoading(false); return }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('expenses')
-      .select('*, creator:profiles!created_by(display_name)')
+      .select('*')
       .order('date', { ascending: false })
+    if (error) console.error('useExpenses error:', error)
     setExpenses(data || [])
     setLoading(false)
   }, [])

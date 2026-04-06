@@ -5,7 +5,7 @@ import {
 } from '@/lib/store'
 import { FormTemplate, FormStatus, FormSubmission } from '@/lib/types'
 import { formatDateTime } from '@/lib/utils'
-import { FileCheck, Plus, Loader2, Search, Trash2, Pencil, ClipboardList, Eye } from 'lucide-react'
+import { FileCheck, Plus, Loader2, Search, Trash2, Pencil, ClipboardList, Eye, Send, Link, Check } from 'lucide-react'
 import FormBuilder from '@/components/FormBuilder'
 import FormFiller from '@/components/FormFiller'
 import FormResponseDetail from '@/components/FormResponseDetail'
@@ -28,8 +28,34 @@ export default function Forms() {
   const [search, setSearch] = useState('')
   const [templateFilter, setTemplateFilter] = useState<string>('all')
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+
+  const getFormLink = (templateId: string) => `${window.location.origin}/form/${templateId}`
+
+  const copyFormLink = async (templateId: string) => {
+    await navigator.clipboard.writeText(getFormLink(templateId))
+    setCopiedId(templateId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const sendFormViaSms = (templateId: string, formName: string) => {
+    const link = getFormLink(templateId)
+    const body = encodeURIComponent(`Please fill out this form: ${formName}\n${link}`)
+    window.open(`sms:?body=${body}`, '_self')
+  }
+
+  const shareForm = async (templateId: string, formName: string) => {
+    const link = getFormLink(templateId)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: formName, text: `Please fill out this form: ${formName}`, url: link })
+      } catch { /* user cancelled */ }
+    } else {
+      sendFormViaSms(templateId, formName)
+    }
+  }
 
   // For responses tab
   const { submissions, loading: sLoading, refresh: refreshSubmissions } = useFormSubmissions(
@@ -188,12 +214,31 @@ export default function Forms() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {template.status === 'active' && (
-                      <button
-                        onClick={() => setFillingTemplate(template)}
-                        className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1"
-                      >
-                        <ClipboardList size={12} /> Fill Out
-                      </button>
+                      <>
+                        <button
+                          onClick={() => shareForm(template.id, template.name)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                          title="Send via SMS or share"
+                        >
+                          <Send size={12} /> Send
+                        </button>
+                        <button
+                          onClick={() => copyFormLink(template.id)}
+                          className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
+                          title="Copy form link"
+                        >
+                          {copiedId === template.id
+                            ? <Check size={13} className="text-emerald-500" />
+                            : <Link size={13} className="text-zinc-400" />
+                          }
+                        </button>
+                        <button
+                          onClick={() => setFillingTemplate(template)}
+                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1"
+                        >
+                          <ClipboardList size={12} /> Fill Out
+                        </button>
+                      </>
                     )}
                     {isAdmin && (
                       <>
