@@ -162,7 +162,7 @@ export default function VerifyCertificate() {
             </div>
 
             {/* Logo + company name centered */}
-            <div className="text-center pr-20">
+            <div className="text-center">
               {business?.logo_url && (
                 <div className="mb-3 flex justify-center">
                   <img src={business.logo_url} alt={business.name} className="h-14 object-contain" />

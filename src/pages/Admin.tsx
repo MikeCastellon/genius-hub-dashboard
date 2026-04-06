@@ -483,6 +483,10 @@ function BusinessInfoPanel({ businessId, businesses }: {
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingSig, setUploadingSig] = useState(false)
+  const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [sigDrawing, setSigDrawing] = useState(false)
+  const [sigHasDrawn, setSigHasDrawn] = useState(false)
 
   // Business hours state
   const [localHours, setLocalHours] = useState<Partial<BusinessHours>[]>([])
@@ -550,6 +554,80 @@ function BusinessInfoPanel({ businessId, businesses }: {
     } finally {
       setUploadingSig(false)
       if (sigInputRef.current) sigInputRef.current.value = ''
+    }
+  }
+
+  // Signature canvas drawing handlers
+  const getSigCanvasCoords = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = sigCanvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    if ('touches' in e) {
+      const touch = e.touches[0]
+      return { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }
+  }
+
+  const startSigDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    const ctx = sigCanvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = getSigCanvasCoords(e)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    setSigDrawing(true)
+    setSigHasDrawn(true)
+  }
+
+  const sigDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!sigDrawing) return
+    e.preventDefault()
+    const ctx = sigCanvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = getSigCanvasCoords(e)
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+
+  const stopSigDraw = () => setSigDrawing(false)
+
+  const clearSigCanvas = () => {
+    const canvas = sigCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setSigHasDrawn(false)
+  }
+
+  const handleSaveDrawnSignature = async () => {
+    if (!sigCanvasRef.current || !businessId) return
+    setUploadingSig(true)
+    try {
+      const dataUrl = sigCanvasRef.current.toDataURL('image/png')
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      const path = `signatures/${businessId}-${Date.now()}.png`
+      const { data, error: uploadErr } = await (await import('@/lib/supabase')).supabase.storage
+        .from('certificate-photos')
+        .upload(path, blob, { contentType: 'image/png', upsert: true })
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = (await import('@/lib/supabase')).supabase.storage.from('certificate-photos').getPublicUrl(data.path)
+      const url = urlData.publicUrl
+      setSignatureUrl(url)
+      await updateBusiness(businessId, { signature_url: url })
+      clearSigCanvas()
+    } catch (err: any) {
+      alert('Error saving signature: ' + err.message)
+    } finally {
+      setUploadingSig(false)
     }
   }
 
@@ -662,24 +740,73 @@ function BusinessInfoPanel({ businessId, businesses }: {
             <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, State 00000" />
           </div>
 
-          {/* Shop Signature Upload */}
+          {/* Shop Signature */}
           <div>
             <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block flex items-center gap-1">
               <Upload size={11} /> Shop Signature
             </label>
             <p className="text-[10px] text-zinc-400 mb-2">This signature appears on all warranty certificates.</p>
-            <input ref={sigInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
-            <div className="flex items-center gap-3">
-              {signatureUrl ? (
+
+            {/* Current signature preview */}
+            {signatureUrl && (
+              <div className="flex items-center gap-3 mb-3">
                 <div className="w-40 h-16 rounded-xl border border-zinc-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
                   <img src={signatureUrl} alt="Shop Signature" className="max-w-full max-h-full object-contain" />
                 </div>
-              ) : (
-                <div className="w-40 h-16 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] text-zinc-300">No signature</span>
+                <button onClick={() => { setSignatureUrl(''); updateBusiness(businessId, { signature_url: null }) }}
+                  className="text-[10px] text-zinc-400 hover:text-red-500">
+                  Remove
+                </button>
+              </div>
+            )}
+
+            {/* Upload / Draw toggle */}
+            <div className="flex gap-1 mb-2">
+              <button
+                onClick={() => setSigMode('draw')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sigMode === 'draw' ? 'bg-red-600 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              >
+                Draw
+              </button>
+              <button
+                onClick={() => setSigMode('upload')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sigMode === 'upload' ? 'bg-red-600 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              >
+                Upload Image
+              </button>
+            </div>
+
+            {sigMode === 'draw' ? (
+              <div>
+                <canvas
+                  ref={sigCanvasRef}
+                  width={400}
+                  height={120}
+                  className="w-full h-24 border border-zinc-200 rounded-xl cursor-crosshair bg-white touch-none"
+                  onMouseDown={startSigDraw}
+                  onMouseMove={sigDraw}
+                  onMouseUp={stopSigDraw}
+                  onMouseLeave={stopSigDraw}
+                  onTouchStart={startSigDraw}
+                  onTouchMove={sigDraw}
+                  onTouchEnd={stopSigDraw}
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <button onClick={clearSigCanvas} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-500 hover:bg-zinc-50">
+                    Clear
+                  </button>
+                  <button
+                    onClick={handleSaveDrawnSignature}
+                    disabled={!sigHasDrawn || uploadingSig}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  >
+                    {uploadingSig ? <><Loader2 size={12} className="animate-spin" /> Saving...</> : 'Save Signature'}
+                  </button>
                 </div>
-              )}
-              <div className="flex-1 space-y-1.5">
+              </div>
+            ) : (
+              <div>
+                <input ref={sigInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
                 <button
                   onClick={() => sigInputRef.current?.click()}
                   disabled={uploadingSig}
@@ -687,14 +814,8 @@ function BusinessInfoPanel({ businessId, businesses }: {
                 >
                   {uploadingSig ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {signatureUrl ? 'Change' : 'Upload'}</>}
                 </button>
-                {signatureUrl && (
-                  <button onClick={() => { setSignatureUrl(''); updateBusiness(businessId, { signature_url: null }) }}
-                    className="text-[10px] text-zinc-400 hover:text-red-500">
-                    Remove signature
-                  </button>
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
