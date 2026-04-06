@@ -119,6 +119,14 @@ export default function VerifyCertificate() {
             </div>
           )}
 
+          {/* Issuing Company */}
+          {business?.name && (
+            <div>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Issuing Company</p>
+              <p className="font-semibold text-zinc-900">{business.name}</p>
+            </div>
+          )}
+
           {/* Service details */}
           {isNewFormat && cert.details ? (
             <PublicDetailSection businessType={cert.business_type!} details={cert.details} serviceDate={cert.service_date} technicianName={cert.technician_name || (cert as any).technician?.display_name} />
@@ -183,8 +191,7 @@ export default function VerifyCertificate() {
         {/* Company Footer */}
         {business && (
           <div className="mt-6 text-center border-t border-zinc-100 pt-5 pb-2">
-            <p className="text-sm font-bold text-zinc-700">{business.name}</p>
-            {business.address && <p className="text-xs text-zinc-500 mt-0.5">{business.address}</p>}
+            {business.address && <p className="text-xs text-zinc-500">{business.address}</p>}
             <div className="flex items-center justify-center gap-3 mt-1 text-xs text-zinc-500">
               {business.phone && <span>{business.phone}</span>}
               {business.website && <span>{business.website}</span>}

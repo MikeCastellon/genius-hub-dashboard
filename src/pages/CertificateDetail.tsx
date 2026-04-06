@@ -198,6 +198,14 @@ export default function CertificateDetail() {
           </div>
         )}
 
+        {/* Issuing Company */}
+        {cert.business && (
+          <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Issuing Company</p>
+            <p className="font-semibold text-zinc-900">{cert.business.name}</p>
+          </div>
+        )}
+
         {/* Technician */}
         {(cert.technician_name || (cert as any).technician?.display_name) && (
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
@@ -321,7 +329,6 @@ export default function CertificateDetail() {
         {/* Company Footer */}
         {cert.business && (
           <div className="mt-6 pt-6 border-t border-zinc-200 text-center text-sm text-zinc-500">
-            <p className="font-semibold text-zinc-700">{cert.business.name}</p>
             {cert.business.address && <p>{cert.business.address}</p>}
             <div className="flex items-center justify-center gap-3 mt-1">
               {cert.business.phone && <span>{cert.business.phone}</span>}
