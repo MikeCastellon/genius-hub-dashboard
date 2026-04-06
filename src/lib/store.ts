@@ -666,7 +666,7 @@ export function useCertificates() {
     if (!isConfigured()) { setLoading(false); return }
     const { data } = await supabase
       .from('certificates')
-      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url)')
+      .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website)')
       .order('created_at', { ascending: false })
     setCertificates(data || [])
     setLoading(false)
@@ -679,7 +679,7 @@ export function useCertificates() {
 export async function getCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url)')
+    .select('*, intake:vehicle_intakes(*, customer:customers(*)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(*), business:businesses(name, slug, logo_url, phone, address, website)')
     .eq('id', id)
     .maybeSingle()
   if (!data) return null
@@ -711,7 +711,7 @@ export async function getCertificate(id: string): Promise<Certificate | null> {
 export async function getPublicCertificate(id: string): Promise<Certificate | null> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(name), business:businesses(name, slug, logo_url)')
+    .select('*, intake:vehicle_intakes(id, vin, year, make, model, color, created_at, customer:customers(name)), technician:profiles(display_name), photos:certificate_photos(*), vehicle:vehicles(*), customer:customers(name), business:businesses(name, slug, logo_url, phone, address, website)')
     .eq('id', id)
     .eq('is_public', true)
     .maybeSingle()
@@ -920,7 +920,7 @@ export async function createWarrantyCertificate(params: {
 export async function getVinHistory(vin: string): Promise<Certificate[]> {
   const { data } = await supabase
     .from('certificates')
-    .select('*, vehicle:vehicles!inner(*), business:businesses(name, slug, logo_url), customer:customers(name)')
+    .select('*, vehicle:vehicles!inner(*), business:businesses(name, slug, logo_url, phone, address, website), customer:customers(name)')
     .eq('vehicles.vin', vin.toUpperCase())
     .eq('is_public', true)
     .order('service_date', { ascending: false })

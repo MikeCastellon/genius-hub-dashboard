@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getPublicCertificate, getCertificatePhotoUrl } from '@/lib/store'
 import { Certificate, BUSINESS_TYPE_LABELS } from '@/lib/types'
-import { Loader2, ShieldCheck, ShieldOff, Lock, ExternalLink } from 'lucide-react'
+import { Loader2, ShieldCheck, ShieldOff, Lock, ExternalLink, Printer } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export default function VerifyCertificate() {
@@ -55,26 +55,33 @@ export default function VerifyCertificate() {
     ? [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(' ')
     : [intake?.year, intake?.make, intake?.model].filter(Boolean).join(' ') || '—'
   const vin = vehicle?.vin || intake?.vin
+  const techName = cert.technician_name || (cert as any).technician?.display_name || null
   const isWarrantyActive = cert.status === 'active' && new Date(cert.warranty_expiry) > new Date()
 
   return (
     <div className="min-h-screen bg-zinc-50">
       {/* Header */}
       <div className={`px-4 py-6 text-center ${isWarrantyActive ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-red-500 to-red-600'}`}>
-        <div className="flex items-center justify-center gap-2 mb-2">
-          {isWarrantyActive ? <ShieldCheck size={28} className="text-white" /> : <ShieldOff size={28} className="text-white" />}
+        {/* Print button */}
+        <div className="flex justify-end mb-2 print:hidden">
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors">
+            <Printer size={12} /> Print
+          </button>
         </div>
-        <h1 className="text-xl font-bold text-white">
-          {isWarrantyActive ? 'Verified Installation' : cert.status === 'voided' ? 'Certificate Voided' : 'Warranty Expired'}
-        </h1>
-        {business?.name && (
-          <p className="text-white/80 text-sm mt-1">Verified by {business.name}</p>
-        )}
         {business?.logo_url && (
-          <div className="mt-3 flex justify-center">
-            <img src={business.logo_url} alt={business.name} className="h-6 opacity-90" />
+          <div className="mb-3 flex justify-center">
+            <img src={business.logo_url} alt={business.name} className="h-10 brightness-0 invert opacity-90" />
           </div>
         )}
+        {business?.name && (
+          <h2 className="text-lg font-bold text-white">{business.name}</h2>
+        )}
+        <div className="flex items-center justify-center gap-2 mt-3 mb-1">
+          {isWarrantyActive ? <ShieldCheck size={24} className="text-white" /> : <ShieldOff size={24} className="text-white" />}
+          <h1 className="text-lg font-bold text-white">
+            {isWarrantyActive ? 'Verified Installation' : cert.status === 'voided' ? 'Certificate Voided' : 'Warranty Expired'}
+          </h1>
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto p-4 -mt-4">
@@ -173,10 +180,23 @@ export default function VerifyCertificate() {
           )}
         </div>
 
-        {/* Footer branding */}
-        <div className="text-center mt-6 pb-8">
-          <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Powered by</p>
-          <p className="text-sm font-bold text-zinc-600 mt-0.5">{business?.name || 'Pro Hub'}</p>
+        {/* Company Footer */}
+        {business && (
+          <div className="mt-6 text-center border-t border-zinc-100 pt-5 pb-2">
+            <p className="text-sm font-bold text-zinc-700">{business.name}</p>
+            {business.address && <p className="text-xs text-zinc-500 mt-0.5">{business.address}</p>}
+            <div className="flex items-center justify-center gap-3 mt-1 text-xs text-zinc-500">
+              {business.phone && <span>{business.phone}</span>}
+              {business.website && <span>{business.website}</span>}
+            </div>
+            {techName && (
+              <p className="mt-2 text-xs text-zinc-400">Installed by {techName}</p>
+            )}
+            <p className="mt-1 text-xs text-zinc-400">Certificate {cert.certificate_number}</p>
+          </div>
+        )}
+        <div className="text-center mt-4 pb-8">
+          <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Powered by Pro Hub</p>
         </div>
       </div>
     </div>

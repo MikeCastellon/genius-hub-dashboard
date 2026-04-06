@@ -77,3 +77,47 @@ input:focus, textarea:focus, select:focus {
 html, body {
   overscroll-behavior: none;
 }
+
+/* Print styles for certificate pages */
+@media print {
+  /* Hide everything except the certificate */
+  aside, nav, header, footer,
+  .print\:hidden,
+  button:not(#certificate-printable button) {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and shadows for clean print */
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .glass, .glass-strong {
+    background: white !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: 1px solid #e4e4e7 !important;
+  }
+
+  /* Full width for certificate content */
+  #certificate-printable {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure colors print correctly */
+  .bg-emerald-50, .bg-red-50, .bg-zinc-50 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Remove page margins */
+  @page {
+    margin: 0.5in;
+  }
+}

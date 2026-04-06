@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCertificate, updateCertificate, getCertificatePhotoUrl } from '@/lib/store'
 import { Certificate, BUSINESS_TYPE_LABELS, type WarrantyClaim } from '@/lib/types'
-import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle, FileWarning, AlertTriangle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Link2, Check, Loader2, Award, Eye, EyeOff, XCircle, FileWarning, AlertTriangle, ExternalLink, Printer } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import ClaimModal from '@/components/certify/ClaimModal'
@@ -99,6 +99,9 @@ export default function CertificateDetail() {
           <ArrowLeft size={15} /> Back
         </button>
         <div className="flex items-center gap-2">
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 print:hidden">
+            <Printer size={14} /> Print
+          </button>
           <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
             {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
             {copied ? 'Copied!' : 'Share Link'}
@@ -115,7 +118,17 @@ export default function CertificateDetail() {
       </div>
 
       {/* Certificate document */}
-      <div className="glass rounded-2xl p-6 md:p-8">
+      <div className="glass rounded-2xl p-6 md:p-8" id="certificate-printable">
+        {/* Company Header */}
+        {cert.business && (
+          <div className="text-center mb-6 pb-6 border-b border-zinc-200">
+            {cert.business.logo_url && (
+              <img src={cert.business.logo_url} alt={cert.business.name} className="h-12 mx-auto mb-2" />
+            )}
+            <h2 className="text-lg font-bold text-zinc-900">{cert.business.name}</h2>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -304,6 +317,24 @@ export default function CertificateDetail() {
             </div>
           )}
         </div>
+
+        {/* Company Footer */}
+        {cert.business && (
+          <div className="mt-6 pt-6 border-t border-zinc-200 text-center text-sm text-zinc-500">
+            <p className="font-semibold text-zinc-700">{cert.business.name}</p>
+            {cert.business.address && <p>{cert.business.address}</p>}
+            <div className="flex items-center justify-center gap-3 mt-1">
+              {cert.business.phone && <span>{cert.business.phone}</span>}
+              {cert.business.website && <span>{cert.business.website}</span>}
+            </div>
+            {(cert.technician_name || (cert as any).technician?.display_name) && (
+              <p className="mt-2 text-xs text-zinc-400">
+                Installed by {cert.technician_name || (cert as any).technician?.display_name}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-zinc-400">Certificate {cert.certificate_number}</p>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
