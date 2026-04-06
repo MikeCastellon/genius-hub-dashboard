@@ -119,20 +119,15 @@ export default function CertificateDetail() {
 
       {/* Certificate document */}
       <div className="glass rounded-2xl p-6 md:p-8" id="certificate-printable">
-        {/* Pro Hub Branding + Company Header */}
-        <div className="text-center mb-6 pb-6 border-b border-zinc-200">
-          <p className="text-sm font-bold text-zinc-900">Pro Hub</p>
-          <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Sales & Service by</p>
-          <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-7 mx-auto mt-1 mb-3" />
-          {cert.business && (
-            <>
-              {cert.business.logo_url && (
-                <img src={cert.business.logo_url} alt={cert.business.name} className="h-10 mx-auto mb-1" />
-              )}
-              <h2 className="text-lg font-bold text-zinc-900">{cert.business.name}</h2>
-            </>
-          )}
-        </div>
+        {/* Company Header */}
+        {cert.business && (
+          <div className="text-center mb-6 pb-6 border-b border-zinc-200">
+            {cert.business.logo_url && (
+              <img src={cert.business.logo_url} alt={cert.business.name} className="h-10 mx-auto mb-1" />
+            )}
+            <h2 className="text-lg font-bold text-zinc-900">{cert.business.name}</h2>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
@@ -206,18 +201,18 @@ export default function CertificateDetail() {
         {/* Issuing Company */}
         {cert.business && (
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Issuing Company</p>
-            <p className="font-semibold text-zinc-900">{cert.business.name}</p>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Issuing Company</p>
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <p className="font-semibold text-zinc-900">{cert.business.name}</p>
+              {cert.business.address && <p className="text-sm text-zinc-600">{cert.business.address}</p>}
+              {cert.business.phone && <p className="text-sm text-zinc-600">{cert.business.phone}</p>}
+              {(cert.technician_name || (cert as any).technician?.display_name) && (
+                <p className="text-sm text-zinc-600">Installer: {cert.technician_name || (cert as any).technician?.display_name}</p>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Technician */}
-        {(cert.technician_name || (cert as any).technician?.display_name) && (
-          <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Installer / Technician</p>
-            <p className="font-semibold text-zinc-900">{cert.technician_name || (cert as any).technician?.display_name}</p>
-          </div>
-        )}
 
         {/* Warranty status bar */}
         <div className={`mb-6 p-4 rounded-xl border-2 ${isWarrantyActive ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
@@ -331,22 +326,13 @@ export default function CertificateDetail() {
           )}
         </div>
 
-        {/* Company Footer */}
-        {cert.business && (
-          <div className="mt-6 pt-6 border-t border-zinc-200 text-center text-sm text-zinc-500">
-            {cert.business.address && <p>{cert.business.address}</p>}
-            <div className="flex items-center justify-center gap-3 mt-1">
-              {cert.business.phone && <span>{cert.business.phone}</span>}
-              {cert.business.website && <span>{cert.business.website}</span>}
-            </div>
-            {(cert.technician_name || (cert as any).technician?.display_name) && (
-              <p className="mt-2 text-xs text-zinc-400">
-                Installed by {cert.technician_name || (cert as any).technician?.display_name}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-zinc-400">Certificate {cert.certificate_number}</p>
-          </div>
-        )}
+        {/* Pro Hub Footer */}
+        <div className="mt-6 pt-6 border-t border-zinc-200 text-center">
+          <p className="text-sm font-bold text-zinc-900">Pro Hub</p>
+          <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Sales & Service by</p>
+          <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-6 mx-auto mt-1" />
+          <p className="mt-2 text-xs text-zinc-400">Certificate {cert.certificate_number}</p>
+        </div>
       </div>
 
       {/* Actions */}
