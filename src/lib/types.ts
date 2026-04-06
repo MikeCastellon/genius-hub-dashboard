@@ -246,7 +246,13 @@ export interface Vehicle {
   make: string | null
   model: string | null
   trim: string | null
+  engine?: string | null
+  engine_type?: string | null
+  mileage?: number | null
   color: string | null
+  plate?: string | null
+  business_id?: string
+  created_by?: string | null
   created_at: string
   updated_at: string
 }
@@ -586,4 +592,126 @@ export interface Expense {
   created_by: string | null
   created_at: string
   creator?: { display_name: string }
+}
+
+// ── Repairs Module ──────────────────────────────────────────
+
+export interface RepairLookup {
+  id: string
+  vehicle_id: string
+  dtc_code: string | null
+  description: string
+  urgency: number | null
+  urgency_desc: string | null
+  difficulty: number | null
+  labor_hours: number | null
+  part_cost: number | null
+  labor_cost: number | null
+  misc_cost: number | null
+  total_cost: number | null
+  parts_json: RepairPart[]
+  source: 'carmd' | 'vehicledatabases'
+  business_id: string
+  created_at: string
+}
+
+export interface RepairPart {
+  desc: string
+  manufacturer?: string
+  price: number
+  qty: string | number
+}
+
+export interface MaintenanceLookup {
+  id: string
+  vehicle_id: string
+  description: string
+  due_mileage: number | null
+  is_oem: boolean
+  cycle_mileage: number | null
+  part_cost: number | null
+  labor_cost: number | null
+  total_cost: number | null
+  parts_json: RepairPart[] | null
+  source: string
+  business_id: string
+  created_at: string
+}
+
+export interface RecallLookup {
+  id: string
+  vehicle_id: string
+  type: 'recall' | 'tsb'
+  description: string
+  corrective_action: string | null
+  nhtsa_id: string | null
+  source: string
+  business_id: string
+  created_at: string
+}
+
+export interface RepairGuideStep {
+  number: number
+  title: string
+  description: string
+  warnings?: string[]
+  media_refs?: string[]
+}
+
+export interface RepairGuide {
+  id: string
+  repair_lookup_id: string | null
+  vehicle_id: string
+  content: { steps: RepairGuideStep[] }
+  ai_model: string | null
+  user_prompt: string | null
+  media_urls: string[]
+  created_by: string | null
+  business_id: string
+  created_at: string
+}
+
+export interface PartsOrder {
+  id: string
+  vehicle_id: string
+  repair_lookup_id: string | null
+  supplier: string
+  parts_json: OrderedPart[]
+  total_cost: number
+  status: 'pending' | 'ordered' | 'delivered'
+  partstech_order_id: string | null
+  created_by: string | null
+  business_id: string
+  created_at: string
+}
+
+export interface OrderedPart {
+  name: string
+  part_number: string
+  qty: number
+  price: number
+}
+
+export const DTC_CODE_PATTERN = /^[PBCU][0-9A-F]{4}$/i
+
+export const URGENCY_LABELS: Record<number, string> = {
+  1: 'Low — Monitor',
+  2: 'Medium — Repair Soon',
+  3: 'High — Repair Immediately',
+  4: 'Critical — Do Not Drive',
+}
+
+export const URGENCY_COLORS: Record<number, string> = {
+  1: 'bg-green-100 text-green-700',
+  2: 'bg-yellow-100 text-yellow-700',
+  3: 'bg-orange-100 text-orange-700',
+  4: 'bg-red-100 text-red-700',
+}
+
+export const DIFFICULTY_LABELS: Record<number, string> = {
+  1: 'Very Easy',
+  2: 'Easy',
+  3: 'Moderate',
+  4: 'Difficult',
+  5: 'Very Difficult',
 }
