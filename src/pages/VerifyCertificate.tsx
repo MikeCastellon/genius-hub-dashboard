@@ -311,6 +311,8 @@ export default function VerifyCertificate() {
             <p className="mt-4 text-sm text-zinc-500 italic text-center leading-relaxed">
               This warranty is valid for {cert.warranty_years} year{cert.warranty_years > 1 ? 's' : ''} from the date of service
               {cert.warranty_mileage_cap ? `, or ${cert.warranty_mileage_cap.toLocaleString()} miles, whichever comes first` : ''}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-500 italic text-center leading-relaxed">
               Subject to the terms and conditions of the issuing company.
             </p>
           </div>
