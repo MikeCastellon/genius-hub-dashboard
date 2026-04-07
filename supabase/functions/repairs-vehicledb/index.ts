@@ -56,6 +56,23 @@ function getMockMaintenance() {
   ]
 }
 
+function getMockTSBs() {
+  return [
+    { tsb_number: 'TSB-0116-15', date: '2015-08-12', category: 'Engine', subject: 'Engine Oil Consumption', description: 'Some vehicles may exhibit higher than normal engine oil consumption. This bulletin provides inspection and repair procedures.', corrective_action: 'Perform piston ring replacement per service procedure if oil consumption exceeds 1 qt per 1,200 miles.' },
+    { tsb_number: 'TSB-0087-14', date: '2014-11-03', category: 'Electrical', subject: 'Navigation System Software Update', description: 'Navigation system may display incorrect route guidance or experience intermittent freezing.', corrective_action: 'Update navigation system software to latest version. Recalibrate GPS module after update.' },
+    { tsb_number: 'TSB-0203-16', date: '2016-02-18', category: 'Suspension', subject: 'Front Strut Mount Noise', description: 'A clunking or popping noise from the front suspension when turning at low speeds or going over bumps.', corrective_action: 'Replace front strut mount bearings with updated part. Torque to specification and perform alignment.' },
+  ]
+}
+
+function getMockOwnerManual() {
+  return {
+    year: '2015',
+    make: 'Lexus',
+    model: 'GS',
+    path: 'https://vhr.nyc3.cdn.digitaloceanspaces.com/owners-manual/lexus/2015_lexus_gs.pdf',
+  }
+}
+
 function getMockData(action: string) {
   switch (action) {
     case 'repairs': return getMockRepairs()
@@ -63,6 +80,8 @@ function getMockData(action: string) {
     case 'recalls': return getMockRecalls()
     case 'warranty': return getMockWarranty()
     case 'maintenance': return getMockMaintenance()
+    case 'tsb': return getMockTSBs()
+    case 'owner_manual': return getMockOwnerManual()
     default: return { error: `Unknown action: ${action}` }
   }
 }
@@ -81,12 +100,16 @@ function getEndpoint(action: string, params: { vin?: string; year?: string; make
       return `/vehicle-warranty/${encodeURIComponent(year!)}/${encodeURIComponent(make!)}/${encodeURIComponent(model!)}`
     case 'maintenance':
       return `/vehicle-maintenance/${vin}`
+    case 'tsb':
+      return `/tsb/${vin}`
+    case 'owner_manual':
+      return `/owner-manual/${vin}`
     default:
       throw new Error(`Unknown action: ${action}`)
   }
 }
 
-const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty', 'maintenance']
+const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty', 'maintenance', 'tsb', 'owner_manual']
 
 // Cache durations per action (in ms)
 const CACHE_DURATION: Record<string, number> = {
@@ -95,6 +118,8 @@ const CACHE_DURATION: Record<string, number> = {
   recalls: 24 * 60 * 60 * 1000,               // 1 day
   warranty: 30 * 24 * 60 * 60 * 1000,         // 30 days
   maintenance: 30 * 24 * 60 * 60 * 1000,      // 30 days
+  tsb: 30 * 24 * 60 * 60 * 1000,              // 30 days
+  owner_manual: 90 * 24 * 60 * 60 * 1000,     // 90 days
 }
 
 serve(async (req) => {

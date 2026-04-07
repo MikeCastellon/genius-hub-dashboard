@@ -13,14 +13,18 @@ import RepairEstimates from '@/components/repairs/RepairEstimates'
 import RecallsPanel from '@/components/repairs/RecallsPanel'
 import RepairGuidePanel from '@/components/repairs/RepairGuidePanel'
 import MaintenancePanel from '@/components/repairs/MaintenancePanel'
+import TSBPanel from '@/components/repairs/TSBPanel'
+import OwnerManualPanel from '@/components/repairs/OwnerManualPanel'
 
-type RepairTab = 'overview' | 'repairs' | 'recalls' | 'maintenance' | 'ai_guide'
+type RepairTab = 'overview' | 'repairs' | 'recalls' | 'maintenance' | 'tsb' | 'manual' | 'ai_guide'
 
 const TABS: { key: RepairTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'repairs', label: 'Repairs & Estimates' },
   { key: 'recalls', label: 'Recalls' },
   { key: 'maintenance', label: 'Maintenance' },
+  { key: 'tsb', label: 'Service Bulletins' },
+  { key: 'manual', label: "Owner's Manual" },
   { key: 'ai_guide', label: 'AI Guide' },
 ]
 
@@ -257,6 +261,12 @@ export default function Repairs() {
             )}
             {activeTab === 'maintenance' && (
               <MaintenancePanel vehicle={currentVehicle} />
+            )}
+            {activeTab === 'tsb' && (
+              <TSBPanel vehicle={currentVehicle} />
+            )}
+            {activeTab === 'manual' && (
+              <OwnerManualPanel vehicle={currentVehicle} />
             )}
             {activeTab === 'ai_guide' && (
               <RepairGuidePanel
