@@ -33,7 +33,6 @@ import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
 import PortalHistory from './pages/portal/PortalHistory'
 import PortalProfile from './pages/portal/PortalProfile'
-import FloatingJobPill from '@/components/FloatingJobPill'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
@@ -142,7 +141,6 @@ export default function App() {
         <Route path="/book/:slug" element={<BookingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <FloatingJobPill />
     </>
   )
 }
