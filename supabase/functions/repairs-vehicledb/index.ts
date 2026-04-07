@@ -129,10 +129,9 @@ serve(async (req) => {
     const cacheKey = vin || `${year}-${make}-${model}`
     const cacheDuration = CACHE_DURATION[action] ?? 24 * 60 * 60 * 1000
     const { data: cached } = await supabase
-      .from('repair_lookups')
+      .from('vehicledb_cache')
       .select('api_response')
-      .eq('vin', cacheKey)
-      .eq('source', 'vehicledatabases')
+      .eq('cache_key', cacheKey)
       .eq('lookup_type', action)
       .gte('created_at', new Date(Date.now() - cacheDuration).toISOString())
       .order('created_at', { ascending: false })
@@ -170,8 +169,8 @@ serve(async (req) => {
     }
 
     // Cache the response
-    await supabase.from('repair_lookups').insert({
-      vin: cacheKey,
+    await supabase.from('vehicledb_cache').insert({
+      cache_key: cacheKey,
       source: 'vehicledatabases',
       lookup_type: action,
       api_response: data,
