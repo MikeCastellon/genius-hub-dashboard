@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Send, Paperclip, Smile, X, Loader2 } from 'lucide-react'
 import { sendMessage, uploadChatFile, addAttachment } from '@/lib/chatStore'
+import type { Message } from '@/lib/types'
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🔥', '👀', '✅', '🎉', '💯', '👏', '🤔', '😎', '🙏']
 
@@ -8,12 +9,13 @@ interface Props {
   channelId: string
   senderId: string
   onTyping?: () => void
+  onMessageSent?: (msg: Message) => void
   replyTo?: { id: string; senderName: string; content: string } | null
   onClearReply?: () => void
   members?: { id: string; display_name: string }[]
 }
 
-export default function Composer({ channelId, senderId, onTyping, replyTo, onClearReply, members }: Props) {
+export default function Composer({ channelId, senderId, onTyping, onMessageSent, replyTo, onClearReply, members }: Props) {
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -40,12 +42,13 @@ export default function Composer({ channelId, senderId, onTyping, replyTo, onCle
         if (mentioned) mentions.push(mentioned.id)
       }
 
-      await sendMessage(channelId, senderId, content.trim(), {
+      const msg = await sendMessage(channelId, senderId, content.trim(), {
         parentId: replyTo?.id,
         metadata: mentions.length > 0 ? { mentions } : {},
       })
       setContent('')
       onClearReply?.()
+      onMessageSent?.(msg)
     } catch (err) {
       console.error('Send failed:', err)
     } finally {
@@ -184,22 +187,25 @@ export default function Composer({ channelId, senderId, onTyping, replyTo, onCle
         <div className="relative">
           <button
             onClick={() => setShowEmoji(!showEmoji)}
-            className="p-2 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
+            className="p-2 rounded-xl hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
           >
             <Smile size={18} />
           </button>
           {showEmoji && (
-            <div className="absolute bottom-full right-0 mb-2 bg-white border border-zinc-200 rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 z-10">
-              {QUICK_EMOJIS.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => { setContent(prev => prev + emoji); setShowEmoji(false); inputRef.current?.focus() }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-base"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
+              <div className="absolute bottom-full right-0 mb-2 bg-white border border-zinc-200 rounded-2xl shadow-lg p-2.5 grid grid-cols-4 gap-1.5 z-20 w-44">
+                {QUICK_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => { setContent(prev => prev + emoji); setShowEmoji(false); inputRef.current?.focus() }}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-zinc-100 text-lg transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 

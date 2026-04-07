@@ -246,7 +246,11 @@ export function useMessages(channelId: string | undefined) {
             .eq('id', payload.new.id)
             .single()
           if (msg && !msg.parent_id) {
-            setMessages(prev => [...prev, msg])
+            setMessages(prev => {
+              // Deduplicate — might already be added optimistically
+              if (prev.some(m => m.id === msg.id)) return prev
+              return [...prev, msg]
+            })
           }
         }
       )

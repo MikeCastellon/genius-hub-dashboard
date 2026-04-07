@@ -4,7 +4,7 @@ import {
   useMyChannels, useMessages, useChannelMembers, usePresence, useTypingIndicator,
   useReactionSubscription, markChannelRead, searchMessages
 } from '@/lib/chatStore'
-import { Message } from '@/lib/types'
+import type { Message } from '@/lib/types'
 import MessageBubble from '@/components/chat/MessageBubble'
 import Composer from '@/components/chat/Composer'
 import ChannelList from '@/components/chat/ChannelList'
@@ -73,6 +73,13 @@ export default function Chat() {
   const handleReply = useCallback((msg: Message) => {
     setReplyTo({ id: msg.id, senderName: msg.sender?.display_name || 'Unknown', content: msg.content })
   }, [])
+
+  // Optimistic: add message to local state immediately after send
+  const handleMessageSent = useCallback((_msg: Message) => {
+    // Refresh to show the sent message immediately
+    refreshMessages()
+    refreshChannels()
+  }, [refreshMessages, refreshChannels])
 
   const memberProfiles = members.map(m => ({
     id: m.user_id,
@@ -234,6 +241,7 @@ export default function Chat() {
                     channelId={activeChannelId!}
                     senderId={userId}
                     onTyping={broadcastTyping}
+                    onMessageSent={handleMessageSent}
                     replyTo={replyTo}
                     onClearReply={() => setReplyTo(null)}
                     members={memberProfiles}

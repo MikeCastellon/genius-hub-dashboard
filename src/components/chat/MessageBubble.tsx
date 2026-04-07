@@ -142,22 +142,22 @@ export default function MessageBubble({ message, currentUserId, isAdmin, onReply
 
       {/* Hover actions */}
       {showActions && !editing && (
-        <div className="absolute top-0 right-3 -translate-y-1/2 flex items-center gap-0.5 bg-white border border-zinc-200 rounded-lg shadow-sm px-1 py-0.5">
-          <button onClick={() => setShowEmojis(!showEmojis)} className="p-1 hover:bg-zinc-100 rounded" title="React">
+        <div className="absolute top-0 right-3 -translate-y-1/2 flex items-center gap-0.5 bg-white border border-zinc-200 rounded-xl shadow-sm px-1.5 py-1 z-10">
+          <button onClick={() => setShowEmojis(!showEmojis)} className="p-1.5 hover:bg-zinc-100 rounded-lg transition-colors" title="React">
             <Smile size={14} className="text-zinc-400" />
           </button>
           {onReply && (
-            <button onClick={() => onReply(message)} className="p-1 hover:bg-zinc-100 rounded" title="Reply">
+            <button onClick={() => onReply(message)} className="p-1.5 hover:bg-zinc-100 rounded-lg transition-colors" title="Reply">
               <Reply size={14} className="text-zinc-400" />
             </button>
           )}
           {isMine && (
-            <button onClick={() => { setEditing(true); setEditContent(message.content) }} className="p-1 hover:bg-zinc-100 rounded" title="Edit">
+            <button onClick={() => { setEditing(true); setEditContent(message.content) }} className="p-1.5 hover:bg-zinc-100 rounded-lg transition-colors" title="Edit">
               <Pencil size={14} className="text-zinc-400" />
             </button>
           )}
           {(isMine || isAdmin) && (
-            <button onClick={handleDelete} className="p-1 hover:bg-zinc-100 rounded" title="Delete">
+            <button onClick={handleDelete} className="p-1.5 hover:bg-zinc-100 rounded-lg transition-colors" title="Delete">
               <Trash2 size={14} className="text-red-400" />
             </button>
           )}
@@ -166,12 +166,12 @@ export default function MessageBubble({ message, currentUserId, isAdmin, onReply
 
       {/* Emoji picker popover */}
       {showEmojis && (
-        <div className="absolute top-0 right-3 translate-y-6 bg-white border border-zinc-200 rounded-xl shadow-lg p-2 flex gap-1 z-10">
+        <div className="absolute top-6 right-3 bg-white border border-zinc-200 rounded-2xl shadow-lg p-2 flex gap-1 z-20">
           {QUICK_EMOJIS.map(emoji => (
             <button
               key={emoji}
               onClick={() => handleReaction(emoji)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-base"
+              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-zinc-100 text-lg transition-colors"
             >
               {emoji}
             </button>
