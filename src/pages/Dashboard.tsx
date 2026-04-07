@@ -5,7 +5,7 @@ import { VehicleIntake } from '@/lib/types'
 import {
   DollarSign, TrendingUp, Car, Wallet,
   Banknote, Smartphone, CreditCard,
-  Loader2, Activity, Calendar, Download
+  Loader2, Activity, Download
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

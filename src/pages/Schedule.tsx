@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAppointments, deleteAppointment, useAuth, useAdminUsers, updateAppointment, createAppointment, useBusinesses, createJob, upsertCustomer } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { Appointment, AppointmentStatus, Job } from '@/lib/types'
@@ -42,12 +42,20 @@ export default function Schedule() {
   const { users } = useAdminUsers()
   const { businesses } = useBusinesses()
   const [weekOffset, setWeekOffset] = useState(0)
+  const [dayOffset, setDayOffset] = useState(0) // mobile 3-day navigation
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [copied, setCopied] = useState(false)
   const [startingJob, setStartingJob] = useState<Job | null>(null)
   const [jobStatuses, setJobStatuses] = useState<Record<string, 'in_progress' | 'completed'>>({})
   const [loadingApptId, setLoadingApptId] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
   const gridRef = useRef<HTMLDivElement>(null)
 
   // Week grid
@@ -59,6 +67,11 @@ export default function Schedule() {
     d.setDate(weekStart.getDate() + i)
     return d
   })
+
+  // Mobile shows 3 days centered; clamp dayOffset so we never go out of range
+  const clampedDayOffset = Math.min(Math.max(dayOffset, 0), 4)
+  const visibleDays = isMobile ? weekDays.slice(clampedDayOffset, clampedDayOffset + 3) : weekDays
+  const numCols = visibleDays.length
 
   const apptsByDay = useMemo(() => weekDays.map(day => ({
     date: day,
@@ -187,14 +200,33 @@ export default function Schedule() {
       </div>
 
       <div className="flex-1 flex flex-col min-h-0">
-          {/* Week nav */}
-          <div className="flex items-center gap-3 mb-3 shrink-0">
-            <button onClick={() => setWeekOffset(o => o - 1)} className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"><ChevronLeft size={16} /></button>
-            <span className="text-sm font-semibold text-zinc-700">
-              {weekDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – {weekDays[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+          {/* Week/day nav */}
+          <div className="flex items-center gap-2 mb-3 shrink-0">
+            <button
+              onClick={() => {
+                if (isMobile) {
+                  if (clampedDayOffset === 0) { setWeekOffset(o => o - 1); setDayOffset(4) }
+                  else setDayOffset(d => d - 1)
+                } else { setWeekOffset(o => o - 1) }
+              }}
+              className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
+            ><ChevronLeft size={16} /></button>
+            <span className="text-sm font-semibold text-zinc-700 flex-1 text-center">
+              {isMobile
+                ? `${visibleDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${visibleDays[2].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+                : `${weekDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+              }
             </span>
-            <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"><ChevronRight size={16} /></button>
-            <button onClick={() => setWeekOffset(0)} className="ml-auto px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Today</button>
+            <button
+              onClick={() => {
+                if (isMobile) {
+                  if (clampedDayOffset >= 4) { setWeekOffset(o => o + 1); setDayOffset(0) }
+                  else setDayOffset(d => d + 1)
+                } else { setWeekOffset(o => o + 1) }
+              }}
+              className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
+            ><ChevronRight size={16} /></button>
+            <button onClick={() => { setWeekOffset(0); setDayOffset(0) }} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Today</button>
           </div>
 
           {loading ? (
@@ -203,29 +235,31 @@ export default function Schedule() {
             <>
               {/* Calendar grid */}
               <div className="flex-1 border border-zinc-200 rounded-xl overflow-hidden bg-white flex flex-col min-h-0">
-                {/* Day headers — sticky */}
-                <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-zinc-200 bg-zinc-50 shrink-0">
-                  <div className="border-r border-zinc-200" />
-                  {weekDays.map((day, i) => {
-                    const isToday = day.toDateString() === today.toDateString()
-                    return (
-                      <div key={i} className={`text-center py-2.5 border-r border-zinc-100 last:border-r-0 ${isToday ? 'bg-red-50' : ''}`}>
-                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isToday ? 'text-red-600' : 'text-zinc-400'}`}>{DAYS[day.getDay()]}</p>
-                        <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-red-600' : 'text-zinc-800'}`}>
-                          {isToday ? (
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-600 text-white text-sm">{day.getDate()}</span>
-                          ) : (
-                            day.getDate()
-                          )}
-                        </p>
-                      </div>
-                    )
-                  })}
+                {/* Day headers */}
+                <div className="border-b border-zinc-200 bg-zinc-50 shrink-0">
+                  <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(${numCols}, 1fr)` }}>
+                    <div className="border-r border-zinc-200" />
+                    {visibleDays.map((day, i) => {
+                      const isToday = day.toDateString() === today.toDateString()
+                      return (
+                        <div key={i} className={`text-center py-2.5 border-r border-zinc-100 last:border-r-0 ${isToday ? 'bg-red-50' : ''}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider ${isToday ? 'text-red-600' : 'text-zinc-400'}`}>{DAYS[day.getDay()]}</p>
+                          <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-red-600' : 'text-zinc-800'}`}>
+                            {isToday ? (
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-600 text-white text-sm">{day.getDate()}</span>
+                            ) : (
+                              day.getDate()
+                            )}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* Scrollable time grid */}
                 <div className="flex-1 overflow-y-auto" ref={gridRef}>
-                  <div className="grid grid-cols-[60px_repeat(7,1fr)] relative" style={{ height: HOURS.length * ROW_HEIGHT }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(${numCols}, 1fr)`, position: 'relative', height: HOURS.length * ROW_HEIGHT }}>
                     {/* Time labels */}
                     {HOURS.map((hour, i) => (
                       <div
@@ -247,17 +281,18 @@ export default function Schedule() {
                     ))}
 
                     {/* Day columns with vertical separators */}
-                    {weekDays.map((day, dayIdx) => {
+                    {visibleDays.map((day, colIdx) => {
                       const isToday = day.toDateString() === today.toDateString()
-                      const dayAppts = apptsByDay[dayIdx].appts
+                      const weekIdx = weekDays.findIndex(d => d.toDateString() === day.toDateString())
+                      const dayAppts = weekIdx >= 0 ? apptsByDay[weekIdx].appts : []
 
                       return (
                         <div
-                          key={dayIdx}
+                          key={colIdx}
                           className={`absolute top-0 bottom-0 border-r border-zinc-100 ${isToday ? 'bg-red-50/30' : ''}`}
                           style={{
-                            left: `calc(60px + ${dayIdx} * ((100% - 60px) / 7))`,
-                            width: `calc((100% - 60px) / 7)`,
+                            left: `calc(60px + ${colIdx} * ((100% - 60px) / ${numCols}))`,
+                            width: `calc((100% - 60px) / ${numCols})`,
                           }}
                         >
                           {/* Appointments */}
