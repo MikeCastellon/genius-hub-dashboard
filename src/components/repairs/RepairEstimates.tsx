@@ -22,29 +22,12 @@ function LoadingSkeleton() {
   )
 }
 
-function CostBar({ low, high, label }: { low: number; high: number; label: string }) {
-  return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="w-12 text-zinc-400 font-medium shrink-0">{label}</span>
-      <div className="flex-1 h-2.5 bg-zinc-100 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
-          style={{ width: `${Math.min((high / (high * 1.3)) * 100, 100)}%` }}
-        />
-      </div>
-      <span className="text-zinc-600 font-semibold shrink-0 w-28 text-right">
-        {formatCurrency(low)} – {formatCurrency(high)}
-      </span>
-    </div>
-  )
-}
-
 function RepairCard({ repair, estimate }: { repair?: VehicleDBRepair; estimate?: VehicleDBRepairEstimate }) {
   const item = repair || estimate
   if (!item) return null
 
   return (
-    <div className="glass rounded-xl p-4 space-y-3">
+    <div className="glass rounded-xl p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Wrench size={14} className="text-red-500 shrink-0" />
@@ -63,9 +46,9 @@ function RepairCard({ repair, estimate }: { repair?: VehicleDBRepair; estimate?:
         </div>
       </div>
 
-      <div className="space-y-2">
-        <CostBar low={item.parts_low} high={item.parts_high} label="Parts" />
-        <CostBar low={item.labor_low} high={item.labor_high} label="Labor" />
+      <div className="flex gap-4 mt-2 text-xs text-zinc-400">
+        <span>Parts: {formatCurrency(item.parts_low)} – {formatCurrency(item.parts_high)}</span>
+        <span>Labor: {formatCurrency(item.labor_low)} – {formatCurrency(item.labor_high)}</span>
       </div>
     </div>
   )
