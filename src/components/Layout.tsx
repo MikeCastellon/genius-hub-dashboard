@@ -1,21 +1,39 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock } from 'lucide-react'
+import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
 const navItems = [
   { to: '/', icon: Car, label: 'Intake' },
+  { to: '/queue', icon: ClipboardList, label: 'Queue' },
+  { to: '/repairs', icon: Cog, label: 'Repairs' },
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/history', icon: History, label: 'History' },
+  { to: '/customers', icon: Users, label: 'Customers' },
   { to: '/invoices', icon: FileText, label: 'Invoices' },
+  { to: '/certify', icon: Award, label: 'Certify' },
   { to: '/schedule', icon: Calendar, label: 'Schedule' },
   { to: '/hours', icon: Clock, label: 'Hours' },
+  { to: '/forms', icon: FileCheck, label: 'Forms' },
   { to: '/services', icon: Wrench, label: 'Services' },
+  { to: '/chat', icon: MessageCircle, label: 'Chat' },
 ]
 
 export default function Layout() {
   const { signOut, user, profile } = useAuth()
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch { return false }
+  })
+
+  const toggleCollapsed = () => {
+    setCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem('sidebar-collapsed', String(next)) } catch {}
+      return next
+    })
+  }
 
   const handleSignOut = async () => {
     if (user) await unregisterPushNotifications(user.id);
@@ -25,7 +43,10 @@ export default function Layout() {
   const allNavItems = [
     ...navItems,
     ...(profile?.role === 'admin' || profile?.role === 'super_admin'
-      ? [{ to: '/admin', icon: ShieldCheck, label: 'Admin' }]
+      ? [
+          { to: '/expenses', icon: Receipt, label: 'Expenses' },
+          { to: '/admin', icon: ShieldCheck, label: 'Admin' },
+        ]
       : []),
     ...(profile?.role === 'super_admin'
       ? [{ to: '/super-admin', icon: Building2, label: 'Businesses' }]
@@ -33,55 +54,84 @@ export default function Layout() {
   ]
 
   const roleBadge = profile?.role === 'super_admin'
-    ? { label: 'Super Admin', color: 'bg-red-100 text-red-700' }
+    ? { label: 'SA', color: 'bg-red-100 text-red-700' }
     : profile?.role === 'admin'
-      ? { label: 'Admin', color: 'bg-amber-100 text-amber-700' }
+      ? { label: 'A', color: 'bg-amber-100 text-amber-700' }
       : null
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-[220px] shrink-0 flex-col border-r border-zinc-200/60 bg-white/60 backdrop-blur-xl">
-        <div className="px-5 pt-6 pb-5">
-          <div className="flex flex-col items-center text-center gap-1.5">
-            <p className="text-sm font-bold text-zinc-900">Pro Hub</p>
-            <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Sales & Service by</p>
-            <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-8 w-auto" />
-          </div>
+      <aside className={`hidden md:flex shrink-0 flex-col border-r border-zinc-200/60 bg-white/60 backdrop-blur-xl transition-all duration-200 ${collapsed ? 'w-[68px]' : 'w-[220px]'}`}>
+        {/* Logo area */}
+        <div className={`pt-4 pb-3 ${collapsed ? 'px-2' : 'px-5'}`}>
+          {collapsed ? (
+            <div className="flex flex-col items-center">
+              <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="ACG" className="h-6 w-auto" />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center text-center gap-1">
+              <p className="text-sm font-bold text-zinc-900">Pro Hub</p>
+              <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Sales & Service by</p>
+              <img src="https://www.autocaregenius.com/cdn/shop/files/v11_1.svg?v=1760731533&width=160" alt="Auto Care Genius" className="h-7 w-auto" />
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 px-3 space-y-0.5">
+        {/* Nav items */}
+        <nav className={`flex-1 space-y-0.5 ${collapsed ? 'px-1.5' : 'px-3'}`}>
           {allNavItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} end={to === '/'}
+              title={collapsed ? label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium ${
+                `flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3.5 py-2.5'} rounded-xl text-[13px] font-medium transition-colors ${
                   isActive
                     ? 'bg-gradient-to-r from-red-50 to-red-50 text-red-700 border border-red-100'
                     : 'text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 border border-transparent'
                 }`
               }>
               <Icon size={16} />
-              {label}
+              {!collapsed && label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-zinc-100 space-y-1">
-          <div className="px-3.5 py-1.5">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-semibold text-zinc-700 truncate">{displayName}</p>
-              {roleBadge && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 ${roleBadge.color}`}>
-                  {roleBadge.label}
-                </span>
-              )}
+        {/* Collapse toggle */}
+        <div className={`px-2 py-2 ${collapsed ? 'flex justify-center' : ''}`}>
+          <button
+            onClick={toggleCollapsed}
+            className="flex items-center justify-center w-full py-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 transition-colors"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight size={16} /> : (
+              <span className="flex items-center gap-2 text-[12px] font-medium">
+                <ChevronLeft size={14} />
+                Collapse
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* User footer */}
+        <div className={`border-t border-zinc-100 ${collapsed ? 'p-1.5' : 'p-3'} space-y-1`}>
+          {!collapsed && (
+            <div className="px-3.5 py-1.5">
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] font-semibold text-zinc-700 truncate">{displayName}</p>
+                {roleBadge && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 ${roleBadge.color}`}>
+                    {roleBadge.label}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
-          </div>
+          )}
           <button onClick={handleSignOut}
-            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 w-full">
+            title={collapsed ? 'Sign Out' : undefined}
+            className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-3.5'} py-2.5 rounded-xl text-[13px] font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 w-full transition-colors`}>
             <LogOut size={15} />
-            Sign Out
+            {!collapsed && 'Sign Out'}
           </button>
         </div>
       </aside>

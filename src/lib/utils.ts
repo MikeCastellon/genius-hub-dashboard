@@ -17,7 +17,14 @@ export function formatDateTime(iso: string): string {
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  // For date-only strings (YYYY-MM-DD), parse parts directly to avoid timezone shift.
+  // new Date("2026-04-06") treats it as UTC midnight, which shows as the previous day
+  // in timezones behind UTC.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+  const d = dateOnly
+    ? new Date(iso + 'T00:00:00') // Appending time makes it parse as local time
+    : new Date(iso)
+  return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

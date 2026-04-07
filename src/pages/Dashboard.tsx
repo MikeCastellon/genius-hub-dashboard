@@ -5,7 +5,7 @@ import { VehicleIntake } from '@/lib/types'
 import {
   DollarSign, TrendingUp, Car, Wallet,
   Banknote, Smartphone, CreditCard,
-  Loader2, Activity
+  Loader2, Activity, Calendar, Download
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -110,6 +110,37 @@ export default function Dashboard() {
     )
   }
 
+  const exportCSV = () => {
+    const headers = ['Date', 'Customer', 'Vehicle', 'VIN', 'Payment Method', 'Subtotal', 'Services', 'Technician', 'Notes']
+    const rows = filtered.map(i => {
+      const customer = (i.customer as any)?.name || 'Unknown'
+      const vehicle = [i.year, i.make, i.model, i.color].filter(Boolean).join(' ')
+      const services = (i.intake_services || []).map(s => s.service?.name || 'Unknown').join('; ')
+      const tech = (i.technician as any)?.display_name || ''
+      return [
+        new Date(i.created_at).toLocaleDateString(),
+        customer,
+        vehicle,
+        i.vin || '',
+        i.payment_method || '',
+        i.subtotal.toFixed(2),
+        services,
+        tech,
+        i.notes || '',
+      ]
+    })
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dashboard-export-${preset}-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const kpiCards = [
     { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, gradient: 'from-red-700 to-red-600' },
     { label: 'Vehicles Serviced', value: stats.count.toString(), icon: Car, gradient: 'from-emerald-400 to-green-500' },
@@ -126,7 +157,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
@@ -135,6 +166,14 @@ export default function Dashboard() {
           </h2>
           <p className="text-[13px] text-zinc-400 mt-0.5">Services overview and analytics</p>
         </div>
+        <button
+          onClick={exportCSV}
+          disabled={filtered.length === 0}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-default"
+        >
+          <Download size={14} />
+          Export CSV
+        </button>
       </div>
 
       {/* Date Range */}

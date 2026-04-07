@@ -118,7 +118,7 @@ export default function Hours() {
   const clockedIn = users.filter(u => entries.some(e => e.employee_id === u.id && !e.clock_out))
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
