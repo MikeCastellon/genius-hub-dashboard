@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callRepairsVehicleDB } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
 import type { Vehicle } from '@/lib/types'
-import { BookOpen, Download, ExternalLink, Loader2, FileText } from 'lucide-react'
+import { BookOpen, Download, Loader2, FileText } from 'lucide-react'
 
 interface ManualData {
   year: string
@@ -17,6 +18,7 @@ interface Props {
 export default function OwnerManualPanel({ vehicle }: Props) {
   const [manual, setManual] = useState<ManualData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,6 +41,33 @@ export default function OwnerManualPanel({ vehicle }: Props) {
       })
       .finally(() => setLoading(false))
   }, [vehicle.vin])
+
+  const handleDownload = async () => {
+    if (!vehicle.vin) return
+    setDownloading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('repairs-vehicledb', {
+        body: { action: 'download_manual', vin: vehicle.vin },
+      })
+
+      if (error) throw error
+
+      // data comes back as a Blob when Content-Type is application/pdf
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${vehicle.year}_${vehicle.make}_${vehicle.model}_owners_manual.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err.message || 'Failed to download manual')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -80,46 +109,32 @@ export default function OwnerManualPanel({ vehicle }: Props) {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h4 className="text-base font-bold text-zinc-900 mb-1">
-              {manual.year} {manual.make} {manual.model}
+              {vehicle.year} {vehicle.make} {vehicle.model}
             </h4>
             <p className="text-sm text-zinc-500 mb-4">
-              Official owner's manual from {manual.make}. Includes maintenance schedules,
+              Official owner's manual from {vehicle.make}. Includes maintenance schedules,
               specifications, operating instructions, and warranty information.
             </p>
 
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={manual.path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
-              >
-                <ExternalLink size={14} />
-                View Manual
-              </a>
-              <a
-                href={manual.path}
-                download
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-sm font-semibold hover:bg-zinc-200 transition-all"
-              >
-                <Download size={14} />
-                Download PDF
-              </a>
-            </div>
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {downloading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  Download PDF
+                </>
+              )}
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Embedded Preview */}
-      <div className="glass rounded-2xl overflow-hidden">
-        <div className="bg-zinc-50 px-4 py-2 border-b border-zinc-200">
-          <p className="text-xs text-zinc-500 font-medium">Manual Preview</p>
-        </div>
-        <iframe
-          src={manual.path}
-          className="w-full h-[600px] border-0"
-          title={`${manual.year} ${manual.make} ${manual.model} Owner's Manual`}
-        />
       </div>
     </div>
   )

@@ -109,7 +109,7 @@ function getEndpoint(action: string, params: { vin?: string; year?: string; make
   }
 }
 
-const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty', 'maintenance', 'tsb', 'owner_manual']
+const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty', 'maintenance', 'tsb', 'owner_manual', 'download_manual']
 
 // Cache durations per action (in ms)
 const CACHE_DURATION: Record<string, number> = {
@@ -142,6 +142,62 @@ serve(async (req) => {
         JSON.stringify({ error: `Unknown action: ${action}. Valid: ${VALID_ACTIONS.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // download_manual: proxy the PDF through the edge function
+    if (action === 'download_manual') {
+      if (!vin) {
+        return new Response(
+          JSON.stringify({ error: 'download_manual requires vin' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const apiKey = Deno.env.get('VEHICLEDB_API_KEY')
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: 'API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // First get the manual URL from the API
+      const manualRes = await fetch(`${VEHICLEDB_BASE}/owner-manual/${vin}`, {
+        headers: { 'x-AuthKey': apiKey },
+      })
+      if (!manualRes.ok) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to look up manual' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const manualJson = await manualRes.json()
+      const pdfUrl = manualJson?.data?.path ?? manualJson?.path
+      if (!pdfUrl) {
+        return new Response(
+          JSON.stringify({ error: 'No manual available for this VIN' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Fetch the actual PDF and stream it back
+      const pdfRes = await fetch(pdfUrl)
+      if (!pdfRes.ok) {
+        return new Response(
+          JSON.stringify({ error: `PDF host returned ${pdfRes.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const pdfBytes = await pdfRes.arrayBuffer()
+      const filename = pdfUrl.split('/').pop() || 'owners_manual.pdf'
+      return new Response(pdfBytes, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
     }
 
     // Warranty requires year/make/model; everything else requires vin
