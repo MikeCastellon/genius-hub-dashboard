@@ -24,6 +24,11 @@ function RecallItem({ item }: { item: RecallLookup }) {
   return (
     <div className="glass rounded-xl p-4 border-l-4 border-red-500">
       <p className="text-sm font-medium text-zinc-800">{item.description}</p>
+      {item.consequence && (
+        <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5 mt-2">
+          <span className="font-semibold">Risk:</span> {item.consequence}
+        </p>
+      )}
       {item.corrective_action && (
         <p className="text-xs text-zinc-500 mt-2">
           <span className="font-semibold text-zinc-600">Corrective Action:</span>{' '}

@@ -647,6 +647,7 @@ export interface RecallLookup {
   vehicle_id: string
   type: 'recall' | 'tsb'
   description: string
+  consequence: string | null
   corrective_action: string | null
   nhtsa_id: string | null
   source: string

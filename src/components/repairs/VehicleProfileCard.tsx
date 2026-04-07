@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Vehicle } from '@/lib/types'
-import { Car, Gauge, Palette, Hash, Shield, AlertTriangle, Settings, Wrench, Bell, Sparkles } from 'lucide-react'
+import { Vehicle, VehicleDBWarranty } from '@/lib/types'
+import { Car, Gauge, Palette, Hash, Shield, AlertTriangle, Settings, Wrench, Bell, Sparkles, CheckCircle } from 'lucide-react'
 
 interface Props {
   vehicle: Vehicle
+  warranty?: VehicleDBWarranty | null
+  recallCount?: number
   onMileageUpdate: (mileage: number) => void
   onTabSelect: (tab: string) => void
 }
 
-export default function VehicleProfileCard({ vehicle, onMileageUpdate, onTabSelect }: Props) {
+export default function VehicleProfileCard({ vehicle, warranty, recallCount = 0, onMileageUpdate, onTabSelect }: Props) {
   const [editingMileage, setEditingMileage] = useState(false)
   const [mileageValue, setMileageValue] = useState(String(vehicle.mileage || ''))
 
@@ -81,12 +83,32 @@ export default function VehicleProfileCard({ vehicle, onMileageUpdate, onTabSele
 
         {/* Status Badges */}
         <div className="flex flex-col gap-2 sm:items-end">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-semibold">
-            <Shield size={12} /> Warranty: Unknown
-          </span>
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-semibold">
-            <AlertTriangle size={12} /> Recalls: —
-          </span>
+          {warranty ? (() => {
+            const hasActive = warranty.basic && !warranty.basic.expired
+              || warranty.powertrain && !warranty.powertrain.expired
+            return hasActive ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                <CheckCircle size={12} /> Warranty: Active
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-zinc-100 text-zinc-500 text-xs font-semibold">
+                <Shield size={12} /> Warranty: Expired
+              </span>
+            )
+          })() : (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-semibold">
+              <Shield size={12} /> Warranty: Unknown
+            </span>
+          )}
+          {recallCount > 0 ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-red-50 text-red-700 text-xs font-semibold">
+              <AlertTriangle size={12} /> Recalls: {recallCount}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">
+              <CheckCircle size={12} /> Recalls: None
+            </span>
+          )}
         </div>
       </div>
 

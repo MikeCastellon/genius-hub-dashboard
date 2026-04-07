@@ -3,9 +3,9 @@ import { useParams } from 'react-router-dom'
 import { Wrench, Search, Loader2, AlertTriangle, X } from 'lucide-react'
 import {
   useAuth, useVehicle, upsertVehicle, decodeVin,
-  callRepairsVehicleDB, useRecallLookups,
+  callRepairsVehicleDB, useRecallLookups, upsertRecallLookups,
 } from '@/lib/store'
-import { Vehicle } from '@/lib/types'
+import { Vehicle, VehicleDBWarranty } from '@/lib/types'
 import { sanitizeVin, isLikelyVin } from '@/lib/utils'
 import VehicleProfileCard from '@/components/repairs/VehicleProfileCard'
 import RepairsOverview from '@/components/repairs/RepairsOverview'
@@ -32,6 +32,9 @@ export default function Repairs() {
   const [error, setError] = useState<string | null>(null)
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null)
 
+  // Warranty data from API
+  const [warranty, setWarranty] = useState<VehicleDBWarranty | null>(null)
+
   // AI Guide panel state
   const [showGuidePanel, setShowGuidePanel] = useState(false)
   const [guideContext] = useState<{ repairDescription?: string }>({})
@@ -39,7 +42,7 @@ export default function Repairs() {
   const { refresh: refreshVehicle } = useVehicle(currentVehicle?.vin)
 
   // Badge data
-  const { recalls } = useRecallLookups(currentVehicle?.id)
+  const { recalls, refresh: refreshRecalls } = useRecallLookups(currentVehicle?.id)
   const recallCount = recalls.filter(r => r.type === 'recall').length
 
   // Auto-decode if route param present
@@ -49,8 +52,8 @@ export default function Repairs() {
     }
   }, [routeVin])
 
-  const triggerParallelLookups = (vin: string, vehicle: { year?: number; make?: string; model?: string }) => {
-    Promise.allSettled([
+  const triggerParallelLookups = async (vin: string, vehicle: Vehicle) => {
+    const results = await Promise.allSettled([
       callRepairsVehicleDB({ action: 'repairs', vin }),
       callRepairsVehicleDB({ action: 'repair_estimates', vin }),
       callRepairsVehicleDB({ action: 'recalls', vin }),
@@ -61,6 +64,22 @@ export default function Repairs() {
         model: vehicle.model ?? '',
       }),
     ])
+
+    // Save recall data to recall_lookups table
+    const recallsResult = results[2]
+    if (recallsResult.status === 'fulfilled' && recallsResult.value?.data && vehicle.business_id) {
+      const recallData = recallsResult.value.data
+      if (Array.isArray(recallData)) {
+        await upsertRecallLookups(vehicle.id, vehicle.business_id, recallData)
+        refreshRecalls()
+      }
+    }
+
+    // Capture warranty data from the 4th result
+    const warrantyResult = results[3]
+    if (warrantyResult.status === 'fulfilled' && warrantyResult.value?.data) {
+      setWarranty(warrantyResult.value.data as VehicleDBWarranty)
+    }
   }
 
   const handleDecode = async (rawVin?: string) => {
@@ -104,11 +123,7 @@ export default function Repairs() {
       refreshVehicle()
 
       // Fire parallel data lookups in background
-      triggerParallelLookups(vin, {
-        year: decoded.year ?? undefined,
-        make: decoded.make ?? undefined,
-        model: decoded.model ?? undefined,
-      })
+      triggerParallelLookups(vin, vehicle)
     } catch (err: any) {
       setError(err.message || 'Failed to decode VIN')
     } finally {
@@ -203,6 +218,8 @@ export default function Repairs() {
         <>
           <VehicleProfileCard
             vehicle={currentVehicle}
+            warranty={warranty}
+            recallCount={recallCount}
             onMileageUpdate={handleMileageUpdate}
             onTabSelect={(tab) => setActiveTab(tab as RepairTab)}
           />
@@ -228,7 +245,7 @@ export default function Repairs() {
           {/* Tab Content */}
           <div className="glass rounded-2xl p-6">
             {activeTab === 'overview' && (
-              <RepairsOverview vehicle={currentVehicle} />
+              <RepairsOverview vehicle={currentVehicle} warranty={warranty} />
             )}
             {activeTab === 'repairs' && (
               <RepairEstimates vehicle={currentVehicle} />

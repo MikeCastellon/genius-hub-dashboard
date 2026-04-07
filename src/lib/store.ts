@@ -1765,6 +1765,37 @@ export function useRepairGuides(vehicleId: string | undefined) {
   return { guides, loading, refresh }
 }
 
+export async function upsertRecallLookups(
+  vehicleId: string,
+  businessId: string,
+  recalls: Array<{ nhtsa_id?: string; description: string; consequence?: string; corrective_action?: string; report_date?: string }>,
+) {
+  if (!recalls.length) return
+  // Avoid duplicates by nhtsa_id
+  const { data: existing } = await supabase
+    .from('recall_lookups')
+    .select('nhtsa_id')
+    .eq('vehicle_id', vehicleId)
+  const existingIds = new Set((existing || []).map((r: any) => r.nhtsa_id))
+
+  const newRecalls = recalls
+    .filter(r => r.nhtsa_id && !existingIds.has(r.nhtsa_id))
+    .map(r => ({
+      vehicle_id: vehicleId,
+      type: 'recall' as const,
+      description: r.description,
+      consequence: r.consequence || null,
+      corrective_action: r.corrective_action || null,
+      nhtsa_id: r.nhtsa_id || null,
+      source: 'vehicledatabases',
+      business_id: businessId,
+    }))
+
+  if (newRecalls.length) {
+    await supabase.from('recall_lookups').insert(newRecalls)
+  }
+}
+
 // ── Repairs Edge Function Callers ──────────────────────────
 
 export async function callRepairsVehicleDB(params: {

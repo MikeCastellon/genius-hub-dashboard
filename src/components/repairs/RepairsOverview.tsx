@@ -1,10 +1,11 @@
 import { useRecallLookups, useRepairGuides } from '@/lib/store'
-import type { Vehicle, RepairGuide } from '@/lib/types'
+import type { Vehicle, RepairGuide, VehicleDBWarranty } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { AlertTriangle, BookOpen, Shield, Clock } from 'lucide-react'
+import { AlertTriangle, BookOpen, Shield, Clock, CheckCircle, XCircle } from 'lucide-react'
 
 interface Props {
   vehicle: Vehicle
+  warranty?: VehicleDBWarranty | null
 }
 
 function SkeletonCard() {
@@ -63,7 +64,7 @@ function StatCard({
   )
 }
 
-export default function RepairsOverview({ vehicle }: Props) {
+export default function RepairsOverview({ vehicle, warranty }: Props) {
   const { recalls, loading: recallsLoading } = useRecallLookups(vehicle.id)
   const { guides, loading: guidesLoading } = useRepairGuides(vehicle.id)
 
@@ -105,9 +106,41 @@ export default function RepairsOverview({ vehicle }: Props) {
           <Shield size={16} className="text-red-600" />
           <h4 className="text-sm font-semibold text-zinc-800">Warranty Status</h4>
         </div>
-        <p className="text-sm text-zinc-500">
-          Warranty data is loaded from VehicleDatabases when available.
-        </p>
+        {warranty ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { key: 'basic', label: 'Basic' },
+              { key: 'powertrain', label: 'Powertrain' },
+              { key: 'corrosion', label: 'Corrosion' },
+              { key: 'emissions', label: 'Emissions' },
+            ] as const).map(({ key, label }) => {
+              const w = warranty[key]
+              if (!w) return null
+              return (
+                <div key={key} className={`rounded-lg p-3 border ${w.expired ? 'bg-zinc-50 border-zinc-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-zinc-700">{label}</span>
+                    {w.expired ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-zinc-400">
+                        <XCircle size={11} /> Expired
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                        <CheckCircle size={11} /> Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500">{w.description}</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {Math.floor(w.months / 12)} yr / {(w.miles).toLocaleString()} mi
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-400">Warranty data not available for this vehicle.</p>
+        )}
       </div>
 
       {/* Recent Repair Guides */}
