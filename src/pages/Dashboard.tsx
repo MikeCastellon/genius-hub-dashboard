@@ -132,11 +132,20 @@ export default function Dashboard() {
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
+    const filename = `dashboard-export-${preset}-${new Date().toISOString().split('T')[0]}.csv`
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    // Use native share on iOS (Capacitor), fallback to download on web
+    if (navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: 'text/csv' })
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: filename }).catch(() => {})
+        return
+      }
+    }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `dashboard-export-${preset}-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
   }
