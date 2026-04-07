@@ -717,3 +717,69 @@ export const DIFFICULTY_LABELS: Record<number, string> = {
   4: 'Difficult',
   5: 'Very Difficult',
 }
+
+// ── Chat System ──────────────────────────────────────────────
+
+export type ChannelType = 'channel' | 'direct' | 'group_dm'
+export type MessageType = 'text' | 'image' | 'file' | 'system'
+
+export interface Channel {
+  id: string
+  business_id: string
+  name: string
+  description: string | null
+  type: ChannelType
+  created_by: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  members?: ChannelMember[]
+  last_message?: Message | null
+  unread_count?: number
+}
+
+export interface ChannelMember {
+  channel_id: string
+  user_id: string
+  role: 'owner' | 'member'
+  last_read_at: string
+  joined_at: string
+  // Joined
+  profile?: { id: string; display_name: string; email: string | null }
+}
+
+export interface Message {
+  id: string
+  channel_id: string
+  sender_id: string
+  content: string
+  message_type: MessageType
+  parent_id: string | null
+  edited_at: string | null
+  deleted_at: string | null
+  metadata: { mentions?: string[] } & Record<string, any>
+  created_at: string
+  // Joined
+  sender?: { id: string; display_name: string; email: string | null }
+  reactions?: MessageReaction[]
+  attachments?: MessageAttachment[]
+  reply_count?: number
+}
+
+export interface MessageReaction {
+  id: string
+  message_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export interface MessageAttachment {
+  id: string
+  message_id: string
+  file_url: string
+  file_name: string
+  file_size: number | null
+  file_type: string | null
+  created_at: string
+}
