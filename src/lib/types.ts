@@ -8,6 +8,7 @@ export interface Profile {
   business_id: string | null
   preferred_contact: 'phone' | 'email' | 'sms'
   approved: boolean
+  avatar_url: string | null
   created_at: string
 }
 
@@ -71,6 +72,7 @@ export interface Customer {
   profile_id: string | null
   total_spend: number
   last_visit: string | null
+  avatar_url: string | null
   tags: string[]
   created_at: string
 }
@@ -612,7 +614,7 @@ export interface RepairLookup {
   misc_cost: number | null
   total_cost: number | null
   parts_json: RepairPart[]
-  source: 'carmd' | 'vehicledatabases'
+  source: 'vehicledatabases'
   business_id: string
   created_at: string
 }
@@ -673,49 +675,34 @@ export interface RepairGuide {
   created_at: string
 }
 
-export interface PartsOrder {
-  id: string
-  vehicle_id: string
-  repair_lookup_id: string | null
-  supplier: string
-  parts_json: OrderedPart[]
-  total_cost: number
-  status: 'pending' | 'ordered' | 'delivered'
-  partstech_order_id: string | null
-  created_by: string | null
-  business_id: string
-  created_at: string
+// VehicleDatabases API response types
+export interface VehicleDBRepair {
+  repair_name: string
+  labor_low: number
+  labor_high: number
+  parts_low: number
+  parts_high: number
+  total_low: number
+  total_high: number
 }
 
-export interface OrderedPart {
-  name: string
-  part_number: string
-  qty: number
-  price: number
+export interface VehicleDBRepairEstimate extends VehicleDBRepair {
+  national_average?: number
 }
 
-export const DTC_CODE_PATTERN = /^[PBCU][0-9A-F]{4}$/i
-
-export const URGENCY_LABELS: Record<number, string> = {
-  1: 'Low — Monitor',
-  2: 'Medium — Repair Soon',
-  3: 'High — Repair Immediately',
-  4: 'Critical — Do Not Drive',
+export interface VehicleDBRecall {
+  nhtsa_id: string
+  description: string
+  consequence: string
+  corrective_action: string
+  report_date: string
 }
 
-export const URGENCY_COLORS: Record<number, string> = {
-  1: 'bg-green-100 text-green-700',
-  2: 'bg-yellow-100 text-yellow-700',
-  3: 'bg-orange-100 text-orange-700',
-  4: 'bg-red-100 text-red-700',
-}
-
-export const DIFFICULTY_LABELS: Record<number, string> = {
-  1: 'Very Easy',
-  2: 'Easy',
-  3: 'Moderate',
-  4: 'Difficult',
-  5: 'Very Difficult',
+export interface VehicleDBWarranty {
+  basic?: { description: string; months: number; miles: number; expired: boolean }
+  powertrain?: { description: string; months: number; miles: number; expired: boolean }
+  corrosion?: { description: string; months: number; miles: number; expired: boolean }
+  emissions?: { description: string; months: number; miles: number; expired: boolean }
 }
 
 // ── Chat System ──────────────────────────────────────────────

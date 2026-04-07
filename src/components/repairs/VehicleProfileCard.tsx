@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Vehicle } from '@/lib/types'
-import { Car, Gauge, Palette, Hash, Shield, AlertTriangle, Settings, Search, Wrench, Bell } from 'lucide-react'
+import { Car, Gauge, Palette, Hash, Shield, AlertTriangle, Settings, Wrench, Bell, Sparkles } from 'lucide-react'
 
 interface Props {
   vehicle: Vehicle
@@ -93,10 +93,9 @@ export default function VehicleProfileCard({ vehicle, onMileageUpdate, onTabSele
       {/* Quick Action Buttons */}
       <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-100 overflow-x-auto">
         {[
-          { key: 'maintenance', icon: Wrench, label: 'Maintenance' },
-          { key: 'diagnostics', icon: Search, label: 'Diagnostics' },
-          { key: 'parts', icon: Settings, label: 'Parts' },
+          { key: 'repairs', icon: Wrench, label: 'Repairs' },
           { key: 'recalls', icon: Bell, label: 'Recalls' },
+          { key: 'ai_guide', icon: Sparkles, label: 'AI Guide' },
         ].map(btn => (
           <button
             key={btn.key}

@@ -9,7 +9,7 @@ import {
   Job, JobPhoto,
   BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG,
   FormTemplate, FormSubmission, Expense,
-  RepairLookup, MaintenanceLookup, RecallLookup, RepairGuide, PartsOrder
+  RepairLookup, MaintenanceLookup, RecallLookup, RepairGuide,
 } from './types'
 
 const isConfigured = () => {
@@ -169,7 +169,7 @@ export async function upsertCustomer(
   businessId?: string
 ): Promise<Customer> {
   if (!isConfigured()) {
-    return { ...cust, id: `local-${Date.now()}`, address: cust.address || null, company: cust.company || null, vehicle_year: cust.vehicle_year || null, vehicle_make: cust.vehicle_make || null, vehicle_model: cust.vehicle_model || null, vehicle_color: cust.vehicle_color || null, business_id: businessId || null, profile_id: null, total_spend: 0, last_visit: null, tags: [], created_at: new Date().toISOString() }
+    return { ...cust, id: `local-${Date.now()}`, address: cust.address || null, company: cust.company || null, vehicle_year: cust.vehicle_year || null, vehicle_make: cust.vehicle_make || null, vehicle_model: cust.vehicle_model || null, vehicle_color: cust.vehicle_color || null, business_id: businessId || null, profile_id: null, avatar_url: null, total_spend: 0, last_visit: null, tags: [], created_at: new Date().toISOString() }
   }
 
   const query = supabase.from('customers').select('*').eq('phone', cust.phone)
@@ -1765,59 +1765,16 @@ export function useRepairGuides(vehicleId: string | undefined) {
   return { guides, loading, refresh }
 }
 
-export function usePartsOrders(vehicleId: string | undefined) {
-  const [orders, setOrders] = useState<PartsOrder[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const refresh = useCallback(() => {
-    if (!isConfigured() || !vehicleId) { setLoading(false); return }
-    supabase
-      .from('parts_orders')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setOrders((data || []) as PartsOrder[])
-        setLoading(false)
-      })
-  }, [vehicleId])
-
-  useEffect(() => { refresh() }, [refresh])
-
-  return { orders, loading, refresh }
-}
-
 // ── Repairs Edge Function Callers ──────────────────────────
-
-export async function callRepairsCarMD(params: {
-  action: string
-  vin: string
-  mileage?: number
-  dtc?: string
-}) {
-  const { data, error } = await supabase.functions.invoke('repairs-carmd', { body: params })
-  if (error) throw error
-  return data
-}
 
 export async function callRepairsVehicleDB(params: {
   action: string
-  vin: string
-  repair_name?: string
+  vin?: string
+  year?: string
+  make?: string
+  model?: string
 }) {
   const { data, error } = await supabase.functions.invoke('repairs-vehicledb', { body: params })
-  if (error) throw error
-  return data
-}
-
-export async function callRepairsPartsTech(params: {
-  action: string
-  vin?: string
-  part_number?: string
-  part_name?: string
-  supplier_ids?: string[]
-}) {
-  const { data, error } = await supabase.functions.invoke('repairs-partstech', { body: params })
   if (error) throw error
   return data
 }
@@ -1834,13 +1791,39 @@ export async function callRepairsAIGuide(params: {
   return data
 }
 
-export async function createPartsOrder(order: Omit<PartsOrder, 'id' | 'created_at'>) {
-  const { data, error } = await supabase.from('parts_orders').insert(order).select().single()
-  if (error) throw error
-  return data as PartsOrder
-}
+// ── Avatar Upload ────────────────────────────────────────
 
-export async function updatePartsOrder(id: string, updates: Partial<PartsOrder>) {
-  const { error } = await supabase.from('parts_orders').update(updates).eq('id', id)
-  if (error) throw error
+export async function uploadAvatar(
+  file: File,
+  targetType: 'profile' | 'customer',
+  targetId: string
+): Promise<string> {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${targetType}/${targetId}/avatar_${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (uploadError) throw uploadError
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(path)
+
+  // Update the record with the new avatar URL
+  if (targetType === 'profile') {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', targetId)
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('customers')
+      .update({ avatar_url: publicUrl })
+      .eq('id', targetId)
+    if (error) throw error
+  }
+
+  return publicUrl
 }

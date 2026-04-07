@@ -3,27 +3,23 @@ import { useParams } from 'react-router-dom'
 import { Wrench, Search, Loader2, AlertTriangle, X } from 'lucide-react'
 import {
   useAuth, useVehicle, upsertVehicle, decodeVin,
-  callRepairsCarMD, callRepairsVehicleDB,
-  useRecallLookups, useMaintenanceLookups, usePartsOrders,
+  callRepairsVehicleDB, useRecallLookups,
 } from '@/lib/store'
-import { Vehicle, MaintenanceLookup } from '@/lib/types'
+import { Vehicle } from '@/lib/types'
 import { sanitizeVin, isLikelyVin } from '@/lib/utils'
 import VehicleProfileCard from '@/components/repairs/VehicleProfileCard'
 import RepairsOverview from '@/components/repairs/RepairsOverview'
-import MaintenanceTimeline from '@/components/repairs/MaintenanceTimeline'
-import DiagnosticsTool from '@/components/repairs/DiagnosticsTool'
+import RepairEstimates from '@/components/repairs/RepairEstimates'
 import RecallsPanel from '@/components/repairs/RecallsPanel'
-import PartsSearch from '@/components/repairs/PartsSearch'
 import RepairGuidePanel from '@/components/repairs/RepairGuidePanel'
 
-type RepairTab = 'overview' | 'maintenance' | 'diagnostics' | 'recalls' | 'parts'
+type RepairTab = 'overview' | 'repairs' | 'recalls' | 'ai_guide'
 
 const TABS: { key: RepairTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
-  { key: 'maintenance', label: 'Maintenance' },
-  { key: 'diagnostics', label: 'Diagnostics' },
-  { key: 'recalls', label: 'Recalls & TSBs' },
-  { key: 'parts', label: 'Parts' },
+  { key: 'repairs', label: 'Repairs & Estimates' },
+  { key: 'recalls', label: 'Recalls' },
+  { key: 'ai_guide', label: 'AI Guide' },
 ]
 
 export default function Repairs() {
@@ -36,24 +32,15 @@ export default function Repairs() {
   const [error, setError] = useState<string | null>(null)
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null)
 
-  // Cross-tab navigation state
-  const [partsSearchTerm, setPartsSearchTerm] = useState<string | undefined>(undefined)
+  // AI Guide panel state
   const [showGuidePanel, setShowGuidePanel] = useState(false)
-  const [guideContext, setGuideContext] = useState<{ repairDescription?: string; dtcCode?: string }>({})
+  const [guideContext] = useState<{ repairDescription?: string }>({})
 
   const { refresh: refreshVehicle } = useVehicle(currentVehicle?.vin)
 
-  // Badge data hooks
+  // Badge data
   const { recalls } = useRecallLookups(currentVehicle?.id)
-  const { maintenance } = useMaintenanceLookups(currentVehicle?.id)
-  const { orders } = usePartsOrders(currentVehicle?.id)
-
-  // Badge counts
   const recallCount = recalls.filter(r => r.type === 'recall').length
-  const overdueCount = currentVehicle?.mileage
-    ? maintenance.filter(m => m.due_mileage != null && m.due_mileage < (currentVehicle.mileage ?? 0)).length
-    : 0
-  const pendingOrderCount = orders.filter(o => o.status === 'pending').length
 
   // Auto-decode if route param present
   useEffect(() => {
@@ -62,14 +49,17 @@ export default function Repairs() {
     }
   }, [routeVin])
 
-  const triggerParallelLookups = (vin: string, mileage?: number) => {
-    const mileageParam = mileage ?? undefined
+  const triggerParallelLookups = (vin: string, vehicle: { year?: number; make?: string; model?: string }) => {
     Promise.allSettled([
-      callRepairsCarMD({ action: 'maintenance', vin, mileage: mileageParam }),
-      callRepairsCarMD({ action: 'recall', vin }),
-      callRepairsCarMD({ action: 'tsb', vin }),
-      callRepairsCarMD({ action: 'upcoming', vin, mileage: mileageParam }),
-      callRepairsVehicleDB({ action: 'warranty', vin }),
+      callRepairsVehicleDB({ action: 'repairs', vin }),
+      callRepairsVehicleDB({ action: 'repair_estimates', vin }),
+      callRepairsVehicleDB({ action: 'recalls', vin }),
+      callRepairsVehicleDB({
+        action: 'warranty',
+        year: String(vehicle.year ?? ''),
+        make: vehicle.make ?? '',
+        model: vehicle.model ?? '',
+      }),
     ])
   }
 
@@ -114,7 +104,11 @@ export default function Repairs() {
       refreshVehicle()
 
       // Fire parallel data lookups in background
-      triggerParallelLookups(vin, mileage ?? undefined)
+      triggerParallelLookups(vin, {
+        year: decoded.year ?? undefined,
+        make: decoded.make ?? undefined,
+        model: decoded.model ?? undefined,
+      })
     } catch (err: any) {
       setError(err.message || 'Failed to decode VIN')
     } finally {
@@ -140,39 +134,14 @@ export default function Repairs() {
         created_by: currentVehicle.created_by ?? null,
       })
       setCurrentVehicle(updated)
-
-      // Re-trigger maintenance and upcoming lookups with new mileage
-      callRepairsCarMD({ action: 'maintenance', vin: currentVehicle.vin, mileage })
-      callRepairsCarMD({ action: 'upcoming', vin: currentVehicle.vin, mileage })
     } catch (err: any) {
       alert(err.message || 'Failed to update mileage')
     }
   }
 
-  // Cross-tab: Order parts from Maintenance or Diagnostics
-  const handleOrderParts = (partNameOrItem: string | MaintenanceLookup) => {
-    const searchTerm = typeof partNameOrItem === 'string'
-      ? partNameOrItem
-      : partNameOrItem.description
-    setPartsSearchTerm(searchTerm)
-    setActiveTab('parts')
-  }
-
-  // Cross-tab: Generate AI guide from Diagnostics
-  const handleGenerateGuide = (repairDescription: string, dtcCode: string) => {
-    setGuideContext({ repairDescription, dtcCode })
-    setShowGuidePanel(true)
-  }
-
   const getBadge = (tabKey: RepairTab) => {
     if (tabKey === 'recalls' && recallCount > 0) {
       return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">{recallCount}</span>
-    }
-    if (tabKey === 'maintenance' && overdueCount > 0) {
-      return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">{overdueCount}</span>
-    }
-    if (tabKey === 'parts' && pendingOrderCount > 0) {
-      return <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-yellow-500 text-white rounded-full">{pendingOrderCount}</span>
     }
     return null
   }
@@ -181,10 +150,10 @@ export default function Repairs() {
     <div className="p-4 md:p-6">
       {/* Header */}
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+        <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
           <Wrench size={18} className="text-red-600" /> Repairs
         </h2>
-        <p className="text-[12px] text-zinc-400 mt-0.5">Vehicle diagnostics, maintenance & parts</p>
+        <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Vehicle repairs, recalls & AI-powered guides</p>
       </div>
 
       {/* VIN Input */}
@@ -243,11 +212,7 @@ export default function Repairs() {
             {TABS.map(t => (
               <button
                 key={t.key}
-                onClick={() => {
-                  setActiveTab(t.key)
-                  // Clear parts search when navigating away from parts tab
-                  if (t.key !== 'parts') setPartsSearchTerm(undefined)
-                }}
+                onClick={() => setActiveTab(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center ${
                   activeTab === t.key
                     ? 'bg-white text-zinc-900 shadow-sm'
@@ -265,34 +230,24 @@ export default function Repairs() {
             {activeTab === 'overview' && (
               <RepairsOverview vehicle={currentVehicle} />
             )}
-            {activeTab === 'maintenance' && (
-              <MaintenanceTimeline
-                vehicleId={currentVehicle.id}
-                mileage={currentVehicle.mileage ?? null}
-                onOrderParts={handleOrderParts}
-              />
-            )}
-            {activeTab === 'diagnostics' && (
-              <DiagnosticsTool
-                vehicle={currentVehicle}
-                onOrderParts={(partName: string) => handleOrderParts(partName)}
-                onGenerateGuide={handleGenerateGuide}
-              />
+            {activeTab === 'repairs' && (
+              <RepairEstimates vehicle={currentVehicle} />
             )}
             {activeTab === 'recalls' && (
               <RecallsPanel vehicleId={currentVehicle.id} />
             )}
-            {activeTab === 'parts' && (
-              <PartsSearch
+            {activeTab === 'ai_guide' && (
+              <RepairGuidePanel
                 vehicle={currentVehicle}
-                initialSearch={partsSearchTerm}
+                repairDescription={guideContext.repairDescription}
+                onClose={() => setActiveTab('overview')}
               />
             )}
           </div>
         </>
       )}
 
-      {/* AI Guide Modal Overlay */}
+      {/* AI Guide Modal Overlay (when triggered from other tabs) */}
       {showGuidePanel && currentVehicle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 bg-white rounded-2xl shadow-2xl">
@@ -305,7 +260,6 @@ export default function Repairs() {
             <RepairGuidePanel
               vehicle={currentVehicle}
               repairDescription={guideContext.repairDescription}
-              dtcCode={guideContext.dtcCode}
               onClose={() => setShowGuidePanel(false)}
             />
           </div>

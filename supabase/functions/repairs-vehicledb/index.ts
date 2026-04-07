@@ -6,46 +6,78 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function getMockData(action: string, repairName?: string) {
-  switch (action) {
-    case 'repair_pricing':
-      return {
-        repair_name: repairName || 'Oxygen Sensor Replacement',
-        labor_low: 80,
-        labor_high: 150,
-        parts_low: 50,
-        parts_high: 120,
-        total_low: 130,
-        total_high: 270,
-        national_average: 195,
-        your_area_average: 210,
-      }
-    case 'oem_parts':
-      return [
-        { name: 'Oxygen Sensor - Upstream', part_number: 'OEM-234-5678', price: 112.99, manufacturer: 'OEM', availability: 'In Stock', fitment_notes: 'Bank 1, Sensor 1' },
-        { name: 'Oxygen Sensor - Downstream', part_number: 'OEM-234-5679', price: 98.50, manufacturer: 'OEM', availability: 'In Stock', fitment_notes: 'Bank 1, Sensor 2' },
-        { name: 'Oxygen Sensor Gasket', part_number: 'OEM-890-1234', price: 4.99, manufacturer: 'OEM', availability: 'In Stock', fitment_notes: 'Required for installation' },
-        { name: 'Catalytic Converter Gasket', part_number: 'OEM-890-1240', price: 8.50, manufacturer: 'OEM', availability: 'Ships in 2 days', fitment_notes: 'Recommended replacement during O2 sensor service' },
-      ]
-    case 'maintenance':
-      return [
-        { service: 'Oil Change', interval_miles: 5000, interval_months: 6, estimated_cost: 75, priority: 'high' },
-        { service: 'Tire Rotation', interval_miles: 7500, interval_months: 9, estimated_cost: 35, priority: 'medium' },
-        { service: 'Brake Inspection', interval_miles: 15000, interval_months: 18, estimated_cost: 0, priority: 'high' },
-        { service: 'Cabin Air Filter', interval_miles: 15000, interval_months: 18, estimated_cost: 30, priority: 'low' },
-        { service: 'Coolant Flush', interval_miles: 30000, interval_months: 36, estimated_cost: 99, priority: 'medium' },
-      ]
-    case 'warranty':
-      return {
-        basic: { description: 'Bumper-to-Bumper', months: 36, miles: 36000, start_date: '2021-03-15', expired: true },
-        powertrain: { description: 'Powertrain Coverage', months: 60, miles: 60000, start_date: '2021-03-15', expired: false },
-        corrosion: { description: 'Corrosion Perforation', months: 60, miles: 100000, start_date: '2021-03-15', expired: false },
-        emissions: { description: 'Federal Emissions', months: 96, miles: 80000, start_date: '2021-03-15', expired: false },
-        ev_battery: null,
-      }
-    default:
-      return { error: `Unknown action: ${action}` }
+const VEHICLEDB_BASE = 'https://api.vehicledatabases.com'
+
+function getMockRepairs() {
+  return [
+    { repair_name: 'Brake Pad Replacement', labor_low: 80, labor_high: 180, parts_low: 40, parts_high: 100, total_low: 120, total_high: 280 },
+    { repair_name: 'Oil Change', labor_low: 25, labor_high: 60, parts_low: 30, parts_high: 70, total_low: 55, total_high: 130 },
+    { repair_name: 'Alternator Replacement', labor_low: 150, labor_high: 300, parts_low: 200, parts_high: 400, total_low: 350, total_high: 700 },
+    { repair_name: 'Spark Plug Replacement', labor_low: 50, labor_high: 120, parts_low: 20, parts_high: 80, total_low: 70, total_high: 200 },
+    { repair_name: 'Timing Belt Replacement', labor_low: 300, labor_high: 600, parts_low: 100, parts_high: 250, total_low: 400, total_high: 850 },
+  ]
+}
+
+function getMockRepairEstimates() {
+  return [
+    { repair_name: 'Oxygen Sensor Replacement', labor_low: 80, labor_high: 150, parts_low: 50, parts_high: 120, total_low: 130, total_high: 270, national_average: 195 },
+    { repair_name: 'Catalytic Converter Replacement', labor_low: 100, labor_high: 250, parts_low: 400, parts_high: 1200, total_low: 500, total_high: 1450, national_average: 950 },
+    { repair_name: 'Mass Airflow Sensor', labor_low: 40, labor_high: 80, parts_low: 80, parts_high: 200, total_low: 120, total_high: 280, national_average: 190 },
+    { repair_name: 'Ignition Coil Replacement', labor_low: 50, labor_high: 120, parts_low: 30, parts_high: 90, total_low: 80, total_high: 210, national_average: 150 },
+  ]
+}
+
+function getMockRecalls() {
+  return [
+    { nhtsa_id: 'NHTSA-2023-001', description: 'Airbag Inflator Replacement', consequence: 'In the event of a crash, the airbag may not deploy properly', corrective_action: 'Dealers will replace the airbag inflator free of charge', report_date: '2023-06-15' },
+    { nhtsa_id: 'NHTSA-2022-045', description: 'Fuel Pump Control Module', consequence: 'Engine may stall unexpectedly while driving', corrective_action: 'Dealers will update the fuel pump control module software', report_date: '2022-11-03' },
+  ]
+}
+
+function getMockWarranty() {
+  return {
+    basic: { description: 'Bumper-to-Bumper', months: 36, miles: 36000, expired: true },
+    powertrain: { description: 'Powertrain Coverage', months: 60, miles: 60000, expired: false },
+    corrosion: { description: 'Corrosion Perforation', months: 60, miles: 100000, expired: false },
+    emissions: { description: 'Federal Emissions', months: 96, miles: 80000, expired: false },
   }
+}
+
+function getMockData(action: string) {
+  switch (action) {
+    case 'repairs': return getMockRepairs()
+    case 'repair_estimates': return getMockRepairEstimates()
+    case 'recalls': return getMockRecalls()
+    case 'warranty': return getMockWarranty()
+    default: return { error: `Unknown action: ${action}` }
+  }
+}
+
+// Map action to VehicleDatabases API endpoint
+function getEndpoint(action: string, params: { vin?: string; year?: string; make?: string; model?: string }): string {
+  const { vin, year, make, model } = params
+  switch (action) {
+    case 'repairs':
+      return `/repairs/${vin}`
+    case 'repair_estimates':
+      return `/repair-estimates/${vin}`
+    case 'recalls':
+      return `/vehicle-recalls/${vin}`
+    case 'warranty':
+      return `/vehicle-warranty/${encodeURIComponent(year!)}/${encodeURIComponent(make!)}/${encodeURIComponent(model!)}`
+    default:
+      throw new Error(`Unknown action: ${action}`)
+  }
+}
+
+const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty']
+
+// Cache durations per action (in ms)
+const CACHE_DURATION: Record<string, number> = {
+  repairs: 7 * 24 * 60 * 60 * 1000,          // 7 days
+  repair_estimates: 7 * 24 * 60 * 60 * 1000,  // 7 days
+  recalls: 24 * 60 * 60 * 1000,               // 1 day
+  warranty: 30 * 24 * 60 * 60 * 1000,         // 30 days
 }
 
 serve(async (req) => {
@@ -54,19 +86,33 @@ serve(async (req) => {
   }
 
   try {
-    const { action, vin, repair_name } = await req.json()
+    const { action, vin, year, make, model } = await req.json()
 
-    if (!action || !vin) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ error: 'action and vin are required' }),
+        JSON.stringify({ error: 'action is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const validActions = ['repair_pricing', 'oem_parts', 'maintenance', 'warranty']
-    if (!validActions.includes(action)) {
+    if (!VALID_ACTIONS.includes(action)) {
       return new Response(
-        JSON.stringify({ error: `Unknown action: ${action}. Valid actions: ${validActions.join(', ')}` }),
+        JSON.stringify({ error: `Unknown action: ${action}. Valid: ${VALID_ACTIONS.join(', ')}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Warranty requires year/make/model; everything else requires vin
+    if (action === 'warranty') {
+      if (!year || !make || !model) {
+        return new Response(
+          JSON.stringify({ error: 'warranty action requires year, make, and model' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else if (!vin) {
+      return new Response(
+        JSON.stringify({ error: `${action} action requires vin` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -79,14 +125,16 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     })
 
-    // Check cache first
+    // Check cache
+    const cacheKey = vin || `${year}-${make}-${model}`
+    const cacheDuration = CACHE_DURATION[action] ?? 24 * 60 * 60 * 1000
     const { data: cached } = await supabase
       .from('repair_lookups')
       .select('api_response')
-      .eq('vin', vin)
-      .eq('source', 'vehicledb')
+      .eq('vin', cacheKey)
+      .eq('source', 'vehicledatabases')
       .eq('lookup_type', action)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .gte('created_at', new Date(Date.now() - cacheDuration).toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -102,23 +150,19 @@ serve(async (req) => {
     let data: unknown
 
     if (!apiKey) {
-      // Return mock data
-      data = getMockData(action, repair_name)
+      // Return mock data when no API key configured
+      data = getMockData(action)
     } else {
-      // Call real VehicleDB API
-      const baseUrl = 'https://api.vehicledb.io/v1'
-      const params = new URLSearchParams({ vin })
-      if (repair_name) params.set('repair_name', repair_name)
-
-      const response = await fetch(`${baseUrl}/${action}?${params.toString()}`, {
+      // Call real VehicleDatabases API
+      const endpoint = getEndpoint(action, { vin, year, make, model })
+      const response = await fetch(`${VEHICLEDB_BASE}${endpoint}`, {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          'x-AuthKey': apiKey,
         },
       })
 
       if (!response.ok) {
-        throw new Error(`VehicleDB API error: ${response.status} ${response.statusText}`)
+        throw new Error(`VehicleDatabases API error: ${response.status} ${response.statusText}`)
       }
 
       const result = await response.json()
@@ -127,8 +171,8 @@ serve(async (req) => {
 
     // Cache the response
     await supabase.from('repair_lookups').insert({
-      vin,
-      source: 'vehicledb',
+      vin: cacheKey,
+      source: 'vehicledatabases',
       lookup_type: action,
       api_response: data,
     })
