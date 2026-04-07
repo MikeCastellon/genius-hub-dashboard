@@ -43,12 +43,26 @@ function getMockWarranty() {
   }
 }
 
+function getMockMaintenance() {
+  return [
+    { description: 'Oil & Filter Change', due_mileage: 5000, is_oem: true, cycle_mileage: 5000, part_cost: 30, labor_cost: 25, total_cost: 55 },
+    { description: 'Tire Rotation', due_mileage: 7500, is_oem: true, cycle_mileage: 7500, part_cost: 0, labor_cost: 30, total_cost: 30 },
+    { description: 'Brake Fluid Flush', due_mileage: 30000, is_oem: true, cycle_mileage: 30000, part_cost: 15, labor_cost: 60, total_cost: 75 },
+    { description: 'Transmission Fluid Change', due_mileage: 60000, is_oem: true, cycle_mileage: 60000, part_cost: 40, labor_cost: 80, total_cost: 120 },
+    { description: 'Coolant Flush', due_mileage: 50000, is_oem: true, cycle_mileage: 50000, part_cost: 20, labor_cost: 50, total_cost: 70 },
+    { description: 'Spark Plug Replacement', due_mileage: 60000, is_oem: true, cycle_mileage: 60000, part_cost: 40, labor_cost: 80, total_cost: 120 },
+    { description: 'Air Filter Replacement', due_mileage: 15000, is_oem: true, cycle_mileage: 15000, part_cost: 15, labor_cost: 15, total_cost: 30 },
+    { description: 'Cabin Air Filter', due_mileage: 15000, is_oem: false, cycle_mileage: 15000, part_cost: 20, labor_cost: 10, total_cost: 30 },
+  ]
+}
+
 function getMockData(action: string) {
   switch (action) {
     case 'repairs': return getMockRepairs()
     case 'repair_estimates': return getMockRepairEstimates()
     case 'recalls': return getMockRecalls()
     case 'warranty': return getMockWarranty()
+    case 'maintenance': return getMockMaintenance()
     default: return { error: `Unknown action: ${action}` }
   }
 }
@@ -65,12 +79,14 @@ function getEndpoint(action: string, params: { vin?: string; year?: string; make
       return `/vehicle-recalls/${vin}`
     case 'warranty':
       return `/vehicle-warranty/${encodeURIComponent(year!)}/${encodeURIComponent(make!)}/${encodeURIComponent(model!)}`
+    case 'maintenance':
+      return `/vehicle-maintenance/${vin}`
     default:
       throw new Error(`Unknown action: ${action}`)
   }
 }
 
-const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty']
+const VALID_ACTIONS = ['repairs', 'repair_estimates', 'recalls', 'warranty', 'maintenance']
 
 // Cache durations per action (in ms)
 const CACHE_DURATION: Record<string, number> = {
@@ -78,6 +94,7 @@ const CACHE_DURATION: Record<string, number> = {
   repair_estimates: 7 * 24 * 60 * 60 * 1000,  // 7 days
   recalls: 24 * 60 * 60 * 1000,               // 1 day
   warranty: 30 * 24 * 60 * 60 * 1000,         // 30 days
+  maintenance: 30 * 24 * 60 * 60 * 1000,      // 30 days
 }
 
 serve(async (req) => {

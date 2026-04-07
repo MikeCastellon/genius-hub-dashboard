@@ -12,13 +12,15 @@ import RepairsOverview from '@/components/repairs/RepairsOverview'
 import RepairEstimates from '@/components/repairs/RepairEstimates'
 import RecallsPanel from '@/components/repairs/RecallsPanel'
 import RepairGuidePanel from '@/components/repairs/RepairGuidePanel'
+import MaintenancePanel from '@/components/repairs/MaintenancePanel'
 
-type RepairTab = 'overview' | 'repairs' | 'recalls' | 'ai_guide'
+type RepairTab = 'overview' | 'repairs' | 'recalls' | 'maintenance' | 'ai_guide'
 
 const TABS: { key: RepairTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'repairs', label: 'Repairs & Estimates' },
   { key: 'recalls', label: 'Recalls' },
+  { key: 'maintenance', label: 'Maintenance' },
   { key: 'ai_guide', label: 'AI Guide' },
 ]
 
@@ -252,6 +254,9 @@ export default function Repairs() {
             )}
             {activeTab === 'recalls' && (
               <RecallsPanel vehicleId={currentVehicle.id} />
+            )}
+            {activeTab === 'maintenance' && (
+              <MaintenancePanel vehicle={currentVehicle} />
             )}
             {activeTab === 'ai_guide' && (
               <RepairGuidePanel
