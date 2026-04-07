@@ -84,8 +84,17 @@ export default function VehicleProfileCard({ vehicle, warranty, recallCount = 0,
         {/* Status Badges */}
         <div className="flex flex-col gap-2 sm:items-end">
           {warranty ? (() => {
-            const hasActive = warranty.basic && !warranty.basic.expired
-              || warranty.powertrain && !warranty.powertrain.expired
+            const isExpired = (w: { expired: boolean; months: number; miles: number }) => {
+              if (w.expired) return true
+              if (vehicle.mileage && vehicle.mileage > w.miles) return true
+              if (vehicle.year) {
+                const ageMonths = (new Date().getFullYear() - vehicle.year) * 12
+                if (ageMonths > w.months) return true
+              }
+              return false
+            }
+            const hasActive = (warranty.basic && !isExpired(warranty.basic))
+              || (warranty.powertrain && !isExpired(warranty.powertrain))
             return hasActive ? (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">
                 <CheckCircle size={12} /> Warranty: Active
