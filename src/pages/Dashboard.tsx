@@ -464,8 +464,8 @@ function QuickTasksPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
-        <div className="bg-white shadow-2xl w-full md:max-w-md max-h-[90vh] md:max-h-[80vh] md:mx-4 rounded-t-2xl md:rounded-2xl flex flex-col">
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white shadow-2xl w-full max-w-md max-h-[70vh] md:max-h-[80vh] md:mx-4 rounded-2xl flex flex-col">
           <div className="flex items-center justify-between p-5 border-b border-zinc-100 shrink-0">
             <h3 className="text-base font-bold text-zinc-900">Quick Tasks</h3>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">

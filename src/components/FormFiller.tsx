@@ -49,8 +49,8 @@ export default function FormFiller({ template, customers, businessId, onClose, o
     : []
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
-      <div className="bg-white w-full md:max-w-2xl md:mx-4 rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-2xl rounded-2xl max-h-[70vh] md:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-zinc-100">
           <div>
