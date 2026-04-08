@@ -1,5 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GiphyFetch } from '@giphy/js-fetch-api'
+import { Grid } from '@giphy/react-components'
 import {
   useAuth, useIntakes, useCustomers, useTasks, useFeed, useDirectory,
   createTask, updateTask, createFeedPost, uploadFeedMedia, toggleFeedLike, addFeedComment, deleteFeedPost,
@@ -46,6 +48,9 @@ const BG_IMAGES = [
   'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&q=80',
   'https://images.unsplash.com/photo-1475274047050-1d0c55b7ebc9?w=800&q=80',
 ]
+
+const giphyApiKey = import.meta.env.VITE_GIPHY_API_KEY || ''
+const gf = giphyApiKey ? new GiphyFetch(giphyApiKey) : null
 
 function getGreeting(): string {
   const h = new Date().getHours()
@@ -680,8 +685,7 @@ export default function Dashboard() {
   const [postBackground, setPostBackground] = useState<string | null>(null)
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [gifSearch, setGifSearch] = useState('')
-  const [gifResults, setGifResults] = useState<{ url: string; preview: string }[]>([])
-  const [gifLoading, setGifLoading] = useState(false)
+  const gifGridRef = useRef<HTMLDivElement>(null)
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
   const firstName = displayName.split(' ')[0]
@@ -738,32 +742,7 @@ export default function Dashboard() {
     setMediaPreview(url)
     setShowGifPicker(false)
     setGifSearch('')
-    setGifResults([])
   }
-
-  const searchGifs = async (q: string) => {
-    if (!q.trim()) { setGifResults([]); return }
-    const apiKey = import.meta.env.VITE_GIPHY_API_KEY
-    if (!apiKey) { setGifResults([]); return }
-    setGifLoading(true)
-    try {
-      const res = await fetch(`https://api.giphy.com/v1/gifs/search?q=${encodeURIComponent(q)}&api_key=${apiKey}&limit=20&rating=g`)
-      const data = await res.json()
-      const results = (data.data || []).map((g: any) => ({
-        url: g.images?.original?.url || '',
-        preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url || '',
-      })).filter((g: any) => g.url)
-      setGifResults(results)
-    } catch { setGifResults([]) }
-    setGifLoading(false)
-  }
-
-  // Debounced GIF search
-  useEffect(() => {
-    if (!showGifPicker) return
-    const timer = setTimeout(() => searchGifs(gifSearch), 400)
-    return () => clearTimeout(timer)
-  }, [gifSearch, showGifPicker])
 
   const handlePost = async () => {
     if ((!newPostText.trim() && !mediaFile && !mediaPreview) || !profile) return
@@ -1113,8 +1092,8 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* GIF Picker — inline when active */}
-            {showGifPicker && (
+            {/* GIF Picker — GIPHY SDK */}
+            {showGifPicker && gf && (
               <div className="mx-4 mt-3 border border-zinc-200 rounded-2xl overflow-hidden no-focus-ring">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-100">
                   <Search size={14} className="text-zinc-400" />
@@ -1125,33 +1104,27 @@ export default function Dashboard() {
                     className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-zinc-400"
                     autoFocus
                   />
-                  <button onClick={() => { setShowGifPicker(false); setGifSearch(''); setGifResults([]) }} className="p-1">
+                  <button onClick={() => { setShowGifPicker(false); setGifSearch('') }} className="p-1">
                     <X size={14} className="text-zinc-400" />
                   </button>
                 </div>
-                <div className="max-h-48 overflow-y-auto p-2">
-                  {gifLoading && (
-                    <div className="flex justify-center py-4">
-                      <Loader2 size={20} className="animate-spin text-zinc-400" />
-                    </div>
-                  )}
-                  {!gifLoading && gifResults.length === 0 && gifSearch && (
-                    <p className="text-xs text-zinc-400 text-center py-4">No GIFs found</p>
-                  )}
-                  {!gifLoading && gifResults.length === 0 && !gifSearch && (
-                    <p className="text-xs text-zinc-400 text-center py-4">Type to search for GIFs</p>
-                  )}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {gifResults.map((gif, i) => (
-                      <button
-                        key={i}
-                        onClick={() => selectGif(gif.url)}
-                        className="rounded-lg overflow-hidden hover:ring-2 hover:ring-red-500 transition-all"
-                      >
-                        <img src={gif.preview} alt="" className="w-full h-24 object-cover" loading="lazy" />
-                      </button>
-                    ))}
-                  </div>
+                <div ref={gifGridRef} className="max-h-52 overflow-y-auto p-2">
+                  <Grid
+                    key={gifSearch}
+                    width={gifGridRef.current?.clientWidth ? gifGridRef.current.clientWidth - 16 : 300}
+                    columns={2}
+                    gutter={6}
+                    fetchGifs={(offset: number) =>
+                      gifSearch.trim()
+                        ? gf.search(gifSearch, { offset, limit: 10 })
+                        : gf.trending({ offset, limit: 10 })
+                    }
+                    onGifClick={(gif, e) => {
+                      e.preventDefault()
+                      selectGif(gif.images.original.url)
+                    }}
+                    noLink
+                  />
                 </div>
                 <p className="text-[9px] text-zinc-300 text-center py-1 border-t border-zinc-100">Powered by GIPHY</p>
               </div>
