@@ -52,10 +52,10 @@ export default function Invoices() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <FileText size={18} className="text-red-600" /> Invoices
           </h2>
-          <p className="text-[12px] text-zinc-400 mt-0.5">{invoices.length} total</p>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{invoices.length} total</p>
         </div>
         <button
           onClick={() => setShowBuilder(true)}

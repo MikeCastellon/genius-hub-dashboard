@@ -541,3 +541,119 @@ export async function findOrCreateDM(businessId: string, userId: string, otherUs
     memberIds: [otherUserId],
   })
 }
+
+// ── Notifications ─────────────────────────────────────────
+
+export function useChatNotifications(
+  userId: string | undefined,
+  activeChannelId: string | null,
+  channelIds: string[]
+) {
+  useEffect(() => {
+    if (!userId || channelIds.length === 0) return
+
+    // Request browser notification permission on mount
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
+    // Subscribe to all messages across my channels
+    const channel = supabase
+      .channel('chat-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async (payload) => {
+          const msg = payload.new as any
+          // Skip own messages and messages in the currently active channel
+          if (msg.sender_id === userId) return
+          if (msg.channel_id === activeChannelId) return
+          // Only notify for channels I'm a member of
+          if (!channelIds.includes(msg.channel_id)) return
+
+          // Fetch sender name
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', msg.sender_id)
+            .single()
+
+          const senderName = sender?.display_name || 'Someone'
+          const preview = msg.content?.length > 60 ? msg.content.slice(0, 60) + '...' : msg.content || 'Sent an attachment'
+
+          // Browser notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`${senderName}`, {
+              body: preview,
+              icon: '/favicon.ico',
+              tag: `chat-${msg.channel_id}`,
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, activeChannelId, channelIds.join(',')])
+}
+
+// ── Total Unread Count (for nav badge) ───────────────────
+
+export function useTotalUnread(userId: string | undefined, businessId: string | undefined) {
+  const [count, setCount] = useState(0)
+
+  const refresh = useCallback(async () => {
+    if (!userId || !businessId) return
+
+    const { data: memberships } = await supabase
+      .from('channel_members')
+      .select('channel_id, last_read_at')
+      .eq('user_id', userId)
+
+    if (!memberships || memberships.length === 0) { setCount(0); return }
+
+    let total = 0
+    await Promise.all(memberships.map(async (m) => {
+      const { count: c } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('channel_id', m.channel_id)
+        .is('deleted_at', null)
+        .gt('created_at', m.last_read_at)
+      total += c || 0
+    }))
+    setCount(total)
+  }, [userId, businessId])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  // Re-check every 30 seconds
+  useEffect(() => {
+    if (!userId || !businessId) return
+    const interval = setInterval(refresh, 30000)
+    return () => clearInterval(interval)
+  }, [userId, businessId, refresh])
+
+  // Also listen for new messages to update immediately
+  useEffect(() => {
+    if (!userId || !businessId) return
+
+    const channel = supabase
+      .channel('unread-badge')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new as any
+          if (msg.sender_id !== userId) {
+            refresh()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, businessId, refresh])
+
+  return count
+}

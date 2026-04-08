@@ -141,10 +141,10 @@ export default function Queue() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <ClipboardList size={18} className="text-red-600" /> Job Queue
           </h2>
-          <p className="text-[12px] text-zinc-400 mt-0.5">{jobs.length} job{jobs.length !== 1 ? 's' : ''}</p>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{jobs.length} job{jobs.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export default function Queue() {
                     )}
                   </div>
                   {vehicle && (
-                    <p className="text-[12px] text-zinc-400 mt-0.5 truncate">{vehicle}</p>
+                    <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5 truncate">{vehicle}</p>
                   )}
                   {services.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">

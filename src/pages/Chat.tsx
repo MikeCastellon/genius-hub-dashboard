@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/lib/store'
 import {
   useMyChannels, useMessages, useChannelMembers, usePresence, useTypingIndicator,
-  useReactionSubscription, markChannelRead, searchMessages
+  useReactionSubscription, useChatNotifications, markChannelRead, searchMessages
 } from '@/lib/chatStore'
 import type { Message } from '@/lib/types'
 import MessageBubble from '@/components/chat/MessageBubble'
@@ -35,6 +35,10 @@ export default function Chat() {
   const { typingUsers, broadcastTyping } = useTypingIndicator(activeChannelId || undefined, userId || undefined, displayName)
 
   useReactionSubscription(activeChannelId || undefined, refreshMessages)
+
+  // Browser notifications for messages in other channels
+  const channelIds = channels.map(c => c.id)
+  useChatNotifications(userId || undefined, activeChannelId, channelIds)
 
   const activeChannel = channels.find(c => c.id === activeChannelId)
 
@@ -102,6 +106,17 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="flex items-center justify-between px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-zinc-100 bg-white/60 shrink-0">
+        <div>
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <MessageCircle size={18} className="text-red-600" />
+            Chat
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Team messaging & channels</p>
+        </div>
+      </div>
+
       {/* Desktop layout */}
       <div className="flex flex-1 min-h-0">
         {/* Left: Channel list */}

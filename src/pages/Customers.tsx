@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer, useCustomerPhotos, getJobPhotoUrl } from '@/lib/store'
+import { useState, useMemo, useRef } from 'react'
+import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer, useCustomerPhotos, getJobPhotoUrl, uploadAvatar } from '@/lib/store'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check, Camera, Clock } from 'lucide-react'
 import type { JobPhoto, Job } from '@/lib/types'
@@ -92,13 +92,13 @@ export default function Customers() {
   return (
     <div className="flex flex-col h-full">
       {/* Page header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-white/60 shrink-0">
+      <div className="flex items-center justify-between px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-zinc-100 bg-white/60 shrink-0">
         <div>
-          <div className="flex items-center gap-2.5">
-            <Users size={20} className="text-red-600" />
-            <h1 className="text-lg font-bold text-zinc-900">Customers</h1>
-          </div>
-          <p className="text-[12px] text-zinc-400 font-medium mt-0.5">{customers.length} customer{customers.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <Users size={18} className="text-red-600" />
+            Customers
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{customers.length} customer{customers.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -177,9 +177,13 @@ export default function Customers() {
                 >
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${nameToColor(c.name)}`}>
-                      {c.name.charAt(0).toUpperCase()}
-                    </div>
+                    {c.avatar_url ? (
+                      <img src={c.avatar_url} alt={c.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-zinc-200" />
+                    ) : (
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${nameToColor(c.name)}`}>
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
@@ -263,6 +267,8 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
 
   const [noteText, setNoteText] = useState('')
   const [sendingNote, setSendingNote] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
   const [newTag, setNewTag] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
   const [savingTags, setSavingTags] = useState(false)
@@ -373,6 +379,21 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
     }
   }
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !customer) return
+    setUploadingAvatar(true)
+    try {
+      await uploadAvatar(file, 'customer', customer.id)
+      refresh()
+    } catch (err) {
+      console.error('Avatar upload failed:', err)
+    } finally {
+      setUploadingAvatar(false)
+      if (avatarFileRef.current) avatarFileRef.current.value = ''
+    }
+  }
+
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: 'bg-amber-100 text-amber-700',
@@ -393,8 +414,22 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
 
         {/* Profile Header */}
         <div className="flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shrink-0 ${nameToColor(customer.name)}`}>
-            {customer.name.charAt(0).toUpperCase()}
+          <div className="relative shrink-0">
+            {customer.avatar_url ? (
+              <img src={customer.avatar_url} alt={customer.name} className="w-14 h-14 rounded-2xl object-cover border border-zinc-200" />
+            ) : (
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold ${nameToColor(customer.name)}`}>
+                {customer.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <button
+              onClick={() => avatarFileRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center hover:bg-zinc-50 transition-colors"
+            >
+              {uploadingAvatar ? <Loader2 size={10} className="animate-spin text-red-600" /> : <Camera size={10} className="text-zinc-500" />}
+            </button>
+            <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-zinc-900">{customer.name}</h2>

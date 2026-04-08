@@ -181,12 +181,12 @@ export default function Schedule() {
   return (
     <div className="p-4 md:p-6 flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between mb-5 shrink-0">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <Calendar size={18} className="text-red-600" /> Schedule
           </h2>
-          <p className="text-[12px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
         </div>
         <div className="flex gap-2">
           <button onClick={copyBookingLink} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'}`}>
@@ -306,15 +306,13 @@ export default function Schedule() {
                             const jobStatus = jobStatuses[appt.id]
 
                             return (
-                              <div
+                              <button
                                 key={appt.id}
-                                className={`absolute left-1 right-1 rounded-lg border text-left overflow-hidden transition-shadow hover:shadow-md z-10 ${STATUS_COLORS[appt.status]}`}
+                                onClick={() => setSelected(appt)}
+                                className={`absolute left-1 right-1 rounded-lg border text-left overflow-hidden transition-shadow hover:shadow-md cursor-pointer z-10 ${STATUS_COLORS[appt.status]}`}
                                 style={{ top: Math.max(top, 0), height }}
                               >
-                                <button
-                                  onClick={() => setSelected(appt)}
-                                  className="w-full text-left px-2 py-1"
-                                >
+                                <div className="px-2 py-1">
                                   <div className="flex items-center gap-1">
                                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[appt.status]}`} />
                                     <p className="text-[11px] font-semibold truncate">{appt.customer_name}</p>
@@ -325,7 +323,7 @@ export default function Schedule() {
                                       {[appt.vehicle_year, appt.vehicle_make, appt.vehicle_model].filter(Boolean).join(' ')}
                                     </p>
                                   )}
-                                </button>
+                                </div>
                                 {apptIsToday && appt.status !== 'cancelled' && height > 48 && (
                                   <div className="px-1.5 pb-1">
                                     {jobStatus === 'in_progress' ? (
@@ -333,10 +331,9 @@ export default function Schedule() {
                                     ) : jobStatus === 'completed' ? (
                                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 text-emerald-700">Completed</span>
                                     ) : (
-                                      <button
+                                      <span
                                         onClick={(e) => { e.stopPropagation(); handleStartJob(appt) }}
-                                        disabled={loadingApptId === appt.id}
-                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-gradient-to-r from-red-700 to-red-600 text-white text-[9px] font-semibold shadow-sm hover:shadow transition-all disabled:opacity-50"
+                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-gradient-to-r from-red-700 to-red-600 text-white text-[9px] font-semibold shadow-sm hover:shadow transition-all"
                                       >
                                         {loadingApptId === appt.id ? (
                                           <Loader2 size={8} className="animate-spin" />
@@ -344,11 +341,11 @@ export default function Schedule() {
                                           <Play size={8} />
                                         )}
                                         Start Job
-                                      </button>
+                                      </span>
                                     )}
                                   </div>
                                 )}
-                              </div>
+                              </button>
                             )
                           })}
 

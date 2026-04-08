@@ -20,10 +20,12 @@ export default function Composer({ channelId, senderId, onTyping, onMessageSent,
   const [sending, setSending] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionIdx, setMentionIdx] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   const filteredMembers = mentionQuery !== null && members
     ? members.filter(m => m.display_name.toLowerCase().includes(mentionQuery.toLowerCase()) && m.id !== senderId)
@@ -104,9 +106,7 @@ export default function Composer({ channelId, senderId, onTyping, onMessageSent,
     textarea.focus()
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const uploadFile = async (file: File) => {
     setUploading(true)
     try {
       const uploaded = await uploadChatFile(file, channelId)
@@ -120,6 +120,7 @@ export default function Composer({ channelId, senderId, onTyping, onMessageSent,
         file_size: uploaded.size,
         file_type: uploaded.type,
       })
+      onMessageSent?.(msg)
     } catch (err) {
       console.error('Upload failed:', err)
     } finally {
@@ -128,8 +129,49 @@ export default function Composer({ channelId, senderId, onTyping, onMessageSent,
     }
   }
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) uploadFile(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragging(true) }
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragging(false) }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) uploadFile(file)
+  }
+
+  // Also allow paste images
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) uploadFile(file)
+        return
+      }
+    }
+  }
+
   return (
-    <div className="border-t border-zinc-200 bg-white">
+    <div
+      ref={dropRef}
+      className={`border-t border-zinc-200 bg-white relative ${dragging ? 'ring-2 ring-red-400 ring-inset' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragging && (
+        <div className="absolute inset-0 bg-red-50/80 flex items-center justify-center z-10 pointer-events-none">
+          <p className="text-sm font-semibold text-red-600">Drop file to upload</p>
+        </div>
+      )}
       {/* Reply preview */}
       {replyTo && (
         <div className="flex items-center gap-2 px-4 pt-2 text-xs text-zinc-500">
@@ -177,6 +219,7 @@ export default function Composer({ channelId, senderId, onTyping, onMessageSent,
             value={content}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Type a message..."
             rows={1}
             className="w-full resize-none px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10 max-h-32"

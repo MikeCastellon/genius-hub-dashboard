@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/lib/store'
+import { useTotalUnread } from '@/lib/chatStore'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
 const navItems = [
@@ -23,6 +24,7 @@ const navItems = [
 export default function Layout() {
   const { signOut, user, profile } = useAuth()
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
+  const totalUnread = useTotalUnread(profile?.id || undefined, profile?.business_id || undefined)
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch { return false }
   })
@@ -90,7 +92,14 @@ export default function Layout() {
                     : 'text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 border border-transparent'
                 }`
               }>
-              <Icon size={16} />
+              <div className="relative">
+                <Icon size={16} />
+                {to === '/chat' && totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                )}
+              </div>
               {!collapsed && label}
             </NavLink>
           ))}
@@ -154,10 +163,15 @@ export default function Layout() {
               }>
               {({ isActive }) => (
                 <>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  <div className={`relative w-8 h-8 rounded-xl flex items-center justify-center ${
                     isActive ? 'bg-gradient-to-br from-red-700 to-red-600 shadow-sm shadow-red-700/25' : ''
                   }`}>
                     <Icon size={16} className={isActive ? 'text-white' : 'text-zinc-400'} />
+                    {to === '/chat' && totalUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </span>
+                    )}
                   </div>
                   <span>{label}</span>
                 </>

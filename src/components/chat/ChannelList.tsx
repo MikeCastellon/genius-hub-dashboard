@@ -54,8 +54,6 @@ export default function ChannelList({
     return channel.name
   }
 
-  const totalUnread = channels.reduce((sum, c) => sum + (c.unread_count || 0), 0)
-
   const renderChannel = (ch: ChannelWithMeta) => {
     const isActive = ch.id === activeChannelId
     const isDM = ch.type === 'direct' || ch.type === 'group_dm'
@@ -113,20 +111,9 @@ export default function ChannelList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-zinc-200/60">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-            <MessageCircle size={15} className="text-red-600" />
-            Chat
-            {totalUnread > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
-                {totalUnread}
-              </span>
-            )}
-          </h2>
-        </div>
-        {!compact && (
+      {/* Search */}
+      {!compact && (
+        <div className="px-3 py-3">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
@@ -141,8 +128,8 @@ export default function ChannelList({
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Channel list */}
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4">

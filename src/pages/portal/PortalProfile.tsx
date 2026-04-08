@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { useAuth, useMyCustomerRecord } from '@/lib/store'
+import { useState, useEffect, useRef } from 'react'
+import { useAuth, useMyCustomerRecord, uploadAvatar } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
-import { User, Phone, Mail, MessageSquare, Lock, Save, Loader2, Download } from 'lucide-react'
+import { User, Phone, Mail, MessageSquare, Lock, Save, Loader2, Download, Camera } from 'lucide-react'
 
 const contactMethods = [
   { value: 'phone' as const, label: 'Phone', icon: Phone },
@@ -24,6 +24,11 @@ export default function PortalProfile() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
   // Password state
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -43,7 +48,30 @@ export default function PortalProfile() {
     if (profile?.preferred_contact) {
       setPreferredContact(profile.preferred_contact)
     }
+    // Set avatar from customer or profile
+    setAvatarUrl(customer?.avatar_url || profile?.avatar_url || null)
   }, [customer, profile, user])
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      // Upload for customer record if exists, otherwise profile
+      if (customer) {
+        const url = await uploadAvatar(file, 'customer', customer.id)
+        setAvatarUrl(url)
+      } else if (profile) {
+        const url = await uploadAvatar(file, 'profile', profile.id)
+        setAvatarUrl(url)
+      }
+    } catch (err) {
+      console.error('Avatar upload failed:', err)
+    } finally {
+      setUploadingAvatar(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
 
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -125,6 +153,31 @@ export default function PortalProfile() {
             <User className="h-4.5 w-4.5 text-zinc-400" />
             Personal Information
           </h2>
+
+          {/* Avatar */}
+          <div className="mt-5 flex items-center gap-4">
+            <div className="relative">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover border border-zinc-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white text-xl font-bold">
+                  {(name || 'U')[0]?.toUpperCase()}
+                </div>
+              )}
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center hover:bg-zinc-50 transition-colors"
+              >
+                {uploadingAvatar ? <Loader2 size={12} className="animate-spin text-red-600" /> : <Camera size={12} className="text-zinc-500" />}
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-900">{name || 'Your Name'}</p>
+              <p className="text-xs text-zinc-400">Tap the camera icon to update your photo</p>
+            </div>
+          </div>
 
           <div className="mt-5 space-y-4">
             {/* Name */}

@@ -49,10 +49,10 @@ export default function Certify() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
             <Award size={18} className="text-red-600" /> Certify
           </h2>
-          <p className="text-[12px] text-zinc-400 mt-0.5">{certificates.length} total certificates</p>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{certificates.length} total certificates</p>
         </div>
         <button
           onClick={() => navigate('/certify/new')}

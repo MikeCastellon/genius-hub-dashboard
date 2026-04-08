@@ -89,12 +89,12 @@ export default function Admin() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="mb-6">
+      <div className="mb-5">
         <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
           <ShieldCheck size={18} className="text-red-600" />
           Admin Panel
         </h2>
-        <p className="text-[13px] text-zinc-400 mt-0.5">Manage users, permissions, and intake settings</p>
+        <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Manage users, permissions, and intake settings</p>
         {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
       </div>
 
