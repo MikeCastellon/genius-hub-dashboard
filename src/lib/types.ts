@@ -771,3 +771,51 @@ export interface MessageAttachment {
   file_type: string | null
   created_at: string
 }
+
+// ── Quick Tasks ───────────────────────────────────
+export interface Task {
+  id: string
+  business_id: string
+  created_by: string | null
+  assigned_to: string | null
+  title: string
+  description: string | null
+  status: 'pending' | 'in_progress' | 'completed'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  due_date: string | null
+  completed_at: string | null
+  created_at: string
+  assignee?: { display_name: string; avatar_url: string | null }
+  creator?: { display_name: string }
+}
+
+// ── Feed ──────────────────────────────────────────
+export interface FeedPost {
+  id: string
+  business_id: string
+  author_id: string
+  content: string
+  image_url: string | null
+  likes_count: number
+  comments_count: number
+  created_at: string
+  author?: { display_name: string; avatar_url: string | null }
+  feed_likes?: { user_id: string }[]
+  feed_comments?: FeedComment[]
+}
+
+export interface FeedComment {
+  id: string
+  post_id: string
+  author_id: string
+  content: string
+  created_at: string
+  author?: { display_name: string; avatar_url: string | null }
+}
+
+export interface FeedLike {
+  id: string
+  post_id: string
+  user_id: string
+  created_at: string
+}

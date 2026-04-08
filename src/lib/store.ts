@@ -10,6 +10,7 @@ import {
   BusinessSettings, IntakeConfig, DEFAULT_INTAKE_CONFIG,
   FormTemplate, FormSubmission, Expense,
   RepairLookup, MaintenanceLookup, RecallLookup, RepairGuide,
+  Task, FeedPost,
 } from './types'
 
 const isConfigured = () => {
@@ -1857,4 +1858,132 @@ export async function uploadAvatar(
   }
 
   return publicUrl
+}
+
+// ============ Quick Tasks ============
+
+export function useTasks(businessId?: string) {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !businessId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('tasks')
+      .select('*, assignee:profiles!tasks_assigned_to_fkey(display_name, avatar_url), creator:profiles!tasks_created_by_fkey(display_name)')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+    setTasks(data || [])
+    setLoading(false)
+  }, [businessId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { tasks, loading, refresh }
+}
+
+export async function createTask(params: {
+  business_id: string
+  created_by: string
+  assigned_to?: string | null
+  title: string
+  description?: string | null
+  priority?: Task['priority']
+  due_date?: string | null
+}) {
+  const { error } = await supabase.from('tasks').insert(params)
+  if (error) throw error
+}
+
+export async function updateTask(id: string, updates: Partial<Pick<Task, 'status' | 'title' | 'description' | 'assigned_to' | 'priority' | 'due_date' | 'completed_at'>>) {
+  const { error } = await supabase.from('tasks').update(updates).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteTask(id: string) {
+  const { error } = await supabase.from('tasks').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ============ Feed ============
+
+export function useFeed(businessId?: string) {
+  const [posts, setPosts] = useState<FeedPost[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !businessId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('feed_posts')
+      .select('*, author:profiles!feed_posts_author_id_fkey(display_name, avatar_url), feed_likes(user_id), feed_comments(id, content, author_id, created_at, author:profiles!feed_comments_author_id_fkey(display_name, avatar_url))')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setPosts(data || [])
+    setLoading(false)
+  }, [businessId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { posts, loading, refresh }
+}
+
+export async function createFeedPost(params: { business_id: string; author_id: string; content: string; image_url?: string | null }) {
+  const { error } = await supabase.from('feed_posts').insert(params)
+  if (error) throw error
+}
+
+export async function deleteFeedPost(id: string) {
+  const { error } = await supabase.from('feed_posts').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function toggleFeedLike(postId: string, userId: string) {
+  const { data: existing } = await supabase
+    .from('feed_likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('feed_likes').delete().eq('id', existing.id)
+    await supabase.rpc('decrement_likes', { post_id: postId })
+  } else {
+    await supabase.from('feed_likes').insert({ post_id: postId, user_id: userId })
+    await supabase.rpc('increment_likes', { post_id: postId })
+  }
+}
+
+export async function addFeedComment(params: { post_id: string; author_id: string; content: string }) {
+  const { error } = await supabase.from('feed_comments').insert(params)
+  if (error) throw error
+  // Increment comments_count
+  await supabase.rpc('increment_comments', { p_post_id: params.post_id })
+}
+
+export async function deleteFeedComment(id: string) {
+  const { error } = await supabase.from('feed_comments').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ============ Employee Directory ============
+
+export function useDirectory(businessId?: string) {
+  const [employees, setEmployees] = useState<Profile[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!isConfigured() || !businessId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('business_id', businessId)
+      .neq('role', 'customer')
+      .eq('approved', true)
+      .order('display_name')
+    setEmployees(data || [])
+    setLoading(false)
+  }, [businessId])
+
+  useEffect(() => { refresh() }, [refresh])
+  return { employees, loading, refresh }
 }
