@@ -643,7 +643,7 @@ function FeedPostCard({
                 </button>
               )}
               <button onClick={() => setShowMenu(false)} className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 w-full">
-                Cancel
+                <span className="w-[13px]" /> Cancel
               </button>
             </div>
           )}
