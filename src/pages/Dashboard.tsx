@@ -156,9 +156,9 @@ function CreateTaskModal({
   ]
 
   return (
-    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-white flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
         <button onClick={onClose} className="p-1">
           <ArrowLeft size={22} className="text-zinc-700" />
         </button>
@@ -173,7 +173,7 @@ function CreateTaskModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
         {/* Title */}
         <div className="px-4 pt-4 pb-2 border-b border-zinc-100">
           <input
@@ -1142,7 +1142,8 @@ export default function Dashboard() {
 
       {/* New Update Composer — Full Screen Modal */}
       {showComposer && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-white flex flex-col"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
             <button
@@ -1172,7 +1173,7 @@ export default function Dashboard() {
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pb-safe" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
             {/* Author Info */}
             <div className="flex items-center gap-3 px-4 pt-3 pb-2">
               <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
