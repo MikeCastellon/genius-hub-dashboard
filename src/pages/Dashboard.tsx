@@ -27,7 +27,7 @@ const BG_COLORS = [
 ]
 
 const BG_COLOR_PREVIEWS = [
-  'bg-white border border-zinc-300',
+  'bg-white shadow-[inset_0_0_0_1.5px_#d4d4d8]',
   'bg-gradient-to-br from-red-500 to-orange-400',
   'bg-gradient-to-br from-blue-500 to-cyan-400',
   'bg-gradient-to-br from-purple-600 to-pink-500',
