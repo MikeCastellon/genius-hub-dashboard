@@ -143,7 +143,7 @@ export default function Dashboard() {
       label: 'New Intake',
       subtitle: 'Walk-in or new vehicle',
       gradient: 'from-red-700 to-red-600',
-      route: '/',
+      route: '/intake',
     },
     {
       icon: ClipboardList,

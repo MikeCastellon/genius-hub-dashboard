@@ -116,8 +116,8 @@ export default function App() {
     <>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<NewIntake />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/intake" element={<NewIntake />} />
           <Route path="/history" element={<IntakeHistory />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/services" element={<Services />} />

@@ -6,10 +6,10 @@ import { useTotalUnread } from '@/lib/chatStore'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
 
 const navItems = [
-  { to: '/', icon: Car, label: 'Intake' },
+  { to: '/', icon: LayoutDashboard, label: 'Home' },
+  { to: '/intake', icon: Car, label: 'Intake' },
   { to: '/queue', icon: ClipboardList, label: 'Queue' },
   { to: '/repairs', icon: Cog, label: 'Repairs' },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/history', icon: History, label: 'History' },
   { to: '/customers', icon: Users, label: 'Customers' },
   { to: '/invoices', icon: FileText, label: 'Invoices' },
