@@ -1227,7 +1227,7 @@ export default function Dashboard() {
                   value={newPostText}
                   onChange={e => setNewPostText(e.target.value)}
                   placeholder="What would you like to share?"
-                  rows={6}
+                  rows={8}
                   className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-zinc-400"
                   autoFocus
                 />
@@ -1295,15 +1295,15 @@ export default function Dashboard() {
             )}
 
             {/* Background Color Swatches — always visible */}
-            <div className="px-4 mt-4">
-              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Background</p>
-              <div className="flex gap-2 items-center overflow-x-auto no-scrollbar">
+            <div className="px-4 mt-6">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Background</p>
+              <div className="flex gap-3 items-center overflow-x-auto no-scrollbar">
                 {BG_COLOR_PREVIEWS.map((preview, i) => (
                   <button
                     key={i}
                     onClick={() => setPostBackground(BG_COLORS[i])}
-                    className={`w-7 h-7 rounded-full shrink-0 transition-all ${preview} ${
-                      postBackground === BG_COLORS[i] ? 'ring-2 ring-red-500 ring-offset-1 scale-110' : 'hover:scale-105'
+                    className={`w-9 h-9 rounded-full shrink-0 transition-all ${preview} ${
+                      postBackground === BG_COLORS[i] ? 'ring-2 ring-red-500 ring-offset-2 scale-110' : 'hover:scale-105'
                     }`}
                   />
                 ))}
@@ -1311,15 +1311,15 @@ export default function Dashboard() {
             </div>
 
             {/* Preset Background Images — always visible */}
-            <div className="px-4 mt-3">
-              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Preset Backgrounds</p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div className="px-4 mt-4">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Preset Backgrounds</p>
+              <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
                 {BG_IMAGES.map((url, i) => (
                   <button
                     key={i}
                     onClick={() => setPostBackground(url)}
-                    className={`shrink-0 w-20 h-14 rounded-xl overflow-hidden transition-all ${
-                      postBackground === url ? 'ring-2 ring-red-500 ring-offset-1' : 'hover:opacity-80'
+                    className={`shrink-0 w-24 h-16 rounded-xl overflow-hidden transition-all ${
+                      postBackground === url ? 'ring-2 ring-red-500 ring-offset-2' : 'hover:opacity-80'
                     }`}
                   >
                     <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -1329,7 +1329,7 @@ export default function Dashboard() {
             </div>
 
             {/* Attachment Options — always visible */}
-            <div className="px-4 mt-4 pb-4">
+            <div className="px-4 mt-5 pb-4">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Add to your post</p>
               <div className="grid grid-cols-4 gap-2">
                 <label className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
