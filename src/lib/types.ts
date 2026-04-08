@@ -796,6 +796,7 @@ export interface FeedPost {
   author_id: string
   content: string
   image_url: string | null
+  media_type: 'image' | 'video' | null
   likes_count: number
   comments_count: number
   created_at: string

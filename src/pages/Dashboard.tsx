@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   useAuth, useIntakes, useCustomers, useTasks, useFeed,
-  createTask, updateTask, createFeedPost, toggleFeedLike, addFeedComment, deleteFeedPost,
+  createTask, updateTask, createFeedPost, uploadFeedMedia, toggleFeedLike, addFeedComment, deleteFeedPost,
 } from '@/lib/store'
 import { Task, FeedPost } from '@/lib/types'
 import {
   Search, Plus, ClipboardList, Users, Loader2, X,
   CheckSquare, Square, Heart, MessageCircle, Send, Trash2,
-  ChevronRight, Car,
+  ChevronRight, Car, ImagePlus, MoreHorizontal, Bookmark,
 } from 'lucide-react'
 
 function getGreeting(): string {
@@ -151,7 +151,7 @@ function QuickTasksPanel({
   )
 }
 
-// ── Feed Post Card ──────────────────────────────
+// ── Feed Post Card (IG Style) ───────────────────
 
 function FeedPostCard({
   post, userId, onRefresh,
@@ -163,12 +163,20 @@ function FeedPostCard({
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const isLiked = post.feed_likes?.some(l => l.user_id === userId) ?? false
   const isAuthor = post.author_id === userId
 
   const handleLike = async () => {
     await toggleFeedLike(post.id, userId)
     onRefresh()
+  }
+
+  const handleDoubleTapLike = async () => {
+    if (!isLiked) {
+      await toggleFeedLike(post.id, userId)
+      onRefresh()
+    }
   }
 
   const handleComment = async () => {
@@ -181,106 +189,162 @@ function FeedPostCard({
   }
 
   const handleDelete = async () => {
+    setShowMenu(false)
     if (!confirm('Delete this post?')) return
     await deleteFeedPost(post.id)
     onRefresh()
   }
 
+  const isVideo = post.media_type === 'video' || post.image_url?.match(/\.(mp4|mov|webm)$/i)
+
   return (
-    <div className="glass rounded-2xl overflow-hidden">
-      {/* Author Header */}
-      <div className="flex items-center gap-3 p-4 pb-2">
-        {post.author?.avatar_url ? (
-          <img src={post.author.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
-        ) : (
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-xs font-bold">
-            {getInitials(post.author?.display_name || '?')}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-zinc-900">{post.author?.display_name || 'Unknown'}</p>
-          <p className="text-[10px] text-zinc-400">{timeAgo(post.created_at)}</p>
+    <div className="bg-white border-b border-zinc-200">
+      {/* Header — IG style */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="w-8 h-8 rounded-full ring-2 ring-red-500 ring-offset-1 overflow-hidden">
+          {post.author?.avatar_url ? (
+            <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[10px] font-bold">
+              {getInitials(post.author?.display_name || '?')}
+            </div>
+          )}
         </div>
-        {isAuthor && (
-          <button onClick={handleDelete} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
-            <Trash2 size={13} className="text-zinc-400" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-zinc-900">{post.author?.display_name || 'Unknown'}</p>
+        </div>
+        <div className="relative">
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1">
+            <MoreHorizontal size={18} className="text-zinc-600" />
           </button>
-        )}
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-xl z-20 overflow-hidden">
+              {isAuthor && (
+                <button onClick={handleDelete} className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 w-full">
+                  <Trash2 size={13} /> Delete
+                </button>
+              )}
+              <button onClick={() => setShowMenu(false)} className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 w-full">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 pb-3">
-        <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-      </div>
-
+      {/* Media — full width like IG */}
       {post.image_url && (
-        <img src={post.image_url} alt="" className="w-full max-h-80 object-cover" />
+        <div className="w-full aspect-square bg-zinc-100 relative" onDoubleClick={handleDoubleTapLike}>
+          {isVideo ? (
+            <video
+              src={post.image_url}
+              className="w-full h-full object-cover"
+              controls
+              playsInline
+              muted
+            />
+          ) : (
+            <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+          )}
+        </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-4 px-4 py-2.5 border-t border-zinc-100">
-        <button
-          onClick={handleLike}
-          className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-            isLiked ? 'text-red-500' : 'text-zinc-400 hover:text-red-500'
-          }`}
-        >
-          <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
-          {post.likes_count > 0 && post.likes_count}
-        </button>
-        <button
-          onClick={() => setShowComments(!showComments)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-600 transition-colors"
-        >
-          <MessageCircle size={14} />
-          {post.comments_count > 0 && post.comments_count}
-        </button>
+      {/* Action Row — IG style */}
+      <div className="flex items-center px-4 pt-3 pb-1">
+        <div className="flex items-center gap-4 flex-1">
+          <button onClick={handleLike} className="transition-transform active:scale-125">
+            <Heart
+              size={24}
+              className={isLiked ? 'text-red-500 fill-red-500' : 'text-zinc-800'}
+              fill={isLiked ? 'currentColor' : 'none'}
+            />
+          </button>
+          <button onClick={() => setShowComments(!showComments)}>
+            <MessageCircle size={24} className="text-zinc-800" />
+          </button>
+          <button><Send size={22} className="text-zinc-800 -rotate-12" /></button>
+        </div>
+        <button><Bookmark size={24} className="text-zinc-800" /></button>
       </div>
+
+      {/* Likes Count */}
+      {post.likes_count > 0 && (
+        <p className="px-4 pt-1 text-[13px] font-bold text-zinc-900">
+          {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
+        </p>
+      )}
+
+      {/* Caption */}
+      <div className="px-4 pt-1 pb-1">
+        <p className="text-[13px] text-zinc-900 leading-snug">
+          <span className="font-bold">{post.author?.display_name}</span>
+          {' '}
+          <span className="text-zinc-700">{post.content}</span>
+        </p>
+      </div>
+
+      {/* View Comments Link */}
+      {post.comments_count > 0 && !showComments && (
+        <button
+          onClick={() => setShowComments(true)}
+          className="px-4 py-1 text-[13px] text-zinc-400"
+        >
+          View {post.comments_count === 1 ? '1 comment' : `all ${post.comments_count} comments`}
+        </button>
+      )}
+
+      {/* Timestamp */}
+      <p className="px-4 pt-0.5 pb-3 text-[10px] text-zinc-400 uppercase tracking-wider">
+        {timeAgo(post.created_at)}
+      </p>
 
       {/* Comments Section */}
       {showComments && (
         <div className="border-t border-zinc-100">
-          {/* Existing Comments */}
           {post.feed_comments && post.feed_comments.length > 0 && (
             <div className="px-4 pt-3 space-y-3">
               {post.feed_comments.map(c => (
-                <div key={c.id} className="flex gap-2">
-                  {c.author?.avatar_url ? (
-                    <img src={c.author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-500 text-[9px] font-bold shrink-0 mt-0.5">
-                      {getInitials(c.author?.display_name || '?')}
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs">
-                      <span className="font-bold text-zinc-800">{c.author?.display_name}</span>
+                <div key={c.id} className="flex gap-2.5">
+                  <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 mt-0.5">
+                    {c.author?.avatar_url ? (
+                      <img src={c.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-200 flex items-center justify-center text-zinc-500 text-[9px] font-bold">
+                        {getInitials(c.author?.display_name || '?')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[13px] leading-snug">
+                      <span className="font-bold text-zinc-900">{c.author?.display_name}</span>
                       {' '}
-                      <span className="text-zinc-600">{c.content}</span>
+                      <span className="text-zinc-700">{c.content}</span>
                     </p>
-                    <p className="text-[10px] text-zinc-300 mt-0.5">{timeAgo(c.created_at)}</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">{timeAgo(c.created_at)}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add Comment */}
-          <div className="flex items-center gap-2 p-3">
+          {/* Add Comment — IG style */}
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-zinc-100">
             <input
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
-              placeholder="Write a comment..."
-              className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:border-red-300"
+              placeholder="Add a comment..."
+              className="flex-1 text-[13px] text-zinc-700 bg-transparent focus:outline-none placeholder:text-zinc-400"
             />
-            <button
-              onClick={handleComment}
-              disabled={submitting || !commentText.trim()}
-              className="p-2 rounded-xl bg-red-600 text-white disabled:opacity-50"
-            >
-              <Send size={12} />
-            </button>
+            {commentText.trim() && (
+              <button
+                onClick={handleComment}
+                disabled={submitting}
+                className="text-[13px] font-bold text-red-600 disabled:opacity-50"
+              >
+                Post
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -303,6 +367,8 @@ export default function Dashboard() {
   const [showTasks, setShowTasks] = useState(false)
   const [newPostText, setNewPostText] = useState('')
   const [posting, setPosting] = useState(false)
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
   const firstName = displayName.split(' ')[0]
@@ -341,12 +407,41 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setMediaFile(file)
+    setMediaPreview(URL.createObjectURL(file))
+  }
+
+  const clearMedia = () => {
+    setMediaFile(null)
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview)
+    setMediaPreview(null)
+  }
+
   const handlePost = async () => {
-    if (!newPostText.trim() || !profile) return
+    if ((!newPostText.trim() && !mediaFile) || !profile) return
     setPosting(true)
     try {
-      await createFeedPost({ business_id: profile.business_id!, author_id: profile.id, content: newPostText.trim() })
+      let image_url: string | null = null
+      let media_type: 'image' | 'video' | null = null
+
+      if (mediaFile) {
+        const result = await uploadFeedMedia(profile.business_id!, mediaFile)
+        image_url = result.url
+        media_type = result.type
+      }
+
+      await createFeedPost({
+        business_id: profile.business_id!,
+        author_id: profile.id,
+        content: newPostText.trim() || '',
+        image_url,
+        media_type,
+      })
       setNewPostText('')
+      clearMedia()
       refreshFeed()
     } catch { /* ignore */ }
     setPosting(false)
@@ -497,48 +592,75 @@ export default function Dashboard() {
       <div>
         <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Feed</h2>
 
-        {/* Compose */}
-        <div className="glass rounded-2xl p-4 mb-4">
-          <div className="flex items-start gap-3">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {getInitials(displayName)}
-              </div>
-            )}
-            <div className="flex-1">
-              <textarea
-                value={newPostText}
-                onChange={e => setNewPostText(e.target.value)}
-                placeholder="Share something..."
-                rows={2}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm resize-none focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100"
-              />
-              {newPostText.trim() && (
-                <div className="flex justify-end mt-2">
-                  <button
-                    onClick={handlePost}
-                    disabled={posting}
-                    className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-xs font-semibold disabled:opacity-50"
-                  >
-                    {posting ? 'Posting...' : 'Post'}
-                  </button>
+        {/* Compose — IG style */}
+        <div className="bg-white border border-zinc-200 rounded-2xl mb-4 overflow-hidden">
+          <div className="flex items-start gap-3 p-4">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[10px] font-bold">
+                  {getInitials(displayName)}
                 </div>
               )}
             </div>
+            <textarea
+              value={newPostText}
+              onChange={e => setNewPostText(e.target.value)}
+              placeholder="What's on your mind?"
+              rows={2}
+              className="flex-1 text-[13px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400"
+            />
+          </div>
+
+          {/* Media Preview */}
+          {mediaPreview && (
+            <div className="relative mx-4 mb-3">
+              {mediaFile?.type.startsWith('video/') ? (
+                <video src={mediaPreview} className="w-full max-h-64 object-cover rounded-xl" controls />
+              ) : (
+                <img src={mediaPreview} alt="" className="w-full max-h-64 object-cover rounded-xl" />
+              )}
+              <button
+                onClick={clearMedia}
+                className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center"
+              >
+                <X size={14} className="text-white" />
+              </button>
+            </div>
+          )}
+
+          {/* Compose Footer */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-zinc-100">
+            <label className="flex items-center gap-2 text-xs text-zinc-500 hover:text-red-600 cursor-pointer transition-colors">
+              <ImagePlus size={18} />
+              <span className="font-semibold">Photo/Video</span>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleMediaSelect}
+                className="hidden"
+              />
+            </label>
+            <button
+              onClick={handlePost}
+              disabled={posting || (!newPostText.trim() && !mediaFile)}
+              className="px-5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
+            >
+              {posting ? 'Sharing...' : 'Share'}
+            </button>
           </div>
         </div>
 
-        {/* Posts */}
+        {/* Posts — IG style feed */}
         {posts.length === 0 ? (
-          <div className="glass rounded-2xl p-8 text-center">
-            <MessageCircle size={24} className="mx-auto text-zinc-300 mb-2" />
+          <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center">
+            <MessageCircle size={28} className="mx-auto text-zinc-300 mb-2" />
             <p className="text-sm text-zinc-400 font-medium">No posts yet</p>
             <p className="text-[11px] text-zinc-300 mt-1">Be the first to share something with your team</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="rounded-2xl overflow-hidden border border-zinc-200">
             {posts.map(post => (
               <FeedPostCard key={post.id} post={post} userId={profile?.id || ''} onRefresh={refreshFeed} />
             ))}

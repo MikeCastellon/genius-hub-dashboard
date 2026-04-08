@@ -1926,9 +1926,19 @@ export function useFeed(businessId?: string) {
   return { posts, loading, refresh }
 }
 
-export async function createFeedPost(params: { business_id: string; author_id: string; content: string; image_url?: string | null }) {
+export async function createFeedPost(params: { business_id: string; author_id: string; content: string; image_url?: string | null; media_type?: 'image' | 'video' | null }) {
   const { error } = await supabase.from('feed_posts').insert(params)
   if (error) throw error
+}
+
+export async function uploadFeedMedia(businessId: string, file: File): Promise<{ url: string; type: 'image' | 'video' }> {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${businessId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('feed-media').upload(path, file, { contentType: file.type })
+  if (error) throw error
+  const { data } = supabase.storage.from('feed-media').getPublicUrl(path)
+  const mediaType = file.type.startsWith('video/') ? 'video' as const : 'image' as const
+  return { url: data.publicUrl, type: mediaType }
 }
 
 export async function deleteFeedPost(id: string) {
