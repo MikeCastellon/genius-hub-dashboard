@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle, UserCircle } from 'lucide-react'
+import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle, UserCircle, Grid2x2, User } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 import { useTotalUnread } from '@/lib/chatStore'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
@@ -171,11 +171,21 @@ export default function Layout() {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-zinc-200/60 px-2 py-1 safe-bottom"
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}>
-        <div className="flex items-center overflow-x-auto no-scrollbar gap-1">
-          {allNavItems.map(({ to, icon: Icon, label }) => (
+        <div className="flex items-center justify-around">
+          {[
+            { to: '/', icon: LayoutDashboard, label: 'Home' },
+            { to: '/queue', icon: ClipboardList, label: 'Queue' },
+            { to: '/schedule', icon: Calendar, label: 'Schedule' },
+            { to: '/assets', icon: Grid2x2, label: 'Assets' },
+            { to: '/chat', icon: MessageCircle, label: 'Chat' },
+            { to: '/profile', icon: User, label: 'Profile' },
+            ...(profile?.role === 'admin' || profile?.role === 'super_admin'
+              ? [{ to: '/admin', icon: ShieldCheck, label: 'Admin' }]
+              : []),
+          ].map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-semibold min-w-[52px] ${
+                `flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-semibold ${
                   isActive ? 'text-red-700' : 'text-zinc-400'
                 }`
               }>
@@ -196,13 +206,6 @@ export default function Layout() {
               )}
             </NavLink>
           ))}
-          <button onClick={handleSignOut}
-            className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-semibold text-zinc-400 min-w-[52px]">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center">
-              <LogOut size={16} />
-            </div>
-            <span>Exit</span>
-          </button>
         </div>
       </nav>
     </div>
