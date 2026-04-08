@@ -1118,9 +1118,11 @@ export default function Dashboard() {
             <p className="text-[11px] text-zinc-300 mt-1">Be the first to share something with your team</p>
           </div>
         ) : (
-          <div className="rounded-2xl overflow-hidden border border-zinc-200">
+          <div className="space-y-4">
             {posts.map(post => (
-              <FeedPostCard key={post.id} post={post} userId={profile?.id || ''} onRefresh={refreshFeed} />
+              <div key={post.id} className="rounded-2xl overflow-hidden border border-zinc-200 bg-white">
+                <FeedPostCard post={post} userId={profile?.id || ''} onRefresh={refreshFeed} />
+              </div>
             ))}
           </div>
         )}
