@@ -667,7 +667,7 @@ function FeedPostCard({
             <div className="absolute inset-0 bg-black/30" />
           )}
           <p className="text-white text-xl md:text-2xl font-bold text-center leading-relaxed drop-shadow-lg relative z-10">
-            {post.content}
+            {post.content?.replace(/\*+/g, '')}
           </p>
         </div>
       )}
@@ -695,7 +695,7 @@ function FeedPostCard({
           <p className="text-[14px] text-zinc-900 leading-relaxed">
             <span className="font-bold">{post.author?.display_name}</span>
             {' '}
-            <span className="text-zinc-700">{post.content}</span>
+            <span className="text-zinc-700">{post.content?.replace(/\*+/g, '')}</span>
           </p>
         </div>
       )}
