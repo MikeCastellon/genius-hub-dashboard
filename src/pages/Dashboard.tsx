@@ -10,7 +10,7 @@ import {
   CheckSquare, Square, Heart, MessageCircle, Send, Trash2,
   ChevronRight, Car, ImagePlus, MoreHorizontal, Bookmark,
   ArrowLeft, Image, Video, FileText, Link2, MapPin, Play,
-  Calendar, Clock, UserPlus, Flag, Palette, Smile,
+  Calendar, Clock, UserPlus, Flag, Smile,
 } from 'lucide-react'
 
 // ── Background presets ─────────────────────────────
@@ -678,7 +678,6 @@ export default function Dashboard() {
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [postBackground, setPostBackground] = useState<string | null>(null)
-  const [showBgPicker, setShowBgPicker] = useState(false)
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [gifSearch, setGifSearch] = useState('')
   const [gifResults, setGifResults] = useState<{ url: string; preview: string }[]>([])
@@ -744,13 +743,15 @@ export default function Dashboard() {
 
   const searchGifs = async (q: string) => {
     if (!q.trim()) { setGifResults([]); return }
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY
+    if (!apiKey) { setGifResults([]); return }
     setGifLoading(true)
     try {
-      const res = await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=AIzaSyBqRVcp1skmveQpD6xOiXe-BTe8RNFe2LE&limit=20&media_filter=gif`)
+      const res = await fetch(`https://api.giphy.com/v1/gifs/search?q=${encodeURIComponent(q)}&api_key=${apiKey}&limit=20&rating=g`)
       const data = await res.json()
-      const results = (data.results || []).map((r: any) => ({
-        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || '',
-        preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || '',
+      const results = (data.data || []).map((g: any) => ({
+        url: g.images?.original?.url || '',
+        preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url || '',
       })).filter((g: any) => g.url)
       setGifResults(results)
     } catch { setGifResults([]) }
@@ -1000,14 +1001,13 @@ export default function Dashboard() {
       {showComposer && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
             <button
               onClick={() => {
                 setShowComposer(false)
                 setNewPostTitle('')
                 setNewPostText('')
                 setPostBackground(null)
-                setShowBgPicker(false)
                 setShowGifPicker(false)
                 clearMedia()
               }}
@@ -1020,7 +1020,6 @@ export default function Dashboard() {
               onClick={async () => {
                 await handlePost()
                 setShowComposer(false)
-                setNewPostTitle('')
               }}
               disabled={posting || (!newPostText.trim() && !mediaFile && !mediaPreview)}
               className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
@@ -1029,89 +1028,94 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Author Info */}
-          <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-xs font-bold">
-                  {getInitials(displayName)}
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Author Info */}
+            <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                    {getInitials(displayName)}
+                  </div>
+                )}
+              </div>
+              <p className="text-sm font-bold text-zinc-900">{displayName}</p>
+            </div>
+
+            {/* Title & Content */}
+            <div className="px-4 pb-2 border-b border-zinc-100 no-focus-ring">
+              <input
+                value={newPostTitle}
+                onChange={e => setNewPostTitle(e.target.value)}
+                placeholder="Title (optional)"
+                className="w-full text-base font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-0 border-none outline-none mb-1"
+              />
+              {postBackground && !mediaPreview ? (
+                <div
+                  className={`w-full rounded-2xl flex flex-col items-center justify-center p-5 relative overflow-hidden ${
+                    postBackground.startsWith('http') ? '' : postBackground
+                  }`}
+                  style={{
+                    minHeight: '140px',
+                    ...(postBackground.startsWith('http') ? {
+                      backgroundImage: `url(${postBackground})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    } : {}),
+                  }}
+                >
+                  {postBackground.startsWith('http') && (
+                    <div className="absolute inset-0 bg-black/30 rounded-2xl" />
+                  )}
+                  <button
+                    onClick={() => setPostBackground(null)}
+                    className="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center z-10"
+                  >
+                    <X size={12} className="text-white" />
+                  </button>
+                  <textarea
+                    value={newPostText}
+                    onChange={e => setNewPostText(e.target.value)}
+                    placeholder="What would you like to share?"
+                    rows={3}
+                    className="w-full text-lg font-bold text-white text-center bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-white/60 relative z-10 drop-shadow-lg"
+                    autoFocus
+                  />
                 </div>
+              ) : (
+                <textarea
+                  value={newPostText}
+                  onChange={e => setNewPostText(e.target.value)}
+                  placeholder="What would you like to share?"
+                  rows={3}
+                  className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-zinc-400"
+                  autoFocus
+                />
               )}
             </div>
-            <p className="text-sm font-bold text-zinc-900">{displayName}</p>
-          </div>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            {/* Background Preview (when a bg is selected, show text on it) */}
-            {postBackground && !mediaPreview ? (
-              <div
-                className={`w-full aspect-[4/3] rounded-2xl flex flex-col items-center justify-center p-6 mt-2 relative ${
-                  postBackground.startsWith('http') ? '' : postBackground
-                }`}
-                style={postBackground.startsWith('http') ? {
-                  backgroundImage: `url(${postBackground})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                } : undefined}
-              >
-                {postBackground.startsWith('http') && (
-                  <div className="absolute inset-0 bg-black/30 rounded-2xl" />
-                )}
-                <button
-                  onClick={() => setPostBackground(null)}
-                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center z-10"
-                >
-                  <X size={14} className="text-white" />
-                </button>
-                <textarea
-                  value={newPostText}
-                  onChange={e => setNewPostText(e.target.value)}
-                  placeholder="What would you like to share?"
-                  className="w-full text-xl font-bold text-white text-center bg-transparent resize-none focus:outline-none placeholder:text-white/60 min-h-[80px] relative z-10 drop-shadow-lg"
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <>
-                <input
-                  value={newPostTitle}
-                  onChange={e => setNewPostTitle(e.target.value)}
-                  placeholder="Title (optional)"
-                  className="w-full text-lg font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none mb-2 mt-2"
-                />
-                <textarea
-                  value={newPostText}
-                  onChange={e => setNewPostText(e.target.value)}
-                  placeholder="What would you like to share?"
-                  className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400 min-h-[120px]"
-                  autoFocus
-                />
-              </>
-            )}
 
             {/* Media Preview */}
             {mediaPreview && (
-              <div className="relative mt-3">
+              <div className="relative mx-4 mt-2">
                 {mediaFile?.type.startsWith('video/') ? (
-                  <video src={mediaPreview} className="w-full max-h-72 object-cover rounded-xl" controls />
+                  <video src={mediaPreview} className="w-full max-h-48 object-cover rounded-xl" controls />
                 ) : (
-                  <img src={mediaPreview} alt="" className="w-full max-h-72 object-cover rounded-xl" />
+                  <img src={mediaPreview} alt="" className="w-full max-h-48 object-cover rounded-xl" />
                 )}
                 <button
                   onClick={clearMedia}
-                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center"
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
                 >
-                  <X size={14} className="text-white" />
+                  <X size={12} className="text-white" />
                 </button>
               </div>
             )}
 
-            {/* GIF Picker */}
+            {/* GIF Picker — inline when active */}
             {showGifPicker && (
-              <div className="mt-3 border border-zinc-200 rounded-2xl overflow-hidden">
+              <div className="mx-4 mt-3 border border-zinc-200 rounded-2xl overflow-hidden no-focus-ring">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-100">
                   <Search size={14} className="text-zinc-400" />
                   <input
@@ -1125,17 +1129,17 @@ export default function Dashboard() {
                     <X size={14} className="text-zinc-400" />
                   </button>
                 </div>
-                <div className="max-h-64 overflow-y-auto p-2">
+                <div className="max-h-48 overflow-y-auto p-2">
                   {gifLoading && (
-                    <div className="flex justify-center py-6">
+                    <div className="flex justify-center py-4">
                       <Loader2 size={20} className="animate-spin text-zinc-400" />
                     </div>
                   )}
                   {!gifLoading && gifResults.length === 0 && gifSearch && (
-                    <p className="text-xs text-zinc-400 text-center py-6">No GIFs found</p>
+                    <p className="text-xs text-zinc-400 text-center py-4">No GIFs found</p>
                   )}
                   {!gifLoading && gifResults.length === 0 && !gifSearch && (
-                    <p className="text-xs text-zinc-400 text-center py-6">Type to search for GIFs</p>
+                    <p className="text-xs text-zinc-400 text-center py-4">Type to search for GIFs</p>
                   )}
                   <div className="grid grid-cols-2 gap-1.5">
                     {gifResults.map((gif, i) => (
@@ -1149,93 +1153,83 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
-                <p className="text-[9px] text-zinc-300 text-center py-1 border-t border-zinc-100">Powered by Tenor</p>
+                <p className="text-[9px] text-zinc-300 text-center py-1 border-t border-zinc-100">Powered by GIPHY</p>
               </div>
             )}
 
-            {/* Background Picker */}
-            {showBgPicker && (
-              <div className="mt-3 border border-zinc-200 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-zinc-700">Background Color</p>
-                  <button onClick={() => setShowBgPicker(false)} className="p-1">
-                    <X size={14} className="text-zinc-400" />
+            {/* Background Color Swatches — always visible */}
+            <div className="px-4 mt-3">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Background</p>
+              <div className="flex gap-2 items-center overflow-x-auto no-scrollbar">
+                {BG_COLOR_PREVIEWS.map((preview, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPostBackground(BG_COLORS[i])}
+                    className={`w-7 h-7 rounded-full shrink-0 transition-all ${preview} ${
+                      postBackground === BG_COLORS[i] ? 'ring-2 ring-red-500 ring-offset-1 scale-110' : 'hover:scale-105'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Preset Background Images — always visible */}
+            <div className="px-4 mt-3">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Preset Backgrounds</p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {BG_IMAGES.map((url, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPostBackground(url)}
+                    className={`shrink-0 w-20 h-14 rounded-xl overflow-hidden transition-all ${
+                      postBackground === url ? 'ring-2 ring-red-500 ring-offset-1' : 'hover:opacity-80'
+                    }`}
+                  >
+                    <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </button>
-                </div>
-                <div className="flex gap-2 mb-4">
-                  {BG_COLOR_PREVIEWS.map((preview, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { setPostBackground(BG_COLORS[i]); setShowBgPicker(false) }}
-                      className={`w-8 h-8 rounded-full ${preview} shrink-0 transition-all ${
-                        postBackground === BG_COLORS[i] ? 'ring-2 ring-red-500 ring-offset-2 scale-110' : 'hover:scale-105'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs font-semibold text-zinc-700 mb-2">Preset Backgrounds</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {BG_IMAGES.map((url, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { setPostBackground(url); setShowBgPicker(false) }}
-                      className={`rounded-xl overflow-hidden aspect-[3/2] transition-all ${
-                        postBackground === url ? 'ring-2 ring-red-500 ring-offset-2' : 'hover:opacity-80'
-                      }`}
-                    >
-                      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Attachment Options Grid */}
-          <div className="border-t border-zinc-200 px-4 py-4">
-            <p className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider mb-3">Add to your post</p>
-            <div className="grid grid-cols-4 gap-3">
-              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
-                <Image size={20} className="text-emerald-600" />
-                <span className="text-[10px] font-semibold text-zinc-600">Images</span>
-                <input type="file" accept="image/*" onChange={handleMediaSelect} className="hidden" />
-              </label>
-              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
-                <Video size={20} className="text-blue-600" />
-                <span className="text-[10px] font-semibold text-zinc-600">Video</span>
-                <input type="file" accept="video/*" onChange={handleMediaSelect} className="hidden" />
-              </label>
-              <button
-                onClick={() => { setShowGifPicker(!showGifPicker); setShowBgPicker(false) }}
-                className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${showGifPicker ? 'bg-purple-50 ring-2 ring-purple-300' : 'bg-zinc-50 hover:bg-zinc-100'}`}
-              >
-                <Smile size={20} className="text-purple-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">GIF</span>
-              </button>
-              <button
-                onClick={() => { setShowBgPicker(!showBgPicker); setShowGifPicker(false) }}
-                className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${showBgPicker ? 'bg-pink-50 ring-2 ring-pink-300' : 'bg-zinc-50 hover:bg-zinc-100'}`}
-              >
-                <Palette size={20} className="text-pink-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">Background</span>
-              </button>
-              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
-                <FileText size={20} className="text-orange-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">Files</span>
-                <input type="file" onChange={handleMediaSelect} className="hidden" />
-              </label>
-              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
-                <Link2 size={20} className="text-purple-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">Link</span>
-              </button>
-              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
-                <Play size={20} className="text-red-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">Youtube</span>
-              </button>
-              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
-                <MapPin size={20} className="text-rose-500" />
-                <span className="text-[10px] font-semibold text-zinc-600">Location</span>
-              </button>
+            {/* Attachment Options — always visible */}
+            <div className="px-4 mt-4 pb-4">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Add to your post</p>
+              <div className="grid grid-cols-4 gap-2">
+                <label className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                  <Image size={18} className="text-emerald-600" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Images</span>
+                  <input type="file" accept="image/*" onChange={handleMediaSelect} className="hidden" />
+                </label>
+                <label className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                  <Video size={18} className="text-blue-600" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Video</span>
+                  <input type="file" accept="video/*" onChange={handleMediaSelect} className="hidden" />
+                </label>
+                <button
+                  onClick={() => setShowGifPicker(!showGifPicker)}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${showGifPicker ? 'bg-purple-50 ring-1 ring-purple-300' : 'bg-zinc-50 hover:bg-zinc-100'}`}
+                >
+                  <Smile size={18} className="text-purple-500" />
+                  <span className="text-[9px] font-semibold text-zinc-600">GIF</span>
+                </button>
+                <label className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                  <FileText size={18} className="text-orange-500" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Files</span>
+                  <input type="file" onChange={handleMediaSelect} className="hidden" />
+                </label>
+                <button className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                  <Link2 size={18} className="text-purple-500" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Link</span>
+                </button>
+                <button className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                  <Play size={18} className="text-red-500" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Youtube</span>
+                </button>
+                <button className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                  <MapPin size={18} className="text-rose-500" />
+                  <span className="text-[9px] font-semibold text-zinc-600">Location</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
