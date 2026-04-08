@@ -1,14 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  useAuth, useIntakes, useCustomers, useTasks, useFeed,
+  useAuth, useIntakes, useCustomers, useTasks, useFeed, useDirectory,
   createTask, updateTask, createFeedPost, uploadFeedMedia, toggleFeedLike, addFeedComment, deleteFeedPost,
 } from '@/lib/store'
-import { Task, FeedPost } from '@/lib/types'
+import { Task, FeedPost, Profile } from '@/lib/types'
 import {
   Search, Plus, ClipboardList, Users, Loader2, X,
   CheckSquare, Square, Heart, MessageCircle, Send, Trash2,
   ChevronRight, Car, ImagePlus, MoreHorizontal, Bookmark,
+  ArrowLeft, Image, Video, FileText, Link2, MapPin, Play,
+  Calendar, Clock, UserPlus, Flag,
 } from 'lucide-react'
 
 function getGreeting(): string {
@@ -43,19 +45,235 @@ interface SearchResult {
   route: string
 }
 
+// ── Create Detailed Task Modal ──────────────────
+
+function CreateTaskModal({
+  profileId, businessId, employees, onSave, onClose,
+}: {
+  profileId: string
+  businessId: string
+  employees: Profile[]
+  onSave: () => void
+  onClose: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [dueTime, setDueTime] = useState('')
+  const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const [priority, setPriority] = useState<Task['priority']>('normal')
+  const [saving, setSaving] = useState(false)
+
+  const assignee = employees.find(e => e.id === assignedTo)
+
+  const handlePublish = async () => {
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      const due = dueDate
+        ? dueTime ? `${dueDate}T${dueTime}` : `${dueDate}T23:59`
+        : null
+      await createTask({
+        business_id: businessId,
+        created_by: profileId,
+        title: title.trim(),
+        description: description.trim() || null,
+        assigned_to: assignedTo,
+        priority,
+        due_date: due,
+      })
+      onSave()
+      onClose()
+    } catch { /* ignore */ }
+    setSaving(false)
+  }
+
+  const PRIORITIES: { value: Task['priority']; label: string; color: string }[] = [
+    { value: 'low', label: 'Low', color: 'text-zinc-400 bg-zinc-50' },
+    { value: 'normal', label: 'Normal', color: 'text-blue-600 bg-blue-50' },
+    { value: 'high', label: 'High', color: 'text-amber-600 bg-amber-50' },
+    { value: 'urgent', label: 'Urgent', color: 'text-red-600 bg-red-50' },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+        <button onClick={onClose} className="p-1">
+          <ArrowLeft size={22} className="text-zinc-700" />
+        </button>
+        <h3 className="text-[15px] font-bold text-zinc-900">Create new task</h3>
+        <button
+          onClick={handlePublish}
+          disabled={saving || !title.trim()}
+          className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
+        >
+          {saving ? 'Saving...' : 'Publish'}
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Title */}
+        <div className="px-4 pt-4 pb-2 border-b border-zinc-100">
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Task title"
+            className="w-full text-base font-semibold text-zinc-900 placeholder:text-zinc-300 focus:outline-none"
+            autoFocus
+          />
+        </div>
+
+        {/* Description */}
+        <div className="px-4 pt-3 pb-3 border-b border-zinc-100">
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Task description"
+            rows={4}
+            className="w-full text-sm text-zinc-700 bg-zinc-50 rounded-xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-100 placeholder:text-zinc-400"
+          />
+        </div>
+
+        {/* Fields */}
+        <div className="divide-y divide-zinc-100">
+          {/* Due Date */}
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+              <Calendar size={16} className="text-zinc-400" />
+              <span className="font-medium">Due date</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                className="text-sm text-blue-600 font-medium bg-transparent focus:outline-none cursor-pointer"
+              />
+              {dueDate && (
+                <button onClick={() => { setDueDate(''); setDueTime('') }} className="p-0.5">
+                  <X size={14} className="text-zinc-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Due Time (only if date set) */}
+          {dueDate && (
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                <Clock size={16} className="text-zinc-400" />
+                <span className="font-medium">Due time</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={e => setDueTime(e.target.value)}
+                  className="text-sm text-blue-600 font-medium bg-transparent focus:outline-none cursor-pointer"
+                />
+                {dueTime && (
+                  <button onClick={() => setDueTime('')} className="p-0.5">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Assigned To */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                <UserPlus size={16} className="text-zinc-400" />
+                <span className="font-medium">Assigned to</span>
+              </div>
+              {assignee ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-zinc-200 bg-zinc-50">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[8px] font-bold overflow-hidden">
+                      {assignee.avatar_url ? (
+                        <img src={assignee.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(assignee.display_name)
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-zinc-700">{assignee.display_name}</span>
+                  </div>
+                  <button onClick={() => setAssignedTo(null)} className="p-0.5">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400">Unassigned</span>
+              )}
+            </div>
+            {!assignee && employees.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {employees.map(emp => (
+                  <button
+                    key={emp.id}
+                    onClick={() => setAssignedTo(emp.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-zinc-200 hover:border-red-300 hover:bg-red-50/50 transition-colors"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[8px] font-bold overflow-hidden">
+                      {emp.avatar_url ? (
+                        <img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(emp.display_name)
+                      )}
+                    </div>
+                    <span className="text-[11px] font-medium text-zinc-600">{emp.display_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center gap-2.5 text-sm text-zinc-700 mb-3">
+              <Flag size={16} className="text-zinc-400" />
+              <span className="font-medium">Priority</span>
+            </div>
+            <div className="flex gap-2">
+              {PRIORITIES.map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => setPriority(p.value)}
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition-all ${
+                    priority === p.value
+                      ? `${p.color} ring-2 ring-offset-1 ring-current`
+                      : 'bg-zinc-50 text-zinc-400'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Quick Tasks Modal ───────────────────────────
 
 function QuickTasksPanel({
-  tasks, profileId, businessId, onRefresh, onClose,
+  tasks, profileId, businessId, employees, onRefresh, onClose,
 }: {
   tasks: Task[]
   profileId: string
   businessId: string
+  employees: Profile[]
   onRefresh: () => void
   onClose: () => void
 }) {
   const [newTitle, setNewTitle] = useState('')
   const [adding, setAdding] = useState(false)
+  const [showDetailedForm, setShowDetailedForm] = useState(false)
   const pending = tasks.filter(t => t.status !== 'completed')
   const completed = tasks.filter(t => t.status === 'completed').slice(0, 5)
 
@@ -80,74 +298,103 @@ function QuickTasksPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-zinc-100">
-          <h3 className="text-base font-bold text-zinc-900">Quick Tasks</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
-            <X size={16} className="text-zinc-500" />
-          </button>
-        </div>
-
-        {/* Add Task */}
-        <div className="p-4 border-b border-zinc-100">
-          <div className="flex gap-2">
-            <input
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Add a task..."
-              className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100"
-            />
-            <button
-              onClick={handleAdd}
-              disabled={adding || !newTitle.trim()}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-50"
-            >
-              <Plus size={16} />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between p-5 border-b border-zinc-100">
+            <h3 className="text-base font-bold text-zinc-900">Quick Tasks</h3>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
+              <X size={16} className="text-zinc-500" />
             </button>
           </div>
-        </div>
 
-        {/* Task List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          {pending.length === 0 && completed.length === 0 && (
-            <p className="text-sm text-zinc-400 text-center py-6">No tasks yet</p>
-          )}
-          {pending.map(task => (
+          {/* Add Task — quick or detailed */}
+          <div className="p-4 border-b border-zinc-100">
+            <div className="flex gap-2">
+              <input
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Add a quick task..."
+                className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100"
+              />
+              <button
+                onClick={handleAdd}
+                disabled={adding || !newTitle.trim()}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
             <button
-              key={task.id}
-              onClick={() => handleToggle(task)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
+              onClick={() => setShowDetailedForm(true)}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-zinc-300 text-xs font-semibold text-zinc-500 hover:border-red-300 hover:text-red-600 hover:bg-red-50/50 transition-all"
             >
-              <Square size={16} className="text-zinc-300 shrink-0" />
-              <span className="text-sm text-zinc-800 flex-1">{task.title}</span>
-              {task.priority === 'urgent' && (
-                <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">URGENT</span>
-              )}
-              {task.priority === 'high' && (
-                <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">HIGH</span>
-              )}
+              <ClipboardList size={13} />
+              Create detailed task
             </button>
-          ))}
-          {completed.length > 0 && (
-            <>
-              <p className="text-[10px] text-zinc-300 uppercase tracking-wider font-semibold pt-3 pb-1">Completed</p>
-              {completed.map(task => (
-                <button
-                  key={task.id}
-                  onClick={() => handleToggle(task)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
-                >
-                  <CheckSquare size={16} className="text-emerald-500 shrink-0" />
-                  <span className="text-sm text-zinc-400 line-through flex-1">{task.title}</span>
-                </button>
-              ))}
-            </>
-          )}
+          </div>
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-1">
+            {pending.length === 0 && completed.length === 0 && (
+              <p className="text-sm text-zinc-400 text-center py-6">No tasks yet</p>
+            )}
+            {pending.map(task => (
+              <button
+                key={task.id}
+                onClick={() => handleToggle(task)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
+              >
+                <Square size={16} className="text-zinc-300 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-zinc-800 block truncate">{task.title}</span>
+                  {(task.due_date || task.description) && (
+                    <span className="text-[10px] text-zinc-400 block truncate">
+                      {task.due_date && `Due ${new Date(task.due_date).toLocaleDateString()}`}
+                      {task.due_date && task.description && ' · '}
+                      {task.description}
+                    </span>
+                  )}
+                </div>
+                {task.priority === 'urgent' && (
+                  <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">URGENT</span>
+                )}
+                {task.priority === 'high' && (
+                  <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">HIGH</span>
+                )}
+              </button>
+            ))}
+            {completed.length > 0 && (
+              <>
+                <p className="text-[10px] text-zinc-300 uppercase tracking-wider font-semibold pt-3 pb-1">Completed</p>
+                {completed.map(task => (
+                  <button
+                    key={task.id}
+                    onClick={() => handleToggle(task)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
+                  >
+                    <CheckSquare size={16} className="text-emerald-500 shrink-0" />
+                    <span className="text-sm text-zinc-400 line-through flex-1">{task.title}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Detailed Task Creation Modal */}
+      {showDetailedForm && (
+        <CreateTaskModal
+          profileId={profileId}
+          businessId={businessId}
+          employees={employees}
+          onSave={onRefresh}
+          onClose={() => setShowDetailedForm(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -361,11 +608,14 @@ export default function Dashboard() {
   const { customers } = useCustomers()
   const { tasks, loading: tasksLoading, refresh: refreshTasks } = useTasks(profile?.business_id ?? undefined)
   const { posts, loading: feedLoading, refresh: refreshFeed } = useFeed(profile?.business_id ?? undefined)
+  const { employees } = useDirectory(profile?.business_id ?? undefined)
 
   const [query, setQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [showTasks, setShowTasks] = useState(false)
+  const [showComposer, setShowComposer] = useState(false)
   const [newPostText, setNewPostText] = useState('')
+  const [newPostTitle, setNewPostTitle] = useState('')
   const [posting, setPosting] = useState(false)
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
@@ -433,10 +683,14 @@ export default function Dashboard() {
         media_type = result.type
       }
 
+      const fullContent = newPostTitle.trim()
+        ? `**${newPostTitle.trim()}**\n${newPostText.trim()}`
+        : newPostText.trim() || ''
+
       await createFeedPost({
         business_id: profile.business_id!,
         author_id: profile.id,
-        content: newPostText.trim() || '',
+        content: fullContent,
         image_url,
         media_type,
       })
@@ -592,65 +846,23 @@ export default function Dashboard() {
       <div>
         <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Feed</h2>
 
-        {/* Compose — IG style */}
-        <div className="bg-white border border-zinc-200 rounded-2xl mb-4 overflow-hidden">
-          <div className="flex items-start gap-3 p-4">
-            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[10px] font-bold">
-                  {getInitials(displayName)}
-                </div>
-              )}
-            </div>
-            <textarea
-              value={newPostText}
-              onChange={e => setNewPostText(e.target.value)}
-              placeholder="What's on your mind?"
-              rows={2}
-              className="flex-1 text-[13px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400"
-            />
+        {/* Compose Trigger */}
+        <button
+          onClick={() => setShowComposer(true)}
+          className="w-full bg-white border border-zinc-200 rounded-2xl mb-4 flex items-center gap-3 p-4 hover:shadow-sm transition-all"
+        >
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[10px] font-bold">
+                {getInitials(displayName)}
+              </div>
+            )}
           </div>
-
-          {/* Media Preview */}
-          {mediaPreview && (
-            <div className="relative mx-4 mb-3">
-              {mediaFile?.type.startsWith('video/') ? (
-                <video src={mediaPreview} className="w-full max-h-64 object-cover rounded-xl" controls />
-              ) : (
-                <img src={mediaPreview} alt="" className="w-full max-h-64 object-cover rounded-xl" />
-              )}
-              <button
-                onClick={clearMedia}
-                className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center"
-              >
-                <X size={14} className="text-white" />
-              </button>
-            </div>
-          )}
-
-          {/* Compose Footer */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-zinc-100">
-            <label className="flex items-center gap-2 text-xs text-zinc-500 hover:text-red-600 cursor-pointer transition-colors">
-              <ImagePlus size={18} />
-              <span className="font-semibold">Photo/Video</span>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleMediaSelect}
-                className="hidden"
-              />
-            </label>
-            <button
-              onClick={handlePost}
-              disabled={posting || (!newPostText.trim() && !mediaFile)}
-              className="px-5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
-            >
-              {posting ? 'Sharing...' : 'Share'}
-            </button>
-          </div>
-        </div>
+          <span className="text-[13px] text-zinc-400 flex-1 text-left">Share something with your team...</span>
+          <ImagePlus size={18} className="text-zinc-300" />
+        </button>
 
         {/* Posts — IG style feed */}
         {posts.length === 0 ? (
@@ -674,9 +886,124 @@ export default function Dashboard() {
           tasks={tasks}
           profileId={profile.id}
           businessId={profile.business_id!}
+          employees={employees}
           onRefresh={refreshTasks}
           onClose={() => setShowTasks(false)}
         />
+      )}
+
+      {/* New Update Composer — Full Screen Modal */}
+      {showComposer && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+            <button
+              onClick={() => {
+                setShowComposer(false)
+                setNewPostTitle('')
+                setNewPostText('')
+                clearMedia()
+              }}
+              className="p-1"
+            >
+              <ArrowLeft size={22} className="text-zinc-700" />
+            </button>
+            <h3 className="text-[15px] font-bold text-zinc-900">New Update</h3>
+            <button
+              onClick={async () => {
+                await handlePost()
+                setShowComposer(false)
+                setNewPostTitle('')
+              }}
+              disabled={posting || (!newPostText.trim() && !mediaFile)}
+              className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
+            >
+              {posting ? 'Posting...' : 'Publish'}
+            </button>
+          </div>
+
+          {/* Author Info */}
+          <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                  {getInitials(displayName)}
+                </div>
+              )}
+            </div>
+            <p className="text-sm font-bold text-zinc-900">{displayName}</p>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <input
+              value={newPostTitle}
+              onChange={e => setNewPostTitle(e.target.value)}
+              placeholder="Title (optional)"
+              className="w-full text-lg font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none mb-2 mt-2"
+            />
+            <textarea
+              value={newPostText}
+              onChange={e => setNewPostText(e.target.value)}
+              placeholder="What would you like to share?"
+              className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400 min-h-[120px]"
+              autoFocus
+            />
+
+            {/* Media Preview */}
+            {mediaPreview && (
+              <div className="relative mt-3">
+                {mediaFile?.type.startsWith('video/') ? (
+                  <video src={mediaPreview} className="w-full max-h-72 object-cover rounded-xl" controls />
+                ) : (
+                  <img src={mediaPreview} alt="" className="w-full max-h-72 object-cover rounded-xl" />
+                )}
+                <button
+                  onClick={clearMedia}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center"
+                >
+                  <X size={14} className="text-white" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Attachment Options Grid */}
+          <div className="border-t border-zinc-200 px-4 py-4">
+            <p className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider mb-3">Add to your post</p>
+            <div className="grid grid-cols-4 gap-3">
+              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                <Image size={20} className="text-emerald-600" />
+                <span className="text-[10px] font-semibold text-zinc-600">Images</span>
+                <input type="file" accept="image/*" onChange={handleMediaSelect} className="hidden" />
+              </label>
+              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                <Video size={20} className="text-blue-600" />
+                <span className="text-[10px] font-semibold text-zinc-600">Video</span>
+                <input type="file" accept="video/*" onChange={handleMediaSelect} className="hidden" />
+              </label>
+              <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
+                <FileText size={20} className="text-orange-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">Files</span>
+                <input type="file" onChange={handleMediaSelect} className="hidden" />
+              </label>
+              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                <Link2 size={20} className="text-purple-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">Link</span>
+              </button>
+              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                <Play size={20} className="text-red-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">Youtube</span>
+              </button>
+              <button className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors">
+                <MapPin size={20} className="text-rose-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">Location</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
