@@ -10,8 +10,42 @@ import {
   CheckSquare, Square, Heart, MessageCircle, Send, Trash2,
   ChevronRight, Car, ImagePlus, MoreHorizontal, Bookmark,
   ArrowLeft, Image, Video, FileText, Link2, MapPin, Play,
-  Calendar, Clock, UserPlus, Flag,
+  Calendar, Clock, UserPlus, Flag, Palette, Smile,
 } from 'lucide-react'
+
+// ── Background presets ─────────────────────────────
+const BG_COLORS = [
+  null, // no background
+  'bg-gradient-to-br from-red-500 to-orange-400',
+  'bg-gradient-to-br from-blue-500 to-cyan-400',
+  'bg-gradient-to-br from-purple-600 to-pink-500',
+  'bg-gradient-to-br from-emerald-500 to-teal-400',
+  'bg-gradient-to-br from-amber-500 to-yellow-400',
+  'bg-gradient-to-br from-zinc-800 to-zinc-600',
+  'bg-gradient-to-br from-rose-500 to-red-600',
+  'bg-gradient-to-br from-indigo-600 to-blue-500',
+]
+
+const BG_COLOR_PREVIEWS = [
+  'bg-white border-2 border-zinc-200',
+  'bg-gradient-to-br from-red-500 to-orange-400',
+  'bg-gradient-to-br from-blue-500 to-cyan-400',
+  'bg-gradient-to-br from-purple-600 to-pink-500',
+  'bg-gradient-to-br from-emerald-500 to-teal-400',
+  'bg-gradient-to-br from-amber-500 to-yellow-400',
+  'bg-gradient-to-br from-zinc-800 to-zinc-600',
+  'bg-gradient-to-br from-rose-500 to-red-600',
+  'bg-gradient-to-br from-indigo-600 to-blue-500',
+]
+
+const BG_IMAGES = [
+  'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80',
+  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80',
+  'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800&q=80',
+  'https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=800&q=80',
+  'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&q=80',
+  'https://images.unsplash.com/photo-1475274047050-1d0c55b7ebc9?w=800&q=80',
+]
 
 function getGreeting(): string {
   const h = new Date().getHours()
@@ -479,6 +513,28 @@ function FeedPostCard({
         </div>
       </div>
 
+      {/* Background post (no image, text on colored/image bg) */}
+      {!post.image_url && post.background && (
+        <div
+          className={`w-full aspect-[4/3] flex items-center justify-center p-8 relative ${
+            post.background.startsWith('http') ? '' : post.background
+          }`}
+          style={post.background.startsWith('http') ? {
+            backgroundImage: `url(${post.background})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
+          onDoubleClick={handleDoubleTapLike}
+        >
+          {post.background.startsWith('http') && (
+            <div className="absolute inset-0 bg-black/30" />
+          )}
+          <p className="text-white text-xl md:text-2xl font-bold text-center leading-relaxed drop-shadow-lg relative z-10">
+            {post.content}
+          </p>
+        </div>
+      )}
+
       {/* Media — full width like IG */}
       {post.image_url && (
         <div className="w-full aspect-square bg-zinc-100 relative" onDoubleClick={handleDoubleTapLike}>
@@ -521,14 +577,16 @@ function FeedPostCard({
         </p>
       )}
 
-      {/* Caption */}
-      <div className="px-4 pt-1 pb-1">
-        <p className="text-[13px] text-zinc-900 leading-snug">
-          <span className="font-bold">{post.author?.display_name}</span>
-          {' '}
-          <span className="text-zinc-700">{post.content}</span>
-        </p>
-      </div>
+      {/* Caption — skip if already shown on background */}
+      {!(post.background && !post.image_url) && (
+        <div className="px-4 pt-1 pb-1">
+          <p className="text-[13px] text-zinc-900 leading-snug">
+            <span className="font-bold">{post.author?.display_name}</span>
+            {' '}
+            <span className="text-zinc-700">{post.content}</span>
+          </p>
+        </div>
+      )}
 
       {/* View Comments Link */}
       {post.comments_count > 0 && !showComments && (
@@ -619,6 +677,12 @@ export default function Dashboard() {
   const [posting, setPosting] = useState(false)
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [postBackground, setPostBackground] = useState<string | null>(null)
+  const [showBgPicker, setShowBgPicker] = useState(false)
+  const [showGifPicker, setShowGifPicker] = useState(false)
+  const [gifSearch, setGifSearch] = useState('')
+  const [gifResults, setGifResults] = useState<{ url: string; preview: string }[]>([])
+  const [gifLoading, setGifLoading] = useState(false)
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
   const firstName = displayName.split(' ')[0]
@@ -670,8 +734,38 @@ export default function Dashboard() {
     setMediaPreview(null)
   }
 
+  const selectGif = (url: string) => {
+    setMediaFile(null)
+    setMediaPreview(url)
+    setShowGifPicker(false)
+    setGifSearch('')
+    setGifResults([])
+  }
+
+  const searchGifs = async (q: string) => {
+    if (!q.trim()) { setGifResults([]); return }
+    setGifLoading(true)
+    try {
+      const res = await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=AIzaSyBqRVcp1skmveQpD6xOiXe-BTe8RNFe2LE&limit=20&media_filter=gif`)
+      const data = await res.json()
+      const results = (data.results || []).map((r: any) => ({
+        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || '',
+        preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || '',
+      })).filter((g: any) => g.url)
+      setGifResults(results)
+    } catch { setGifResults([]) }
+    setGifLoading(false)
+  }
+
+  // Debounced GIF search
+  useEffect(() => {
+    if (!showGifPicker) return
+    const timer = setTimeout(() => searchGifs(gifSearch), 400)
+    return () => clearTimeout(timer)
+  }, [gifSearch, showGifPicker])
+
   const handlePost = async () => {
-    if ((!newPostText.trim() && !mediaFile) || !profile) return
+    if ((!newPostText.trim() && !mediaFile && !mediaPreview) || !profile) return
     setPosting(true)
     try {
       let image_url: string | null = null
@@ -681,6 +775,10 @@ export default function Dashboard() {
         const result = await uploadFeedMedia(profile.business_id!, mediaFile)
         image_url = result.url
         media_type = result.type
+      } else if (mediaPreview && !mediaFile) {
+        // GIF URL selected directly
+        image_url = mediaPreview
+        media_type = 'image'
       }
 
       const fullContent = newPostTitle.trim()
@@ -693,8 +791,11 @@ export default function Dashboard() {
         content: fullContent,
         image_url,
         media_type,
+        background: postBackground,
       })
       setNewPostText('')
+      setNewPostTitle('')
+      setPostBackground(null)
       clearMedia()
       refreshFeed()
     } catch { /* ignore */ }
@@ -905,6 +1006,9 @@ export default function Dashboard() {
                 setShowComposer(false)
                 setNewPostTitle('')
                 setNewPostText('')
+                setPostBackground(null)
+                setShowBgPicker(false)
+                setShowGifPicker(false)
                 clearMedia()
               }}
               className="p-1"
@@ -918,7 +1022,7 @@ export default function Dashboard() {
                 setShowComposer(false)
                 setNewPostTitle('')
               }}
-              disabled={posting || (!newPostText.trim() && !mediaFile)}
+              disabled={posting || (!newPostText.trim() && !mediaFile && !mediaPreview)}
               className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-30 transition-opacity"
             >
               {posting ? 'Posting...' : 'Publish'}
@@ -941,19 +1045,52 @@ export default function Dashboard() {
 
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">
-            <input
-              value={newPostTitle}
-              onChange={e => setNewPostTitle(e.target.value)}
-              placeholder="Title (optional)"
-              className="w-full text-lg font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none mb-2 mt-2"
-            />
-            <textarea
-              value={newPostText}
-              onChange={e => setNewPostText(e.target.value)}
-              placeholder="What would you like to share?"
-              className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400 min-h-[120px]"
-              autoFocus
-            />
+            {/* Background Preview (when a bg is selected, show text on it) */}
+            {postBackground && !mediaPreview ? (
+              <div
+                className={`w-full aspect-[4/3] rounded-2xl flex flex-col items-center justify-center p-6 mt-2 relative ${
+                  postBackground.startsWith('http') ? '' : postBackground
+                }`}
+                style={postBackground.startsWith('http') ? {
+                  backgroundImage: `url(${postBackground})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                } : undefined}
+              >
+                {postBackground.startsWith('http') && (
+                  <div className="absolute inset-0 bg-black/30 rounded-2xl" />
+                )}
+                <button
+                  onClick={() => setPostBackground(null)}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center z-10"
+                >
+                  <X size={14} className="text-white" />
+                </button>
+                <textarea
+                  value={newPostText}
+                  onChange={e => setNewPostText(e.target.value)}
+                  placeholder="What would you like to share?"
+                  className="w-full text-xl font-bold text-white text-center bg-transparent resize-none focus:outline-none placeholder:text-white/60 min-h-[80px] relative z-10 drop-shadow-lg"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <>
+                <input
+                  value={newPostTitle}
+                  onChange={e => setNewPostTitle(e.target.value)}
+                  placeholder="Title (optional)"
+                  className="w-full text-lg font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none mb-2 mt-2"
+                />
+                <textarea
+                  value={newPostText}
+                  onChange={e => setNewPostText(e.target.value)}
+                  placeholder="What would you like to share?"
+                  className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none placeholder:text-zinc-400 min-h-[120px]"
+                  autoFocus
+                />
+              </>
+            )}
 
             {/* Media Preview */}
             {mediaPreview && (
@@ -969,6 +1106,87 @@ export default function Dashboard() {
                 >
                   <X size={14} className="text-white" />
                 </button>
+              </div>
+            )}
+
+            {/* GIF Picker */}
+            {showGifPicker && (
+              <div className="mt-3 border border-zinc-200 rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-100">
+                  <Search size={14} className="text-zinc-400" />
+                  <input
+                    value={gifSearch}
+                    onChange={e => setGifSearch(e.target.value)}
+                    placeholder="Search GIFs..."
+                    className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-zinc-400"
+                    autoFocus
+                  />
+                  <button onClick={() => { setShowGifPicker(false); setGifSearch(''); setGifResults([]) }} className="p-1">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto p-2">
+                  {gifLoading && (
+                    <div className="flex justify-center py-6">
+                      <Loader2 size={20} className="animate-spin text-zinc-400" />
+                    </div>
+                  )}
+                  {!gifLoading && gifResults.length === 0 && gifSearch && (
+                    <p className="text-xs text-zinc-400 text-center py-6">No GIFs found</p>
+                  )}
+                  {!gifLoading && gifResults.length === 0 && !gifSearch && (
+                    <p className="text-xs text-zinc-400 text-center py-6">Type to search for GIFs</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {gifResults.map((gif, i) => (
+                      <button
+                        key={i}
+                        onClick={() => selectGif(gif.url)}
+                        className="rounded-lg overflow-hidden hover:ring-2 hover:ring-red-500 transition-all"
+                      >
+                        <img src={gif.preview} alt="" className="w-full h-24 object-cover" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[9px] text-zinc-300 text-center py-1 border-t border-zinc-100">Powered by Tenor</p>
+              </div>
+            )}
+
+            {/* Background Picker */}
+            {showBgPicker && (
+              <div className="mt-3 border border-zinc-200 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-zinc-700">Background Color</p>
+                  <button onClick={() => setShowBgPicker(false)} className="p-1">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                </div>
+                <div className="flex gap-2 mb-4">
+                  {BG_COLOR_PREVIEWS.map((preview, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setPostBackground(BG_COLORS[i]); setShowBgPicker(false) }}
+                      className={`w-8 h-8 rounded-full ${preview} shrink-0 transition-all ${
+                        postBackground === BG_COLORS[i] ? 'ring-2 ring-red-500 ring-offset-2 scale-110' : 'hover:scale-105'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs font-semibold text-zinc-700 mb-2">Preset Backgrounds</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {BG_IMAGES.map((url, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setPostBackground(url); setShowBgPicker(false) }}
+                      className={`rounded-xl overflow-hidden aspect-[3/2] transition-all ${
+                        postBackground === url ? 'ring-2 ring-red-500 ring-offset-2' : 'hover:opacity-80'
+                      }`}
+                    >
+                      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -987,6 +1205,20 @@ export default function Dashboard() {
                 <span className="text-[10px] font-semibold text-zinc-600">Video</span>
                 <input type="file" accept="video/*" onChange={handleMediaSelect} className="hidden" />
               </label>
+              <button
+                onClick={() => { setShowGifPicker(!showGifPicker); setShowBgPicker(false) }}
+                className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${showGifPicker ? 'bg-purple-50 ring-2 ring-purple-300' : 'bg-zinc-50 hover:bg-zinc-100'}`}
+              >
+                <Smile size={20} className="text-purple-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">GIF</span>
+              </button>
+              <button
+                onClick={() => { setShowBgPicker(!showBgPicker); setShowGifPicker(false) }}
+                className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${showBgPicker ? 'bg-pink-50 ring-2 ring-pink-300' : 'bg-zinc-50 hover:bg-zinc-100'}`}
+              >
+                <Palette size={20} className="text-pink-500" />
+                <span className="text-[10px] font-semibold text-zinc-600">Background</span>
+              </button>
               <label className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">
                 <FileText size={20} className="text-orange-500" />
                 <span className="text-[10px] font-semibold text-zinc-600">Files</span>

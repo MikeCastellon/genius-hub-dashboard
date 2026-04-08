@@ -1926,7 +1926,7 @@ export function useFeed(businessId?: string) {
   return { posts, loading, refresh }
 }
 
-export async function createFeedPost(params: { business_id: string; author_id: string; content: string; image_url?: string | null; media_type?: 'image' | 'video' | null }) {
+export async function createFeedPost(params: { business_id: string; author_id: string; content: string; image_url?: string | null; media_type?: 'image' | 'video' | null; background?: string | null }) {
   const { error } = await supabase.from('feed_posts').insert(params)
   if (error) throw error
 }
