@@ -1190,48 +1190,46 @@ export default function Dashboard() {
                 placeholder="Title (optional)"
                 className="w-full text-base font-bold text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-0 border-none outline-none mb-1"
               />
-              {postBackground && !mediaPreview ? (
-                <div
-                  className={`w-full rounded-2xl flex flex-col items-center justify-center p-5 relative overflow-hidden ${
-                    postBackground.startsWith('http') ? '' : postBackground
-                  }`}
-                  style={{
-                    minHeight: '200px',
-                    ...(postBackground.startsWith('http') ? {
+              <div className="relative h-[180px]">
+                {postBackground && !mediaPreview ? (
+                  <div
+                    className={`absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-5 overflow-hidden ${
+                      postBackground.startsWith('http') ? '' : postBackground
+                    }`}
+                    style={postBackground.startsWith('http') ? {
                       backgroundImage: `url(${postBackground})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
-                    } : {}),
-                  }}
-                >
-                  {postBackground.startsWith('http') && (
-                    <div className="absolute inset-0 bg-black/30 rounded-2xl" />
-                  )}
-                  <button
-                    onClick={() => setPostBackground(null)}
-                    className="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center z-10"
+                    } : undefined}
                   >
-                    <X size={12} className="text-white" />
-                  </button>
+                    {postBackground.startsWith('http') && (
+                      <div className="absolute inset-0 bg-black/30 rounded-2xl" />
+                    )}
+                    <button
+                      onClick={() => setPostBackground(null)}
+                      className="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center z-10"
+                    >
+                      <X size={12} className="text-white" />
+                    </button>
+                    <textarea
+                      value={newPostText}
+                      onChange={e => setNewPostText(e.target.value)}
+                      placeholder="What would you like to share?"
+                      rows={3}
+                      className="w-full h-full text-lg font-bold text-white text-center bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-white/60 relative z-10 drop-shadow-lg"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
                   <textarea
                     value={newPostText}
                     onChange={e => setNewPostText(e.target.value)}
                     placeholder="What would you like to share?"
-                    rows={3}
-                    className="w-full text-lg font-bold text-white text-center bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-white/60 relative z-10 drop-shadow-lg"
+                    className="w-full h-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-zinc-400"
                     autoFocus
                   />
-                </div>
-              ) : (
-                <textarea
-                  value={newPostText}
-                  onChange={e => setNewPostText(e.target.value)}
-                  placeholder="What would you like to share?"
-                  rows={8}
-                  className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-zinc-400"
-                  autoFocus
-                />
-              )}
+                )}
+              </div>
             </div>
 
             {/* Media Preview */}
