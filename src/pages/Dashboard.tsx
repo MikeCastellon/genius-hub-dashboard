@@ -27,15 +27,15 @@ const BG_COLORS = [
 ]
 
 const BG_COLOR_PREVIEWS = [
-  'bg-white border border-zinc-300',
-  'bg-gradient-to-br from-red-500 to-orange-400',
-  'bg-gradient-to-br from-blue-500 to-cyan-400',
-  'bg-gradient-to-br from-purple-600 to-pink-500',
-  'bg-gradient-to-br from-emerald-500 to-teal-400',
-  'bg-gradient-to-br from-amber-500 to-yellow-400',
-  'bg-gradient-to-br from-zinc-800 to-zinc-600',
-  'bg-gradient-to-br from-rose-500 to-red-600',
-  'bg-gradient-to-br from-indigo-600 to-blue-500',
+  'bg-white border-2 border-zinc-300',
+  'bg-gradient-to-br from-red-500 to-orange-400 border-2 border-transparent',
+  'bg-gradient-to-br from-blue-500 to-cyan-400 border-2 border-transparent',
+  'bg-gradient-to-br from-purple-600 to-pink-500 border-2 border-transparent',
+  'bg-gradient-to-br from-emerald-500 to-teal-400 border-2 border-transparent',
+  'bg-gradient-to-br from-amber-500 to-yellow-400 border-2 border-transparent',
+  'bg-gradient-to-br from-zinc-800 to-zinc-600 border-2 border-transparent',
+  'bg-gradient-to-br from-rose-500 to-red-600 border-2 border-transparent',
+  'bg-gradient-to-br from-indigo-600 to-blue-500 border-2 border-transparent',
 ]
 
 const BG_IMAGES = [
