@@ -99,17 +99,17 @@ export default function Admin() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-6 w-fit">
-        <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'users' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+      <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-6 overflow-x-auto no-scrollbar">
+        <button onClick={() => setTab('users')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'users' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Users size={14} /> Users
         </button>
-        <button onClick={() => setTab('business')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'business' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+        <button onClick={() => setTab('business')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'business' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Building2 size={14} /> Business
         </button>
-        <button onClick={() => setTab('intake')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Settings size={14} /> Intake Form
+        <button onClick={() => setTab('intake')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+          <Settings size={14} /> Intake
         </button>
-        <button onClick={() => setTab('warranty')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${tab === 'warranty' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+        <button onClick={() => setTab('warranty')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'warranty' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
           <Shield size={14} /> Warranty
         </button>
       </div>

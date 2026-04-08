@@ -1,0 +1,17 @@
+{
+  "name": "Pro Hub",
+  "short_name": "Pro Hub",
+  "description": "Vehicle detailing management platform",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

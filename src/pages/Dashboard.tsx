@@ -1143,7 +1143,7 @@ export default function Dashboard() {
       {/* New Update Composer — Full Screen Modal */}
       {showComposer && (
         <div className="fixed inset-0 z-[60] bg-white flex flex-col"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
             <button

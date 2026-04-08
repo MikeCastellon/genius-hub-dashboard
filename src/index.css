@@ -101,6 +101,25 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Lock to portrait on mobile */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  html::after {
+    content: 'Please rotate your device to portrait mode';
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 2rem;
+  }
+}
+
 /* Print styles for certificate pages */
 @media print {
   /* Hide everything except the certificate */

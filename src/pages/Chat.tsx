@@ -120,7 +120,7 @@ export default function Chat() {
       {/* Desktop layout */}
       <div className="flex flex-1 min-h-0">
         {/* Left: Channel list */}
-        <div className={`w-[280px] shrink-0 border-r border-zinc-200/60 flex flex-col bg-white/40 ${showMobileList ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`w-full md:w-[280px] shrink-0 md:border-r border-zinc-200/60 flex flex-col bg-white/40 ${showMobileList ? 'flex' : 'hidden md:flex'}`}>
           <ChannelList
             channels={channels}
             activeChannelId={activeChannelId}
@@ -169,7 +169,7 @@ export default function Chat() {
                         onChange={e => setSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
                         placeholder="Search..."
-                        className="text-xs bg-transparent focus:outline-none w-28"
+                        className="text-xs bg-transparent focus:outline-none w-20 md:w-28"
                       />
                       {searchQuery && (
                         <button onClick={() => { setSearchQuery(''); setSearchResults(null) }}>

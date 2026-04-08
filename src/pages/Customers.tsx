@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useCustomers, useCustomerDetail, addCustomerNote, updateCustomerTags, updateCustomerFields, inviteCustomer, useAuth, upsertCustomer, useCustomerPhotos, getJobPhotoUrl, uploadAvatar } from '@/lib/store'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check, Camera, Clock } from 'lucide-react'
+import { Search, Plus, Users, Phone, Mail, Tag, Calendar, Loader2, X, MessageSquare, Send, FileText, Car, Receipt, MapPin, Building2, Pencil, Check, Camera, Clock, ArrowLeft } from 'lucide-react'
 import type { JobPhoto, Job } from '@/lib/types'
 
 const AVATAR_COLORS = [
@@ -59,6 +59,12 @@ export default function Customers() {
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showMobileDetail, setShowMobileDetail] = useState(false)
+
+  const handleSelectCustomer = (id: string) => {
+    setSelectedCustomerId(id)
+    setShowMobileDetail(true)
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -111,7 +117,7 @@ export default function Customers() {
 
       <div className="flex flex-1 min-h-0">
       {/* Left panel — customer list */}
-      <div className="w-[380px] shrink-0 border-r border-zinc-200/60 flex flex-col bg-white/40">
+      <div className={`w-full md:w-[380px] shrink-0 md:border-r border-zinc-200/60 flex flex-col bg-white/40 ${showMobileDetail ? 'hidden md:flex' : 'flex'}`}>
 
         {/* Search */}
         <div className="px-4 pt-3 pb-2">
@@ -168,7 +174,7 @@ export default function Customers() {
               return (
                 <button
                   key={c.id}
-                  onClick={() => setSelectedCustomerId(c.id)}
+                  onClick={() => handleSelectCustomer(c.id)}
                   className={`w-full text-left p-3 rounded-2xl border transition-all ${
                     isSelected
                       ? 'border-red-200 bg-red-50/30 shadow-sm'
@@ -234,9 +240,20 @@ export default function Customers() {
       </div>
 
       {/* Right panel — customer detail */}
-      <div className="flex-1 bg-zinc-50/50">
+      <div className={`flex-1 bg-zinc-50/50 ${showMobileDetail ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
         {selectedCustomerId ? (
-          <CustomerDetailPanel customerId={selectedCustomerId} profileId={profile?.id || null} businessId={profile?.business_id || null} />
+          <div className="flex flex-col h-full">
+            {/* Mobile back button */}
+            <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-200/60 bg-white/60 shrink-0">
+              <button onClick={() => setShowMobileDetail(false)} className="text-zinc-500 hover:text-zinc-800">
+                <ArrowLeft size={20} />
+              </button>
+              <span className="text-sm font-bold text-zinc-900">Customer Details</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <CustomerDetailPanel customerId={selectedCustomerId} profileId={profile?.id || null} businessId={profile?.business_id || null} />
+            </div>
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
