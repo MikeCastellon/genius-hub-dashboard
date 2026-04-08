@@ -59,7 +59,32 @@ export function useAuth() {
       .select('*, business:businesses(*)')
       .eq('id', userId)
       .maybeSingle()
-    setProfile(data)
+
+    if (data) {
+      setProfile(data)
+    } else {
+      // Trigger may have failed — create profile as fallback
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        const displayName = authUser.user_metadata?.display_name
+          || authUser.email?.split('@')[0]
+          || 'User'
+        await supabase.from('profiles').upsert({
+          id: userId,
+          email: authUser.email,
+          display_name: displayName,
+          role: 'user',
+          approved: false,
+        }, { onConflict: 'id' })
+        // Re-fetch to get the full profile with business join
+        const { data: retry } = await supabase
+          .from('profiles')
+          .select('*, business:businesses(*)')
+          .eq('id', userId)
+          .maybeSingle()
+        setProfile(retry)
+      }
+    }
   }
 
   const signIn = async (email: string, password: string) => {
