@@ -76,7 +76,7 @@ export default function StartJobModal({ job, technicianId, onClose, onStarted }:
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="bg-white w-full max-w-2xl rounded-2xl max-h-[70vh] md:max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">

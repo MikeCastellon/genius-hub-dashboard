@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "mcp__4a8f6081-dea7-424c-83a7-9a10294cf2e6__list_projects",
+      "mcp__4a8f6081-dea7-424c-83a7-9a10294cf2e6__apply_migration",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python3 -c:*)",
+      "mcp__4a8f6081-dea7-424c-83a7-9a10294cf2e6__execute_sql",
+      "Bash(npx vite:*)",
+      "Bash(npx netlify-cli:*)"
+    ]
+  }
+}
