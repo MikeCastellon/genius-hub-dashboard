@@ -784,9 +784,13 @@ export interface Task {
   priority: 'low' | 'normal' | 'high' | 'urgent'
   due_date: string | null
   completed_at: string | null
+  linked_intake_id: string | null
+  linked_customer_id: string | null
   created_at: string
   assignee?: { display_name: string; avatar_url: string | null }
   creator?: { display_name: string }
+  linked_intake?: { id: string; vin: string | null; year: number | null; make: string | null; model: string | null } | null
+  linked_customer?: { id: string; name: string; phone: string } | null
 }
 
 // ── Feed ──────────────────────────────────────────

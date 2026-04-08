@@ -4,13 +4,13 @@ import {
   useAuth, useIntakes, useCustomers, useTasks, useFeed, useDirectory,
   createTask, updateTask, createFeedPost, uploadFeedMedia, toggleFeedLike, addFeedComment, deleteFeedPost,
 } from '@/lib/store'
-import { Task, FeedPost, Profile } from '@/lib/types'
+import { Task, FeedPost, Profile, Customer, VehicleIntake } from '@/lib/types'
 import {
   Search, Plus, ClipboardList, Users, Loader2, X,
-  CheckSquare, Square, Heart, MessageCircle, Send, Trash2,
-  ChevronRight, Car, ImagePlus, MoreHorizontal, Bookmark,
+  CheckSquare, Square, Heart, MessageCircle, Trash2,
+  ChevronRight, Car, ImagePlus, MoreHorizontal,
   ArrowLeft, Image, Video, FileText, Link2, MapPin, Play,
-  Calendar, Clock, UserPlus, Flag, Smile,
+  Calendar, Clock, UserPlus, Flag, Smile, User,
 } from 'lucide-react'
 
 // ── Background presets ─────────────────────────────
@@ -82,11 +82,13 @@ interface SearchResult {
 // ── Create Detailed Task Modal ──────────────────
 
 function CreateTaskModal({
-  profileId, businessId, employees, onSave, onClose,
+  profileId, businessId, employees, customers, intakes, onSave, onClose,
 }: {
   profileId: string
   businessId: string
   employees: Profile[]
+  customers: Customer[]
+  intakes: VehicleIntake[]
   onSave: () => void
   onClose: () => void
 }) {
@@ -96,9 +98,31 @@ function CreateTaskModal({
   const [dueTime, setDueTime] = useState('')
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [priority, setPriority] = useState<Task['priority']>('normal')
+  const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null)
+  const [linkedIntakeId, setLinkedIntakeId] = useState<string | null>(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [vehicleSearch, setVehicleSearch] = useState('')
   const [saving, setSaving] = useState(false)
 
   const assignee = employees.find(e => e.id === assignedTo)
+  const linkedCustomer = customers.find(c => c.id === linkedCustomerId)
+  const linkedIntake = intakes.find(i => i.id === linkedIntakeId)
+
+  const filteredCustomers = customerSearch.trim().length >= 2
+    ? customers.filter(c =>
+        c.name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+        c.phone?.includes(customerSearch)
+      ).slice(0, 5)
+    : []
+
+  const filteredVehicles = vehicleSearch.trim().length >= 2
+    ? intakes.filter(i =>
+        i.vin?.toLowerCase().includes(vehicleSearch.toLowerCase()) ||
+        i.make?.toLowerCase().includes(vehicleSearch.toLowerCase()) ||
+        i.model?.toLowerCase().includes(vehicleSearch.toLowerCase()) ||
+        i.license_plate?.toLowerCase().includes(vehicleSearch.toLowerCase())
+      ).slice(0, 5)
+    : []
 
   const handlePublish = async () => {
     if (!title.trim()) return
@@ -115,6 +139,8 @@ function CreateTaskModal({
         assigned_to: assignedTo,
         priority,
         due_date: due,
+        linked_customer_id: linkedCustomerId,
+        linked_intake_id: linkedIntakeId,
       })
       onSave()
       onClose()
@@ -287,6 +313,109 @@ function CreateTaskModal({
               ))}
             </div>
           </div>
+
+          {/* Link to Customer */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                <User size={16} className="text-zinc-400" />
+                <span className="font-medium">Link customer</span>
+              </div>
+              {linkedCustomer ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-zinc-200 bg-zinc-50">
+                    <span className="text-xs font-medium text-zinc-700">{linkedCustomer.name}</span>
+                  </div>
+                  <button onClick={() => setLinkedCustomerId(null)} className="p-0.5">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400">None</span>
+              )}
+            </div>
+            {!linkedCustomer && (
+              <div className="mt-2 no-focus-ring">
+                <input
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                  placeholder="Search by name or phone..."
+                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-red-300 placeholder:text-zinc-400"
+                />
+                {filteredCustomers.length > 0 && (
+                  <div className="mt-1 border border-zinc-200 rounded-xl overflow-hidden">
+                    {filteredCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setLinkedCustomerId(c.id); setCustomerSearch('') }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0"
+                      >
+                        <User size={13} className="text-zinc-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-zinc-800 truncate">{c.name}</p>
+                          <p className="text-[10px] text-zinc-400">{c.phone}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Link to Vehicle / Job */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                <Car size={16} className="text-zinc-400" />
+                <span className="font-medium">Link vehicle / job</span>
+              </div>
+              {linkedIntake ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-zinc-200 bg-zinc-50">
+                    <span className="text-xs font-medium text-zinc-700">
+                      {[linkedIntake.year, linkedIntake.make, linkedIntake.model].filter(Boolean).join(' ') || linkedIntake.vin || 'Vehicle'}
+                    </span>
+                  </div>
+                  <button onClick={() => setLinkedIntakeId(null)} className="p-0.5">
+                    <X size={14} className="text-zinc-400" />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400">None</span>
+              )}
+            </div>
+            {!linkedIntake && (
+              <div className="mt-2 no-focus-ring">
+                <input
+                  value={vehicleSearch}
+                  onChange={e => setVehicleSearch(e.target.value)}
+                  placeholder="Search by VIN, make, model, or plate..."
+                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-red-300 placeholder:text-zinc-400"
+                />
+                {filteredVehicles.length > 0 && (
+                  <div className="mt-1 border border-zinc-200 rounded-xl overflow-hidden">
+                    {filteredVehicles.map(i => {
+                      const vehicle = [i.year, i.make, i.model].filter(Boolean).join(' ')
+                      return (
+                        <button
+                          key={i.id}
+                          onClick={() => { setLinkedIntakeId(i.id); setVehicleSearch('') }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0"
+                        >
+                          <Car size={13} className="text-zinc-400 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-zinc-800 truncate">{vehicle || i.vin || 'Unknown'}</p>
+                            <p className="text-[10px] text-zinc-400">{i.license_plate ? `Plate: ${i.license_plate}` : i.vin || ''}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -296,12 +425,14 @@ function CreateTaskModal({
 // ── Quick Tasks Modal ───────────────────────────
 
 function QuickTasksPanel({
-  tasks, profileId, businessId, employees, onRefresh, onClose,
+  tasks, profileId, businessId, employees, customers, intakes, onRefresh, onClose,
 }: {
   tasks: Task[]
   profileId: string
   businessId: string
   employees: Profile[]
+  customers: Customer[]
+  intakes: VehicleIntake[]
   onRefresh: () => void
   onClose: () => void
 }) {
@@ -383,10 +514,14 @@ function QuickTasksPanel({
                 <Square size={16} className="text-zinc-300 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm text-zinc-800 block truncate">{task.title}</span>
-                  {(task.due_date || task.description) && (
+                  {(task.due_date || task.description || task.linked_customer || task.linked_intake) && (
                     <span className="text-[10px] text-zinc-400 block truncate">
                       {task.due_date && `Due ${new Date(task.due_date).toLocaleDateString()}`}
-                      {task.due_date && task.description && ' · '}
+                      {task.due_date && (task.description || task.linked_customer || task.linked_intake) && ' · '}
+                      {task.linked_customer && `👤 ${task.linked_customer.name}`}
+                      {task.linked_customer && task.linked_intake && ' · '}
+                      {task.linked_intake && `🚗 ${[task.linked_intake.year, task.linked_intake.make, task.linked_intake.model].filter(Boolean).join(' ')}`}
+                      {(task.linked_customer || task.linked_intake) && task.description && ' · '}
                       {task.description}
                     </span>
                   )}
@@ -424,6 +559,8 @@ function QuickTasksPanel({
           profileId={profileId}
           businessId={businessId}
           employees={employees}
+          customers={customers}
+          intakes={intakes}
           onSave={onRefresh}
           onClose={() => setShowDetailedForm(false)}
         />
@@ -565,9 +702,7 @@ function FeedPostCard({
           <button onClick={() => setShowComments(!showComments)}>
             <MessageCircle size={24} className="text-zinc-800" />
           </button>
-          <button><Send size={22} className="text-zinc-800 -rotate-12" /></button>
         </div>
-        <button><Bookmark size={24} className="text-zinc-800" /></button>
       </div>
 
       {/* Likes Count */}
@@ -993,6 +1128,8 @@ export default function Dashboard() {
           profileId={profile.id}
           businessId={profile.business_id!}
           employees={employees}
+          customers={customers}
+          intakes={intakes}
           onRefresh={refreshTasks}
           onClose={() => setShowTasks(false)}
         />
@@ -1090,7 +1227,7 @@ export default function Dashboard() {
                   value={newPostText}
                   onChange={e => setNewPostText(e.target.value)}
                   placeholder="What would you like to share?"
-                  rows={3}
+                  rows={6}
                   className="w-full text-[14px] text-zinc-700 bg-transparent resize-none focus:outline-none focus:ring-0 border-none outline-none placeholder:text-zinc-400"
                   autoFocus
                 />
@@ -1158,7 +1295,7 @@ export default function Dashboard() {
             )}
 
             {/* Background Color Swatches — always visible */}
-            <div className="px-4 mt-2">
+            <div className="px-4 mt-4">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Background</p>
               <div className="flex gap-2 items-center overflow-x-auto no-scrollbar">
                 {BG_COLOR_PREVIEWS.map((preview, i) => (
@@ -1174,7 +1311,7 @@ export default function Dashboard() {
             </div>
 
             {/* Preset Background Images — always visible */}
-            <div className="px-4 mt-2">
+            <div className="px-4 mt-3">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Preset Backgrounds</p>
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {BG_IMAGES.map((url, i) => (
@@ -1192,7 +1329,7 @@ export default function Dashboard() {
             </div>
 
             {/* Attachment Options — always visible */}
-            <div className="px-4 mt-3 pb-4">
+            <div className="px-4 mt-4 pb-4">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Add to your post</p>
               <div className="grid grid-cols-4 gap-2">
                 <label className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-colors">

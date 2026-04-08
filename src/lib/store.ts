@@ -1870,7 +1870,7 @@ export function useTasks(businessId?: string) {
     if (!isConfigured() || !businessId) { setLoading(false); return }
     const { data } = await supabase
       .from('tasks')
-      .select('*, assignee:profiles!tasks_assigned_to_fkey(display_name, avatar_url), creator:profiles!tasks_created_by_fkey(display_name)')
+      .select('*, assignee:profiles!tasks_assigned_to_fkey(display_name, avatar_url), creator:profiles!tasks_created_by_fkey(display_name), linked_intake:vehicle_intakes!tasks_linked_intake_id_fkey(id, vin, year, make, model), linked_customer:customers!tasks_linked_customer_id_fkey(id, name, phone)')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false })
     setTasks(data || [])
@@ -1889,6 +1889,8 @@ export async function createTask(params: {
   description?: string | null
   priority?: Task['priority']
   due_date?: string | null
+  linked_intake_id?: string | null
+  linked_customer_id?: string | null
 }) {
   const { error } = await supabase.from('tasks').insert(params)
   if (error) throw error
