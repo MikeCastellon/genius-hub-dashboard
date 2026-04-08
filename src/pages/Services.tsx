@@ -117,7 +117,7 @@ export default function Services() {
             <button onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-xs font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all">
               <Plus size={14} />
-              <span className="hidden sm:inline">Add Service</span>
+              <span>Add Service</span>
             </button>
           )}
         </div>
