@@ -7,7 +7,7 @@ import {
 import { Task, FeedPost, Profile, Customer, VehicleIntake } from '@/lib/types'
 import {
   Search, Plus, ClipboardList, Users, Loader2, X,
-  CheckSquare, Square, Heart, MessageCircle, Trash2,
+  CheckSquare, Square, ThumbsUp, MessageCircle, Trash2,
   ChevronRight, Car, ImagePlus, MoreHorizontal,
   ArrowLeft, Image, Video, FileText, Link2, MapPin, Play,
   Calendar, Clock, UserPlus, Flag, Smile, User,
@@ -689,33 +689,10 @@ function FeedPostCard({
         </div>
       )}
 
-      {/* Action Row — IG style */}
-      <div className="flex items-center px-4 pt-3 pb-1">
-        <div className="flex items-center gap-4 flex-1">
-          <button onClick={handleLike} className="transition-transform active:scale-125">
-            <Heart
-              size={24}
-              className={isLiked ? 'text-red-500 fill-red-500' : 'text-zinc-800'}
-              fill={isLiked ? 'currentColor' : 'none'}
-            />
-          </button>
-          <button onClick={() => setShowComments(!showComments)}>
-            <MessageCircle size={24} className="text-zinc-800" />
-          </button>
-        </div>
-      </div>
-
-      {/* Likes Count */}
-      {post.likes_count > 0 && (
-        <p className="px-4 pt-1 text-[13px] font-bold text-zinc-900">
-          {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
-        </p>
-      )}
-
       {/* Caption — skip if already shown on background */}
-      {!(post.background && !post.image_url) && (
-        <div className="px-4 pt-1 pb-1">
-          <p className="text-[13px] text-zinc-900 leading-snug">
+      {!(post.background && !post.image_url) && post.content && (
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-[14px] text-zinc-900 leading-relaxed">
             <span className="font-bold">{post.author?.display_name}</span>
             {' '}
             <span className="text-zinc-700">{post.content}</span>
@@ -723,18 +700,46 @@ function FeedPostCard({
         </div>
       )}
 
-      {/* View Comments Link */}
-      {post.comments_count > 0 && !showComments && (
+      {/* Action Row — Connecteam style */}
+      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
         <button
-          onClick={() => setShowComments(true)}
-          className="px-4 py-1 text-[13px] text-zinc-400"
+          onClick={handleLike}
+          className={`flex items-center gap-2 flex-1 justify-center py-2.5 rounded-full border transition-colors ${
+            isLiked
+              ? 'border-red-200 bg-red-50 text-red-600'
+              : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+          }`}
         >
-          View {post.comments_count === 1 ? '1 comment' : `all ${post.comments_count} comments`}
+          <ThumbsUp size={16} fill={isLiked ? 'currentColor' : 'none'} />
+          <span className="text-[13px] font-semibold">Like</span>
         </button>
-      )}
+        <button
+          onClick={() => setShowComments(!showComments)}
+          className={`flex items-center gap-2 flex-1 justify-center py-2.5 rounded-full border transition-colors ${
+            showComments
+              ? 'border-blue-200 bg-blue-50 text-blue-600'
+              : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+          }`}
+        >
+          <MessageCircle size={16} />
+          <span className="text-[13px] font-semibold">Comment</span>
+        </button>
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex items-center justify-between px-4 pb-2 border-b border-zinc-100">
+        <p className="text-[12px] text-zinc-400">
+          {post.likes_count > 0
+            ? `${post.likes_count} reaction${post.likes_count !== 1 ? 's' : ''}`
+            : 'Be the first to react'}
+        </p>
+        <p className="text-[12px] text-zinc-400">
+          {post.comments_count} Comment{post.comments_count !== 1 ? 's' : ''}
+        </p>
+      </div>
 
       {/* Timestamp */}
-      <p className="px-4 pt-0.5 pb-3 text-[10px] text-zinc-400 uppercase tracking-wider">
+      <p className="px-4 pt-1.5 pb-3 text-[10px] text-zinc-400 uppercase tracking-wider">
         {timeAgo(post.created_at)}
       </p>
 
