@@ -118,26 +118,29 @@ export default function Hours() {
   const clockedIn = users.filter(u => entries.some(e => e.employee_id === u.id && !e.clock_out))
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Clock size={18} className="text-red-600" /> Hours
-          </h2>
-          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Track time &amp; shifts</p>
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <Clock size={18} className="text-red-600" /> Hours
+            </h2>
+            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Track time &amp; shifts</p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-5 w-fit">
+          <button onClick={() => setTab('clock')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'clock' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <TimerReset size={13} /> Clock In/Out
+          </button>
+          <button onClick={() => setTab('shifts')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'shifts' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <Users size={13} /> Shifts
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-5 w-fit">
-        <button onClick={() => setTab('clock')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'clock' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <TimerReset size={13} /> Clock In/Out
-        </button>
-        <button onClick={() => setTab('shifts')} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${tab === 'shifts' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Users size={13} /> Shifts
-        </button>
-      </div>
-
+      <div className="px-4 md:px-6 pb-4">
       {tab === 'clock' && (
         <div className="space-y-4">
           {/* Clock In/Out Widget */}
@@ -316,6 +319,7 @@ export default function Hours() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

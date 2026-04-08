@@ -168,15 +168,18 @@ export default function Repairs() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-5">
-        <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-          <Wrench size={18} className="text-red-600" /> Repairs
-        </h2>
-        <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Vehicle repairs, recalls & AI-powered guides</p>
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        {/* Header */}
+        <div className="mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <Wrench size={18} className="text-red-600" /> Repairs
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Vehicle repairs, recalls & AI-powered guides</p>
+        </div>
       </div>
 
+      <div className="px-4 md:px-6 pb-4">
       {/* VIN Input */}
       <div className="glass rounded-2xl p-5 mb-5">
         <div className="flex flex-col sm:flex-row gap-3">
@@ -278,6 +281,7 @@ export default function Repairs() {
           </div>
         </>
       )}
+      </div>
 
       {/* AI Guide Modal Overlay (when triggered from other tabs) */}
       {showGuidePanel && currentVehicle && (

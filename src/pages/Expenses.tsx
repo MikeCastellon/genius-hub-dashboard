@@ -98,38 +98,41 @@ export default function Expenses() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Receipt size={18} className="text-red-600" /> Expenses
-          </h2>
-          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{expenses.length} total</p>
-        </div>
-        <button
-          onClick={() => { setEditing(undefined); setShowModal(true) }}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
-        >
-          <Plus size={15} /> Add Expense
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-zinc-100 rounded-xl p-1 w-fit">
-        {(['list', 'summary'] as const).map(t => (
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <Receipt size={18} className="text-red-600" /> Expenses
+            </h2>
+            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{expenses.length} total</p>
+          </div>
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              tab === t ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'
-            }`}
+            onClick={() => { setEditing(undefined); setShowModal(true) }}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
           >
-            {t === 'list' ? 'List' : 'Summary'}
+            <Plus size={15} /> Add Expense
           </button>
-        ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 bg-zinc-100 rounded-xl p-1 w-fit">
+          {(['list', 'summary'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                tab === t ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              {t === 'list' ? 'List' : 'Summary'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      <div className="px-4 md:px-6 pb-4">
       {tab === 'summary' ? (
         <ExpenseSummary expenses={expenses} />
       ) : (
@@ -223,6 +226,7 @@ export default function Expenses() {
           )}
         </>
       )}
+      </div>
 
       {/* Modal */}
       {showModal && (

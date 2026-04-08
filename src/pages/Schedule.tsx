@@ -179,56 +179,58 @@ export default function Schedule() {
   const ROW_HEIGHT = 60 // px per hour
 
   return (
-    <div className="p-4 md:p-6 flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5 shrink-0">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Calendar size={18} className="text-red-600" /> Schedule
-          </h2>
-          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
+    <div className="flex flex-col h-full">
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5 shrink-0">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <Calendar size={18} className="text-red-600" /> Schedule
+            </h2>
+            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{appointments.length} appointments</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={copyBookingLink} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'}`}>
+              {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
+              <span className={copied ? '' : 'hidden sm:inline'}>{copied ? 'Copied!' : 'Booking Link'}</span>
+            </button>
+            <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm">
+              <Plus size={14} /> New
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={copyBookingLink} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'}`}>
-            {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
-            <span className={copied ? '' : 'hidden sm:inline'}>{copied ? 'Copied!' : 'Booking Link'}</span>
-          </button>
-          <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm">
-            <Plus size={14} /> New
-          </button>
+
+        {/* Week/day nav */}
+        <div className="flex items-center gap-2 mb-3 shrink-0">
+          <button
+            onClick={() => {
+              if (isMobile) {
+                if (clampedDayOffset === 0) { setWeekOffset(o => o - 1); setDayOffset(4) }
+                else setDayOffset(d => d - 1)
+              } else { setWeekOffset(o => o - 1) }
+            }}
+            className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
+          ><ChevronLeft size={16} /></button>
+          <span className="text-sm font-semibold text-zinc-700 flex-1 text-center">
+            {isMobile
+              ? `${visibleDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${visibleDays[2].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+              : `${weekDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+            }
+          </span>
+          <button
+            onClick={() => {
+              if (isMobile) {
+                if (clampedDayOffset >= 4) { setWeekOffset(o => o + 1); setDayOffset(0) }
+                else setDayOffset(d => d + 1)
+              } else { setWeekOffset(o => o + 1) }
+            }}
+            className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
+          ><ChevronRight size={16} /></button>
+          <button onClick={() => { setWeekOffset(0); setDayOffset(0) }} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Today</button>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-          {/* Week/day nav */}
-          <div className="flex items-center gap-2 mb-3 shrink-0">
-            <button
-              onClick={() => {
-                if (isMobile) {
-                  if (clampedDayOffset === 0) { setWeekOffset(o => o - 1); setDayOffset(4) }
-                  else setDayOffset(d => d - 1)
-                } else { setWeekOffset(o => o - 1) }
-              }}
-              className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
-            ><ChevronLeft size={16} /></button>
-            <span className="text-sm font-semibold text-zinc-700 flex-1 text-center">
-              {isMobile
-                ? `${visibleDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${visibleDays[2].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
-                : `${weekDays[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
-              }
-            </span>
-            <button
-              onClick={() => {
-                if (isMobile) {
-                  if (clampedDayOffset >= 4) { setWeekOffset(o => o + 1); setDayOffset(0) }
-                  else setDayOffset(d => d + 1)
-                } else { setWeekOffset(o => o + 1) }
-              }}
-              className="p-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
-            ><ChevronRight size={16} /></button>
-            <button onClick={() => { setWeekOffset(0); setDayOffset(0) }} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Today</button>
-          </div>
-
+      <div className="px-4 md:px-6 pb-4 flex-1 flex flex-col min-h-0">
           {loading ? (
             <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-red-600" /></div>
           ) : (
@@ -401,7 +403,7 @@ export default function Schedule() {
               )}
             </>
           )}
-        </div>
+      </div>
 
       {/* Appointment detail modal */}
       {selected && (

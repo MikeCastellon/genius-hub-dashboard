@@ -30,16 +30,19 @@ export default function Directory() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-5">
-        <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-          <Users size={18} className="text-red-600" /> Employee Directory
-        </h2>
-        <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">
-          {employees.length} team member{employees.length !== 1 ? 's' : ''}
-        </p>
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <Users size={18} className="text-red-600" /> Employee Directory
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">
+            {employees.length} team member{employees.length !== 1 ? 's' : ''}
+          </p>
+        </div>
       </div>
 
+      <div className="px-4 md:px-6 pb-4">
       {employees.length === 0 ? (
         <div className="glass rounded-2xl p-8 text-center">
           <Users size={28} className="mx-auto text-zinc-300 mb-3" />
@@ -83,6 +86,7 @@ export default function Directory() {
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

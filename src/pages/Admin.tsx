@@ -88,32 +88,35 @@ export default function Admin() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-5">
-        <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-          <ShieldCheck size={18} className="text-red-600" />
-          Admin Panel
-        </h2>
-        <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Manage users, permissions, and intake settings</p>
-        {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+            <ShieldCheck size={18} className="text-red-600" />
+            Admin Panel
+          </h2>
+          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">Manage users, permissions, and intake settings</p>
+          {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-6 overflow-x-auto no-scrollbar">
+          <button onClick={() => setTab('users')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'users' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <Users size={14} /> Users
+          </button>
+          <button onClick={() => setTab('business')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'business' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <Building2 size={14} /> Business
+          </button>
+          <button onClick={() => setTab('intake')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <Settings size={14} /> Intake
+          </button>
+          <button onClick={() => setTab('warranty')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'warranty' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
+            <Shield size={14} /> Warranty
+          </button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100 rounded-xl p-1 mb-6 overflow-x-auto no-scrollbar">
-        <button onClick={() => setTab('users')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'users' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Users size={14} /> Users
-        </button>
-        <button onClick={() => setTab('business')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'business' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Building2 size={14} /> Business
-        </button>
-        <button onClick={() => setTab('intake')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'intake' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Settings size={14} /> Intake
-        </button>
-        <button onClick={() => setTab('warranty')} className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${tab === 'warranty' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}>
-          <Shield size={14} /> Warranty
-        </button>
-      </div>
-
+      <div className="px-4 md:px-6 pb-4">
       {tab === 'users' && (
         <div className="space-y-8">
           {/* Pending Approvals */}
@@ -271,6 +274,7 @@ export default function Admin() {
           businesses={businesses}
         />
       )}
+      </div>
     </div>
   )
 }

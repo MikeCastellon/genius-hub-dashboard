@@ -46,65 +46,68 @@ export default function Certify() {
   }, [certificates])
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Award size={18} className="text-red-600" /> Certify
-          </h2>
-          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{certificates.length} total certificates</p>
-        </div>
-        <button
-          onClick={() => navigate('/certify/new')}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
-        >
-          <Plus size={15} /> New Certificate
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        <div className="relative flex-1 min-w-[160px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
-            placeholder="Search by cert #, customer, VIN..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        {(['all', 'active', 'expired', 'voided'] as const).map(s => (
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <Award size={18} className="text-red-600" /> Certify
+            </h2>
+            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{certificates.length} total certificates</p>
+          </div>
           <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${filter === s ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'}`}
+            onClick={() => navigate('/certify/new')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-sm font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all"
           >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            <Plus size={15} /> New Certificate
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* Business type filter */}
-      {presentTypes.length > 0 && (
-        <div className="flex gap-1.5 mb-4 flex-wrap">
-          <button
-            onClick={() => setTypeFilter('all')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === 'all' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
-          >
-            All Types
-          </button>
-          {presentTypes.map(t => (
+        {/* Filters */}
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
+              placeholder="Search by cert #, customer, VIN..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          {(['all', 'active', 'expired', 'voided'] as const).map(s => (
             <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === t ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${filter === s ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'}`}
             >
-              {BUSINESS_TYPE_LABELS[t]}
+              {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
         </div>
-      )}
 
+        {/* Business type filter */}
+        {presentTypes.length > 0 && (
+          <div className="flex gap-1.5 mb-4 flex-wrap">
+            <button
+              onClick={() => setTypeFilter('all')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === 'all' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+            >
+              All Types
+            </button>
+            {presentTypes.map(t => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${typeFilter === t ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              >
+                {BUSINESS_TYPE_LABELS[t]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 md:px-6 pb-4">
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={24} className="animate-spin text-red-600" />
@@ -167,6 +170,7 @@ export default function Certify() {
           })}
         </div>
       )}
+      </div>
 
       {/* Legacy builder modal for intake-based certs */}
       {showBuilder && (

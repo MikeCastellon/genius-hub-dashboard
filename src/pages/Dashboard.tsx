@@ -464,9 +464,9 @@ function QuickTasksPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
-          <div className="flex items-center justify-between p-5 border-b border-zinc-100">
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
+        <div className="bg-white shadow-2xl w-full md:max-w-md max-h-[90vh] md:max-h-[80vh] md:mx-4 rounded-t-2xl md:rounded-2xl flex flex-col">
+          <div className="flex items-center justify-between p-5 border-b border-zinc-100 shrink-0">
             <h3 className="text-base font-bold text-zinc-900">Quick Tasks</h3>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
               <X size={16} className="text-zinc-500" />
@@ -501,7 +501,7 @@ function QuickTasksPanel({
           </div>
 
           {/* Task List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          <div className="flex-1 overflow-y-auto p-4 space-y-1" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
             {pending.length === 0 && completed.length === 0 && (
               <p className="text-sm text-zinc-400 text-center py-6">No tasks yet</p>
             )}
@@ -985,42 +985,43 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <p className="text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">
-            {profile?.business_id ? 'Detailers Hub' : 'Welcome'}
-          </p>
-          <h1 className="text-xl md:text-2xl font-bold text-zinc-900 tracking-tight">
-            {getGreeting()}, {firstName}
-          </h1>
+    <div className="max-w-2xl mx-auto">
+      {/* Sticky Header + Search */}
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">
+              {profile?.business_id ? 'Detailers Hub' : 'Welcome'}
+            </p>
+            <h1 className="text-xl md:text-2xl font-bold text-zinc-900 tracking-tight">
+              {getGreeting()}, {firstName}
+            </h1>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-10 h-10 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-sm font-bold shadow-sm hover:shadow-md transition-shadow"
+          >
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              getInitials(displayName)
+            )}
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/profile')}
-          className="w-10 h-10 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-sm font-bold shadow-sm hover:shadow-md transition-shadow"
-        >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
-          ) : (
-            getInitials(displayName)
-          )}
-        </button>
-      </div>
 
-      {/* Smart Search */}
-      <div className="relative mb-6">
+        {/* Smart Search */}
         <div className="relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-            placeholder="Search name, phone, plate, or VIN..."
-            className="w-full pl-11 pr-10 py-3 rounded-2xl border border-zinc-200 bg-white text-sm text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100 transition-all"
-          />
+          <div className="relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+              placeholder="Search name, phone, plate, or VIN..."
+              className="w-full pl-11 pr-10 py-3 rounded-2xl border border-zinc-200 bg-white text-sm text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100 transition-all"
+            />
           {query && (
             <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-zinc-100">
               <X size={14} className="text-zinc-400" />
@@ -1049,6 +1050,10 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="px-4 md:px-6">
 
       {/* Quick Actions */}
       <div className="mb-6">
@@ -1126,6 +1131,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {/* Quick Tasks Modal */}

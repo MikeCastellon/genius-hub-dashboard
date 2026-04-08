@@ -102,33 +102,36 @@ export default function Services() {
   const inputClass = 'w-full px-3 py-2 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10'
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Wrench size={18} className="text-red-600" />
-            Services
-          </h2>
-          <p className="text-[13px] text-zinc-400 mt-0.5">{displayed.length} of {services.length} services</p>
-          {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
+    <div>
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <Wrench size={18} className="text-red-600" />
+              Services
+            </h2>
+            <p className="text-[13px] text-zinc-400 mt-0.5">{displayed.length} of {services.length} services</p>
+            {errorMsg && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 border border-red-100 mt-2">{errorMsg}</p>}
+          </div>
+          {isAdmin && (
+            <button onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-xs font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all">
+              <Plus size={14} />
+              <span className="hidden sm:inline">Add Service</span>
+            </button>
+          )}
         </div>
-        {isAdmin && (
-          <button onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 text-white text-xs font-semibold shadow-sm shadow-red-700/20 hover:shadow-md transition-all">
-            <Plus size={14} />
-            <span className="hidden sm:inline">Add Service</span>
-          </button>
-        )}
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search services..."
+            className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search services..."
-          className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-600/10" />
-      </div>
-
+      <div className="px-4 md:px-6 pb-4">
       {/* Add Form */}
       {isAdmin && showAddForm && (
         <div className="glass rounded-2xl p-4 mb-6 space-y-3">
@@ -335,6 +338,7 @@ export default function Services() {
             {services.length === 0 ? 'No services yet.' : 'No matching services'}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

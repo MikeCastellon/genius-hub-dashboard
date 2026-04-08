@@ -137,19 +137,20 @@ export default function Queue() {
   ]
 
   return (
-    <div className="p-4 md:p-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <ClipboardList size={18} className="text-red-600" /> Job Queue
-          </h2>
-          <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{jobs.length} job{jobs.length !== 1 ? 's' : ''}</p>
+    <div>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+              <ClipboardList size={18} className="text-red-600" /> Job Queue
+            </h2>
+            <p className="text-[12px] md:text-[13px] text-zinc-400 mt-0.5">{jobs.length} job{jobs.length !== 1 ? 's' : ''}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+        {/* Filter tabs */}
+        <div className="flex gap-2 flex-wrap">
         {filterTabs.map(t => (
           <button
             key={t.key}
@@ -160,8 +161,10 @@ export default function Queue() {
           </button>
         ))}
       </div>
+      </div>
 
       {/* Content */}
+      <div className="px-4 md:px-6 pb-4">
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={24} className="animate-spin text-red-600" />
@@ -281,6 +284,8 @@ export default function Queue() {
           })}
         </div>
       )}
+
+      </div>
 
       {startingJob && profile && (
         <StartJobModal

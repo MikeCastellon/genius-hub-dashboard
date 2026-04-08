@@ -1031,16 +1031,18 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 pb-20 sm:pb-4 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col shadow-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
+      <div className="bg-white w-full md:max-w-2xl md:mx-4 rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <h2 className="text-base font-bold text-zinc-900">Add Customer</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="space-y-3">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
           <div>
             <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Name *</label>
             <input
@@ -1102,11 +1104,12 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
               <input type="text" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Color" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
             </div>
           </div>
+
+          {error && <p className="text-[12px] text-red-600 mt-1">{error}</p>}
         </div>
 
-        {error && <p className="text-[12px] text-red-600 mt-3">{error}</p>}
-
-        <div className="flex gap-2 mt-5">
+        {/* Footer */}
+        <div className="flex gap-2 px-6 py-4 border-t border-zinc-100 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 py-2 rounded-xl border border-zinc-200 text-[13px] font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors"

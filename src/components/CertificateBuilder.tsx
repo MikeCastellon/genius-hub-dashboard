@@ -114,10 +114,10 @@ export default function CertificateBuilder({ preselectedIntakeId, onClose, onSav
   const canSave = intakeId && coatingBrand && coatingProduct
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
+      <div className="bg-white w-full md:max-w-2xl md:mx-4 rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+        <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-zinc-100">
           <h2 className="font-bold text-zinc-900">New Certificate</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500"><X size={18} /></button>
         </div>
@@ -268,7 +268,7 @@ export default function CertificateBuilder({ preselectedIntakeId, onClose, onSav
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-zinc-100 flex gap-3">
+        <div className="shrink-0 px-5 py-4 border-t border-zinc-100 flex gap-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-600">Cancel</button>
           <button
             onClick={handleSave}
