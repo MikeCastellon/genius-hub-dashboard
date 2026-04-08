@@ -1196,7 +1196,7 @@ export default function Dashboard() {
                     postBackground.startsWith('http') ? '' : postBackground
                   }`}
                   style={{
-                    minHeight: '140px',
+                    minHeight: '200px',
                     ...(postBackground.startsWith('http') ? {
                       backgroundImage: `url(${postBackground})`,
                       backgroundSize: 'cover',
