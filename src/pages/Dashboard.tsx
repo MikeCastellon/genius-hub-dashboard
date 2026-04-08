@@ -457,21 +457,19 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="mb-6">
-        <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex gap-3 justify-between">
           {tiles.map(tile => {
             const Icon = tile.icon
             return (
               <button
                 key={tile.label}
                 onClick={tile.action}
-                className="glass rounded-2xl p-4 text-left hover:shadow-lg hover:shadow-zinc-200/50 hover:-translate-y-0.5 transition-all"
+                className="flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl glass hover:shadow-md hover:-translate-y-0.5 transition-all"
               >
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tile.gradient} flex items-center justify-center shadow-sm mb-3`}>
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${tile.gradient} flex items-center justify-center shadow-sm`}>
                   <Icon size={18} className="text-white" />
                 </div>
-                <p className="text-sm font-bold text-zinc-900">{tile.label}</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">{tile.subtitle}</p>
+                <p className="text-[11px] font-semibold text-zinc-700 text-center leading-tight">{tile.label}</p>
               </button>
             )
           })}
