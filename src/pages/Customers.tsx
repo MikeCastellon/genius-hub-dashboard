@@ -1032,84 +1032,68 @@ function AddCustomerModal({ businessId, onClose, onSaved }: { businessId?: strin
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl max-h-[70vh] md:max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+      <div className="bg-white w-full max-w-md rounded-2xl flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-100 shrink-0">
           <h2 className="text-base font-bold text-zinc-900">Add Customer</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="John Doe"
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
-            />
+        {/* Content */}
+        <div className="px-5 py-3 space-y-2.5">
+          {/* Name + Phone */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 mb-1">Name *</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="John Doe"
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 mb-1">Phone *</label>
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567"
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+            </div>
           </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Phone *</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
-            />
+
+          {/* Email + Company */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 mb-1">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com"
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 mb-1">Company</label>
+              <input type="text" value={company} onChange={e => setCompany(e.target.value)} placeholder="Company name"
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+            </div>
           </div>
+
+          {/* Address */}
           <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="john@example.com"
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Address</label>
-            <input
-              type="text"
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              placeholder="123 Main St, City, PR 00901"
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1">Company</label>
-            <input
-              type="text"
-              value={company}
-              onChange={e => setCompany(e.target.value)}
-              placeholder="Company name"
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
-            />
+            <label className="block text-[11px] font-semibold text-zinc-500 mb-1">Address</label>
+            <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, PR 00901"
+              className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
           </div>
 
           {/* Vehicle Info */}
           <div>
-            <label className="block text-[12px] font-semibold text-zinc-600 mb-1 flex items-center gap-1"><Car size={12} /> Vehicle</label>
+            <label className="block text-[11px] font-semibold text-zinc-500 mb-1 flex items-center gap-1"><Car size={11} /> Vehicle</label>
             <div className="grid grid-cols-2 gap-2">
-              <input type="text" value={vYear} onChange={e => setVYear(e.target.value)} placeholder="Year" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
-              <input type="text" value={vMake} onChange={e => setVMake(e.target.value)} placeholder="Make" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
-              <input type="text" value={vModel} onChange={e => setVModel(e.target.value)} placeholder="Model" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
-              <input type="text" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Color" className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vYear} onChange={e => setVYear(e.target.value)} placeholder="Year" className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vMake} onChange={e => setVMake(e.target.value)} placeholder="Make" className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vModel} onChange={e => setVModel(e.target.value)} placeholder="Model" className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
+              <input type="text" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Color" className="w-full px-3 py-1.5 rounded-xl border border-zinc-200 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all" />
             </div>
           </div>
 
-          {error && <p className="text-[12px] text-red-600 mt-1">{error}</p>}
+          {error && <p className="text-[12px] text-red-600">{error}</p>}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-6 py-4 border-t border-zinc-100 shrink-0">
+        <div className="flex gap-2 px-5 py-3 border-t border-zinc-100 shrink-0 mt-1">
           <button
             onClick={onClose}
             className="flex-1 py-2 rounded-xl border border-zinc-200 text-[13px] font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors"
