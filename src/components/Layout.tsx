@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle } from 'lucide-react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Car, History, Wrench, LogOut, ShieldCheck, Building2, FileText, Calendar, Clock, Award, Users, ClipboardList, ChevronLeft, ChevronRight, FileCheck, Receipt, Cog, MessageCircle, UserCircle } from 'lucide-react'
 import { useAuth } from '@/lib/store'
 import { useTotalUnread } from '@/lib/chatStore'
 import { unregisterPushNotifications } from '@/lib/pushNotifications'
@@ -22,6 +22,7 @@ const navItems = [
 ]
 
 export default function Layout() {
+  const navigate = useNavigate()
   const { signOut, user, profile } = useAuth()
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
   const totalUnread = useTotalUnread(profile?.id || undefined, profile?.business_id || undefined)
@@ -123,19 +124,36 @@ export default function Layout() {
 
         {/* User footer */}
         <div className={`border-t border-zinc-100 ${collapsed ? 'p-1.5' : 'p-3'} space-y-1`}>
-          {!collapsed && (
-            <div className="px-3.5 py-1.5">
-              <div className="flex items-center gap-2">
-                <p className="text-[11px] font-semibold text-zinc-700 truncate">{displayName}</p>
-                {roleBadge && (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 ${roleBadge.color}`}>
-                    {roleBadge.label}
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
-            </div>
-          )}
+          <button
+            onClick={() => navigate('/profile')}
+            title={collapsed ? 'My Profile' : undefined}
+            className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-3.5'} py-2.5 rounded-xl w-full transition-colors hover:bg-zinc-50 text-left`}
+          >
+            {collapsed ? (
+              <UserCircle size={16} className="text-zinc-400" />
+            ) : (
+              <>
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-[9px] font-bold shrink-0 overflow-hidden">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[11px] font-semibold text-zinc-700 truncate">{displayName}</p>
+                    {roleBadge && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 ${roleBadge.color}`}>
+                        {roleBadge.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+                </div>
+              </>
+            )}
+          </button>
           <button onClick={handleSignOut}
             title={collapsed ? 'Sign Out' : undefined}
             className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-3.5'} py-2.5 rounded-xl text-[13px] font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 w-full transition-colors`}>

@@ -30,6 +30,7 @@ import Repairs from '@/pages/Repairs'
 import PublicForm from '@/pages/PublicForm'
 import Chat from '@/pages/Chat'
 import Directory from '@/pages/Directory'
+import Profile from '@/pages/Profile'
 import PortalLayout from './components/PortalLayout'
 import PortalBookings from './pages/portal/PortalBookings'
 import PortalHistory from './pages/portal/PortalHistory'
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="/forms" element={<Forms />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/directory" element={<Directory />} />
+          <Route path="/profile" element={<Profile />} />
           {isAdmin && <Route path="/expenses" element={<Expenses />} />}
           {isAdmin && <Route path="/admin" element={<Admin />} />}
           {isSuperAdmin && <Route path="/super-admin" element={<SuperAdmin />} />}

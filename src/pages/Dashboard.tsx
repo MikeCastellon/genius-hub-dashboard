@@ -753,13 +753,16 @@ export default function Dashboard() {
             {getGreeting()}, {firstName}
           </h1>
         </div>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+        <button
+          onClick={() => navigate('/profile')}
+          className="w-10 h-10 rounded-full bg-gradient-to-br from-red-700 to-red-600 flex items-center justify-center text-white text-sm font-bold shadow-sm hover:shadow-md transition-shadow"
+        >
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
           ) : (
             getInitials(displayName)
           )}
-        </div>
+        </button>
       </div>
 
       {/* Smart Search */}
