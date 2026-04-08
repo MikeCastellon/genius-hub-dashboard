@@ -27,7 +27,7 @@ const BG_COLORS = [
 ]
 
 const BG_COLOR_PREVIEWS = [
-  'bg-white border-2 border-zinc-200',
+  'bg-white border border-zinc-300',
   'bg-gradient-to-br from-red-500 to-orange-400',
   'bg-gradient-to-br from-blue-500 to-cyan-400',
   'bg-gradient-to-br from-purple-600 to-pink-500',
@@ -1297,7 +1297,7 @@ export default function Dashboard() {
             {/* Background Color Swatches — always visible */}
             <div className="px-4 mt-6">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Background</p>
-              <div className="flex gap-3 items-center overflow-x-auto no-scrollbar">
+              <div className="flex gap-3 items-center flex-wrap">
                 {BG_COLOR_PREVIEWS.map((preview, i) => (
                   <button
                     key={i}
@@ -1313,12 +1313,12 @@ export default function Dashboard() {
             {/* Preset Background Images — always visible */}
             <div className="px-4 mt-4">
               <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-2">Preset Backgrounds</p>
-              <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+              <div className="grid grid-cols-4 gap-2 pb-1">
                 {BG_IMAGES.map((url, i) => (
                   <button
                     key={i}
                     onClick={() => setPostBackground(url)}
-                    className={`shrink-0 w-24 h-16 rounded-xl overflow-hidden transition-all ${
+                    className={`w-full aspect-[3/2] rounded-xl overflow-hidden transition-all ${
                       postBackground === url ? 'ring-2 ring-red-500 ring-offset-2' : 'hover:opacity-80'
                     }`}
                   >
