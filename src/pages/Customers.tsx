@@ -240,7 +240,7 @@ export default function Customers() {
       </div>
 
       {/* Right panel — customer detail */}
-      <div className={`flex-1 bg-zinc-50/50 ${showMobileDetail ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
+      <div className={`flex-1 min-w-0 bg-zinc-50/50 ${showMobileDetail ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
         {selectedCustomerId ? (
           <div className="flex flex-col h-full">
             {/* Mobile back button */}
@@ -250,7 +250,7 @@ export default function Customers() {
               </button>
               <span className="text-sm font-bold text-zinc-900">Customer Details</span>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-w-0 overflow-y-auto">
               <CustomerDetailPanel customerId={selectedCustomerId} profileId={profile?.id || null} businessId={profile?.business_id || null} />
             </div>
           </div>
@@ -430,80 +430,80 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
       <div className="w-full px-4 md:px-6 py-4 md:py-6 space-y-6">
 
         {/* Profile Header */}
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3">
           <div className="relative shrink-0">
             {customer.avatar_url ? (
-              <img src={customer.avatar_url} alt={customer.name} className="w-14 h-14 rounded-2xl object-cover border border-zinc-200" />
+              <img src={customer.avatar_url} alt={customer.name} className="w-12 h-12 rounded-2xl object-cover border border-zinc-200" />
             ) : (
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold ${nameToColor(customer.name)}`}>
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold ${nameToColor(customer.name)}`}>
                 {customer.name.charAt(0).toUpperCase()}
               </div>
             )}
             <button
               onClick={() => avatarFileRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center hover:bg-zinc-50 transition-colors"
+              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center hover:bg-zinc-50 transition-colors"
             >
-              {uploadingAvatar ? <Loader2 size={10} className="animate-spin text-red-600" /> : <Camera size={10} className="text-zinc-500" />}
+              {uploadingAvatar ? <Loader2 size={9} className="animate-spin text-red-600" /> : <Camera size={9} className="text-zinc-500" />}
             </button>
             <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="text-xl font-bold text-zinc-900 truncate">{customer.name}</h2>
-              <div className="text-right shrink-0">
-                <p className="text-base font-bold text-zinc-900">{formatCurrency(customer.total_spend)}</p>
-                <p className="text-[10px] text-zinc-400">Total Spend</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <span className="flex items-center gap-1 text-[13px] text-zinc-500">
-                <Phone size={12} />
+            <h2 className="text-lg font-bold text-zinc-900 truncate leading-tight">{customer.name}</h2>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="flex items-center gap-1 text-[12px] text-zinc-500 whitespace-nowrap">
+                <Phone size={11} />
                 {customer.phone}
               </span>
               {customer.email && (
-                <span className="flex items-center gap-1 text-[13px] text-zinc-400 truncate">
-                  <Mail size={12} />
-                  {customer.email}
+                <span className="flex items-center gap-1 text-[12px] text-zinc-400 truncate min-w-0">
+                  <Mail size={11} />
+                  <span className="truncate">{customer.email}</span>
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {customer.profile_id ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
-                  Account Active
-                </span>
-              ) : (
-                <>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600">
-                    No Account
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                {customer.profile_id ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 whitespace-nowrap">
+                    Account Active
                   </span>
-                  {customer.email && businessId && (
-                    <button
-                      onClick={handleInvite}
-                      disabled={inviting}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-                    >
-                      {inviting ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
-                      Send Invite
-                    </button>
-                  )}
-                </>
-              )}
-              {inviteMsg && (
-                <span className={`text-[11px] font-medium ${inviteMsg === 'Invite sent!' ? 'text-green-600' : 'text-red-600'}`}>
-                  {inviteMsg}
-                </span>
-              )}
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600 whitespace-nowrap">
+                      No Account
+                    </span>
+                    {customer.email && businessId && (
+                      <button
+                        onClick={handleInvite}
+                        disabled={inviting}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {inviting ? <Loader2 size={9} className="animate-spin" /> : <Send size={9} />}
+                        Send Invite
+                      </button>
+                    )}
+                  </>
+                )}
+                {inviteMsg && (
+                  <span className={`text-[11px] font-medium whitespace-nowrap ${inviteMsg === 'Invite sent!' ? 'text-green-600' : 'text-red-600'}`}>
+                    {inviteMsg}
+                  </span>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-zinc-900 whitespace-nowrap">{formatCurrency(customer.total_spend)}</p>
+                <p className="text-[10px] text-zinc-400">Total Spend</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Contact Actions Row */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <a
             href={`tel:${customer.phone}`}
-            className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-green-50 hover:border-green-200 transition-all"
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-green-50 hover:border-green-200 transition-all"
           >
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <Phone size={14} className="text-green-600" />
@@ -513,7 +513,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
           {customer.email ? (
             <a
               href={`mailto:${customer.email}`}
-              className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-blue-50 hover:border-blue-200 transition-all"
+              className="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-blue-50 hover:border-blue-200 transition-all"
             >
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                 <Mail size={14} className="text-blue-600" />
@@ -521,7 +521,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
               <span className="text-[11px] font-semibold text-zinc-600">Email</span>
             </a>
           ) : (
-            <div className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-100 opacity-40 cursor-not-allowed">
+            <div className="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white border border-zinc-100 opacity-40 cursor-not-allowed">
               <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center">
                 <Mail size={14} className="text-zinc-400" />
               </div>
@@ -530,7 +530,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
           )}
           <a
             href={`sms:${customer.phone}`}
-            className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-purple-50 hover:border-purple-200 transition-all"
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white border border-zinc-200 hover:bg-purple-50 hover:border-purple-200 transition-all"
           >
             <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
               <MessageSquare size={14} className="text-purple-600" />
@@ -646,7 +646,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
 
         {/* History Tabs */}
         <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
-          <div className="flex border-b border-zinc-100">
+          <div className="flex border-b border-zinc-100 overflow-x-auto no-scrollbar">
             {([
               { key: 'intakes' as HistoryTab, label: 'Intakes', icon: Car },
               { key: 'bookings' as HistoryTab, label: 'Bookings', icon: Calendar },
@@ -656,7 +656,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[12px] font-semibold transition-colors ${
+                className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-3 text-[12px] font-semibold transition-colors whitespace-nowrap ${
                   activeTab === tab.key
                     ? 'text-red-600 border-b-2 border-red-600 bg-red-50/30'
                     : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'
