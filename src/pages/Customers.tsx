@@ -449,52 +449,55 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
             <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-zinc-900 truncate leading-tight">{customer.name}</h2>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {/* Name + Total Spend */}
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold text-zinc-900 truncate leading-tight">{customer.name}</h2>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-zinc-900 whitespace-nowrap">{formatCurrency(customer.total_spend)}</p>
+                <p className="text-[10px] text-zinc-400 whitespace-nowrap">Total Spend</p>
+              </div>
+            </div>
+            {/* Phone + Email */}
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-[12px] text-zinc-500 whitespace-nowrap">
                 <Phone size={11} />
                 {customer.phone}
               </span>
               {customer.email && (
-                <span className="flex items-center gap-1 text-[12px] text-zinc-400 truncate min-w-0">
-                  <Mail size={11} />
+                <span className="flex items-center gap-1 text-[12px] text-zinc-400 min-w-0">
+                  <Mail size={11} className="shrink-0" />
                   <span className="truncate">{customer.email}</span>
                 </span>
               )}
             </div>
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                {customer.profile_id ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 whitespace-nowrap">
-                    Account Active
+            {/* Account badges */}
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              {customer.profile_id ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
+                  Account Active
+                </span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600">
+                    No Account
                   </span>
-                ) : (
-                  <>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600 whitespace-nowrap">
-                      No Account
-                    </span>
-                    {customer.email && businessId && (
-                      <button
-                        onClick={handleInvite}
-                        disabled={inviting}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {inviting ? <Loader2 size={9} className="animate-spin" /> : <Send size={9} />}
-                        Send Invite
-                      </button>
-                    )}
-                  </>
-                )}
-                {inviteMsg && (
-                  <span className={`text-[11px] font-medium whitespace-nowrap ${inviteMsg === 'Invite sent!' ? 'text-green-600' : 'text-red-600'}`}>
-                    {inviteMsg}
-                  </span>
-                )}
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold text-zinc-900 whitespace-nowrap">{formatCurrency(customer.total_spend)}</p>
-                <p className="text-[10px] text-zinc-400">Total Spend</p>
-              </div>
+                  {customer.email && businessId && (
+                    <button
+                      onClick={handleInvite}
+                      disabled={inviting}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                    >
+                      {inviting ? <Loader2 size={9} className="animate-spin" /> : <Send size={9} />}
+                      Send Invite
+                    </button>
+                  )}
+                </>
+              )}
+              {inviteMsg && (
+                <span className={`text-[11px] font-medium ${inviteMsg === 'Invite sent!' ? 'text-green-600' : 'text-red-600'}`}>
+                  {inviteMsg}
+                </span>
+              )}
             </div>
           </div>
         </div>
