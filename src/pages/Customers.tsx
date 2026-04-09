@@ -449,7 +449,13 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
             <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-zinc-900">{customer.name}</h2>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-xl font-bold text-zinc-900 truncate">{customer.name}</h2>
+              <div className="text-right shrink-0">
+                <p className="text-base font-bold text-zinc-900">{formatCurrency(customer.total_spend)}</p>
+                <p className="text-[10px] text-zinc-400">Total Spend</p>
+              </div>
+            </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-[13px] text-zinc-500">
                 <Phone size={12} />
@@ -462,7 +468,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {customer.profile_id ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
                   Account Active
@@ -490,10 +496,6 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
                 </span>
               )}
             </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-lg font-bold text-zinc-900">{formatCurrency(customer.total_spend)}</p>
-            <p className="text-[11px] text-zinc-400">Total Spend</p>
           </div>
         </div>
 
