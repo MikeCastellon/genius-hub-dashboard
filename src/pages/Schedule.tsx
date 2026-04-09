@@ -260,7 +260,7 @@ export default function Schedule() {
                 </div>
 
                 {/* Scrollable time grid */}
-                <div className="flex-1 overflow-y-auto" ref={gridRef}>
+                <div className="flex-1 overflow-y-auto mobile-scroll-pb" ref={gridRef}>
                   <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(${numCols}, 1fr)`, position: 'relative', height: HOURS.length * ROW_HEIGHT }}>
                     {/* Time labels */}
                     {HOURS.map((hour, i) => (

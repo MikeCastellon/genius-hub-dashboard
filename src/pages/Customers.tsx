@@ -427,7 +427,7 @@ function CustomerDetailPanel({ customerId, profileId, businessId }: { customerId
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="w-full px-4 md:px-6 py-4 md:py-6 space-y-6" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="w-full px-4 md:px-6 py-4 md:py-6 space-y-6" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* Profile Header */}
         <div className="flex items-start gap-3">
