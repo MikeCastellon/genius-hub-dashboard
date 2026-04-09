@@ -164,7 +164,7 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-dots pb-20 md:pb-0" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-dots pb-20 md:pb-0" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <Outlet />
       </main>
 

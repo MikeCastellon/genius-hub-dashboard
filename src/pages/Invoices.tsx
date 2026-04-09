@@ -67,8 +67,8 @@ export default function Invoices() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 mb-4">
-          <div className="relative flex-1 min-w-[160px]">
+        <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="relative flex-1 min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
               className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:border-red-300"
