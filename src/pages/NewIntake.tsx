@@ -552,7 +552,6 @@ export default function NewIntake() {
         <BarkoderScanner
           onClose={() => setShowScanner(false)}
           onDetected={handleVinDetected}
-          onFail={() => setShowScanner(false)}
         />
       )}
 

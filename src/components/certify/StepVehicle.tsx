@@ -138,7 +138,6 @@ export default function StepVehicle({ vehicle, setVehicle, customerId, setCustom
         <BarkoderScanner
           onClose={() => setShowScanner(false)}
           onDetected={handleVinDetected}
-          onFail={() => setShowScanner(false)}
         />
       )}
 
