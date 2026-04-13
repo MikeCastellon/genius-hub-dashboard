@@ -44,11 +44,14 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
 
     async function initWeb() {
       try {
+        console.log('[BarkoderScanner] importing barkoder-wasm...')
         const { initialize } = await import('barkoder-wasm')
         if (stopped) return
 
         const key = getBarkoderLicenseKey()
+        console.log('[BarkoderScanner] initializing with key:', key ? `${key.slice(0, 20)}...` : '(empty)')
         const barkoder = await initialize(key)
+        console.log('[BarkoderScanner] initialized successfully')
         if (stopped) {
           barkoder.stopScanner()
           return
@@ -83,6 +86,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         barkoder.setBeepOnSuccessEnabled(true)
 
         setLoading(false)
+        console.log('[BarkoderScanner] starting scanner...')
         barkoder.startScanner((result: BKResult) => {
           if (result.error || !result.textualData) return
           barkoder.setPauseDecoding(true)
@@ -90,9 +94,10 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         })
       } catch (err: any) {
         if (stopped) return
+        console.error('[BarkoderScanner] web init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize scanner')
-        onFail?.()
+        // Don't call onFail here — let user see the error and close manually
       }
     }
 
@@ -102,7 +107,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
       stopped = true
       try { barkoderRef.current?.stopScanner() } catch { /* ignore */ }
     }
-  }, [isNative, processResult, onFail])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative, processResult])
 
   // ── Native path: barkoder-capacitor ──
   useEffect(() => {
@@ -159,9 +165,9 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         await BarkoderPlugin.startScanning()
       } catch (err: any) {
         if (stopped) return
+        console.error('[BarkoderScanner] native init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize native scanner')
-        onFail?.()
       }
     }
 
@@ -174,7 +180,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         BarkoderPlugin.stopScanning().catch(() => {})
       }).catch(() => {})
     }
-  }, [isNative, processResult, onFail])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative, processResult])
 
   const handleUseVin = () => {
     if (!pendingVin) return
