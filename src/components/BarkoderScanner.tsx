@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
-import { BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library'
+import { Capacitor } from '@capacitor/core'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
-import { isNativeScannerAvailable, scanBarcode } from '@/lib/barcodeScanner'
+import { getBarkoderLicenseKey, VIN_DECODERS, DUPLICATES_DELAY_MS } from '@/lib/barkoderConfig'
+import type { Barkoder as BarkoderWasm, BKResult } from 'barkoder-wasm'
 
 interface Props {
   onClose: () => void
@@ -17,137 +17,162 @@ function IconClose() {
     </svg>
   )
 }
-function IconFlashOn() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fbbf24">
-      <path d="M13 2L4.09 13H11L10 22L19.91 11H13L13 2Z" />
-    </svg>
-  )
-}
-function IconFlashOff() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M13 2L4.09 13H11L10 22L19.91 11H13L13 2Z" />
-    </svg>
-  )
-}
-function IconFlip() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="2.5" fill="white" stroke="none"/>
-      <polyline points="17 1 21 5 17 9" /><line x1="21" y1="5" x2="9" y2="5" />
-    </svg>
-  )
-}
-
-const HINTS = new Map()
-HINTS.set(DecodeHintType.POSSIBLE_FORMATS, [
-  BarcodeFormat.CODE_39,
-  BarcodeFormat.CODE_128,
-  BarcodeFormat.DATA_MATRIX,
-  BarcodeFormat.PDF_417,
-  BarcodeFormat.QR_CODE,
-])
-HINTS.set(DecodeHintType.TRY_HARDER, true)
-
-type FacingMode = 'environment' | 'user'
 
 export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsRef = useRef<{ stop: () => void } | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const lastVinRef = useRef({ vin: '', ts: 0 })
-
-  const [errorMsg, setErrorMsg] = useState('')
+  const barkoderRef = useRef<BarkoderWasm | null>(null)
   const [pendingVin, setPendingVin] = useState('')
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
-  const [torchOn, setTorchOn] = useState(false)
-  const [torchSupported, setTorchSupported] = useState(false)
-  const [facing, setFacing] = useState<FacingMode>('environment')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(true)
+  const isNative = Capacitor.isNativePlatform()
 
-  const startCamera = useCallback(async (facingMode: FacingMode, stopped: { v: boolean }) => {
-    try {
-      controlsRef.current?.stop()
-      streamRef.current?.getTracks().forEach(t => t.stop())
-      setTorchOn(false)
+  const processResult = useCallback((text: string) => {
+    const best = pickBestVinFromText(text)
+    if (!best?.vin) return false
+    setPendingVin(best.vin)
+    setPendingVinMeta({ checksumOk: !!best.checksumOk })
+    return true
+  }, [])
 
-      const reader = new BrowserMultiFormatReader(HINTS, { delayBetweenScanAttempts: 150 })
-
-      const controls = await reader.decodeFromConstraints(
-        { video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } },
-        videoRef.current!,
-        (result, err) => {
-          if (stopped.v) return
-          if (err instanceof NotFoundException || !result) return
-          const text = result.getText()
-          if (!text) return
-          const best = pickBestVinFromText(text)
-          if (!best?.vin) return
-          const now = Date.now()
-          if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < 1500) return
-          lastVinRef.current = { vin: best.vin, ts: now }
-          setPendingVin(best.vin)
-          setPendingVinMeta({ checksumOk: !!best.checksumOk })
-        }
-      )
-
-      if (!stopped.v) {
-        controlsRef.current = controls
-        // grab stream for torch detection
-        await new Promise(r => setTimeout(r, 400))
-        const vid = videoRef.current
-        const stream = (vid as any)?.srcObject as MediaStream | null
-        streamRef.current = stream
-        const track = stream?.getVideoTracks()[0]
-        const caps = (track as any)?.getCapabilities?.() as any
-        setTorchSupported(!!caps?.torch)
-      }
-    } catch (err: any) {
-      if (stopped.v) return
-      setErrorMsg(err?.message || 'Camera error')
-      onFail?.()
-    }
-  }, [onFail])
-
+  // ── Web path: barkoder-wasm ──
   useEffect(() => {
-    if (isNativeScannerAvailable()) {
-      scanBarcode().then((result) => {
-        if (result) {
-          onDetected(result.value);
-        } else {
-          onFail?.();
+    if (isNative) return
+
+    let stopped = false
+
+    async function initWeb() {
+      try {
+        const { initialize } = await import('barkoder-wasm')
+        if (stopped) return
+
+        const key = getBarkoderLicenseKey()
+        const barkoder = await initialize(key)
+        if (stopped) {
+          barkoder.stopScanner()
+          return
         }
-        onClose();
-      });
-      return;
+
+        barkoderRef.current = barkoder
+
+        // Configure VIN decoders
+        barkoder.setEnabledDecoders(
+          VIN_DECODERS.Code39,
+          VIN_DECODERS.Code128,
+          VIN_DECODERS.Datamatrix,
+          VIN_DECODERS.PDF417,
+          VIN_DECODERS.QR,
+        )
+        barkoder.setEnableVINRestrictions(1) // EnableVINRestrictions.Enable
+        barkoder.setDecodingSpeed(2) // DecodingSpeed.Slow for better accuracy
+        barkoder.setCameraResolution(1) // CameraResolution.FHD
+        barkoder.setContinuous(true)
+        barkoder.setDuplicatesDelayMs(DUPLICATES_DELAY_MS)
+
+        // UI customization
+        barkoder.setRegionOfInterestVisible(true)
+        barkoder.setRegionOfInterest(2, 30, 96, 15) // Wide ROI for VIN barcodes
+        barkoder.setRoiLineColor('#60a5fa') // Blue to match app theme
+        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.55)')
+        barkoder.setLocationInPreviewEnabled(true)
+        barkoder.setLocationLineColor('#22c55e')
+        barkoder.setFlashEnabled(true)
+        barkoder.setZoomEnabled(true)
+        barkoder.setCloseEnabled(false) // We overlay our own close button
+        barkoder.setBeepOnSuccessEnabled(true)
+
+        setLoading(false)
+        barkoder.startScanner((result: BKResult) => {
+          if (result.error || !result.textualData) return
+          barkoder.setPauseDecoding(true)
+          processResult(result.textualData)
+        })
+      } catch (err: any) {
+        if (stopped) return
+        setLoading(false)
+        setErrorMsg(err?.message || 'Failed to initialize scanner')
+        onFail?.()
+      }
     }
 
-    const stopped = { v: false }
-    startCamera('environment', stopped)
+    initWeb()
+
     return () => {
-      stopped.v = true
-      try { controlsRef.current?.stop() } catch { /* ignore */ }
-      try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
+      stopped = true
+      try { barkoderRef.current?.stopScanner() } catch { /* ignore */ }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startCamera])
+  }, [isNative, processResult, onFail])
 
-  const handleFlipCamera = async () => {
-    const next: FacingMode = facing === 'environment' ? 'user' : 'environment'
-    setFacing(next)
-    const stopped = { v: false }
-    await startCamera(next, stopped)
-  }
+  // ── Native path: barkoder-capacitor ──
+  useEffect(() => {
+    if (!isNative) return
 
-  const handleTorch = async () => {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track) return
-    try {
-      await (track as any).applyConstraints({ advanced: [{ torch: !torchOn }] })
-      setTorchOn(t => !t)
-    } catch { /* torch not supported on this device */ }
-  }
+    let stopped = false
+    let listenerHandle: { remove: () => void } | null = null
+
+    async function initNative() {
+      try {
+        const { Barkoder: BarkoderPlugin, BarcodeType, DecodingSpeed, BarkoderResolution } = await import('barkoder-capacitor')
+        if (stopped) return
+
+        const key = getBarkoderLicenseKey()
+
+        // Initialize the native view (full-screen)
+        await BarkoderPlugin.initialize({ width: window.innerWidth, height: window.innerHeight, x: 0, y: 0 })
+        await BarkoderPlugin.registerWithLicenseKey({ licenseKey: key })
+
+        // Enable VIN barcode types
+        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.code39, enabled: true })
+        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.code128, enabled: true })
+        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.datamatrix, enabled: true })
+        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.pdf417, enabled: true })
+        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.qr, enabled: true })
+        await BarkoderPlugin.setEnableVINRestrictions({ value: true })
+        await BarkoderPlugin.setDecodingSpeed({ value: DecodingSpeed.slow })
+        await BarkoderPlugin.setBarkoderResolution({ value: BarkoderResolution.FHD })
+        await BarkoderPlugin.setRegionOfInterest({ left: 2, top: 30, width: 96, height: 15 })
+        await BarkoderPlugin.setRegionOfInterestVisible({ value: true })
+        await BarkoderPlugin.setLocationInPreviewEnabled({ enabled: true })
+        await BarkoderPlugin.setBeepOnSuccessEnabled({ enabled: true })
+        await BarkoderPlugin.setVibrateOnSuccessEnabled({ enabled: true })
+        await BarkoderPlugin.setCloseSessionOnResultEnabled({ enabled: true })
+        await BarkoderPlugin.setThresholdBetweenDuplicatesScans({ value: DUPLICATES_DELAY_MS })
+
+        // UI colors
+        await BarkoderPlugin.setRoiLineColor({ value: '#60a5fa' })
+        await BarkoderPlugin.setRoiOverlayBackgroundColor({ value: 'rgba(0,0,0,0.55)' })
+        await BarkoderPlugin.setLocationLineColor({ value: '#22c55e' })
+
+        // Listen for scan results
+        listenerHandle = await BarkoderPlugin.addListener('barkoderResultEvent', (data: any) => {
+          if (stopped) return
+          const results = data?.decoderResults || data?.results || []
+          for (const r of results) {
+            if (r.textualData && processResult(r.textualData)) break
+          }
+        })
+
+        if (stopped) return
+        setLoading(false)
+
+        await BarkoderPlugin.startScanning()
+      } catch (err: any) {
+        if (stopped) return
+        setLoading(false)
+        setErrorMsg(err?.message || 'Failed to initialize native scanner')
+        onFail?.()
+      }
+    }
+
+    initNative()
+
+    return () => {
+      stopped = true
+      listenerHandle?.remove()
+      import('barkoder-capacitor').then(({ Barkoder: BarkoderPlugin }) => {
+        BarkoderPlugin.stopScanning().catch(() => {})
+      }).catch(() => {})
+    }
+  }, [isNative, processResult, onFail])
 
   const handleUseVin = () => {
     if (!pendingVin) return
@@ -157,62 +182,49 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
     setPendingVinMeta(null)
   }
 
-  const handleDismiss = () => {
+  const handleScanAgain = useCallback(async () => {
     setPendingVin('')
     setPendingVinMeta(null)
-    lastVinRef.current = { vin: '', ts: 0 }
-  }
+
+    if (isNative) {
+      try {
+        const { Barkoder: BarkoderPlugin } = await import('barkoder-capacitor')
+        await BarkoderPlugin.startScanning()
+      } catch { /* ignore */ }
+    } else {
+      barkoderRef.current?.setPauseDecoding(false)
+    }
+  }, [isNative])
 
   const vinModalOpen = !!pendingVin
 
   return (
     <div className="sc-overlay">
-      <video ref={videoRef} className="sc-video" playsInline muted autoPlay />
-
-      {/* aim box with dark surround */}
-      <div className={`sc-aim ${vinModalOpen ? 'sc-aim--found' : ''}`}>
-        <span className="sc-corner sc-corner--tl" />
-        <span className="sc-corner sc-corner--tr" />
-        <span className="sc-corner sc-corner--bl" />
-        <span className="sc-corner sc-corner--br" />
-        {!vinModalOpen && <div className="sc-scanline" />}
-      </div>
-
-      {/* hint below aim box */}
-      {!vinModalOpen && (
-        <div className="sc-hint">Align VIN barcode inside the frame</div>
+      {/* Web: Barkoder renders its camera view inside this container */}
+      {!isNative && (
+        <div id="barkoder-container" className="sc-barkoder-container" />
       )}
 
-      {/* top bar */}
+      {/* Native: dark background when scanner dismissed for confirmation */}
+      {isNative && vinModalOpen && (
+        <div className="sc-native-bg" />
+      )}
+
+      {/* Loading indicator */}
+      {loading && (
+        <div className="sc-loading">
+          <div className="sc-spinner" />
+          <span>Starting scanner...</span>
+        </div>
+      )}
+
+      {/* Top bar with close button */}
       <div className="sc-topbar">
         <button type="button" className="sc-icon-btn" onClick={onClose} aria-label="Close">
           <IconClose />
         </button>
         <span className="sc-title">Scan VIN</span>
         <div style={{ width: 40 }} />
-      </div>
-
-      {/* bottom controls — always rendered, torch hidden if not supported */}
-      <div className="sc-bottombar">
-        <button
-          type="button"
-          className={`sc-ctrl-btn ${torchOn ? 'sc-ctrl-btn--active' : ''} ${!torchSupported ? 'sc-ctrl-btn--hidden' : ''}`}
-          onClick={handleTorch}
-          aria-label="Toggle flashlight"
-        >
-          {torchOn ? <IconFlashOn /> : <IconFlashOff />}
-          <span className="sc-ctrl-label">{torchOn ? 'Flash On' : 'Flash'}</span>
-        </button>
-
-        <button
-          type="button"
-          className="sc-ctrl-btn"
-          onClick={handleFlipCamera}
-          aria-label="Flip camera"
-        >
-          <IconFlip />
-          <span className="sc-ctrl-label">Flip</span>
-        </button>
       </div>
 
       {errorMsg && <div className="sc-error">{errorMsg}</div>}
@@ -225,13 +237,13 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
             <div className="sc-result-value">{pendingVin}</div>
             {pendingVinMeta && (
               <div className="sc-result-meta">
-                {pendingVinMeta.checksumOk ? '✓ Checksum verified' : '~ Pattern match only'}
+                {pendingVinMeta.checksumOk ? '\u2713 Checksum verified' : '~ Pattern match only'}
               </div>
             )}
           </div>
           <div className="sc-result-actions">
             <button type="button" className="sc-result-primary" onClick={handleUseVin}>Use VIN</button>
-            <button type="button" className="sc-result-secondary" onClick={handleDismiss}>Scan Again</button>
+            <button type="button" className="sc-result-secondary" onClick={handleScanAgain}>Scan Again</button>
           </div>
         </div>
       )}
@@ -242,55 +254,33 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           background: #000; overflow: hidden;
           display: flex; flex-direction: column;
         }
-        .sc-video {
+        .sc-barkoder-container {
           position: absolute; inset: 0;
-          width: 100%; height: 100%; object-fit: cover;
+          width: 100%; height: 100%;
+        }
+        .sc-native-bg {
+          position: absolute; inset: 0;
+          background: #000;
         }
 
-        /* ── aim box ── */
-        .sc-aim {
-          position: absolute;
-          top: 38%; left: 50%;
-          transform: translate(-50%, -50%);
-          width: min(88vw, 400px);
-          height: clamp(70px, 20vw, 110px);
-          box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
-          border-radius: 8px;
-          z-index: 1;
-        }
-        .sc-aim--found {
-          box-shadow: 0 0 0 9999px rgba(0,0,0,0.6), 0 0 0 3px #22c55e;
-        }
-        .sc-corner {
-          position: absolute; width: 24px; height: 24px;
-          border-color: #60a5fa; border-style: solid;
-        }
-        .sc-corner--tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-        .sc-corner--tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-        .sc-corner--bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-        .sc-corner--br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-        .sc-scanline {
-          position: absolute; left: 4px; right: 4px; height: 2px;
-          background: linear-gradient(90deg, transparent, #3b82f6, #93c5fd, #3b82f6, transparent);
-          animation: sc-scan 1.6s ease-in-out infinite;
-          border-radius: 1px;
-        }
-        @keyframes sc-scan {
-          0%   { top: 2px; opacity: 0.9; }
-          50%  { opacity: 0.6; }
-          100% { top: calc(100% - 4px); opacity: 0.9; }
-        }
-
-        /* ── hint ── */
-        .sc-hint {
-          position: absolute;
-          top: calc(38% + clamp(35px, 10vw, 55px) + 14px);
-          left: 50%; transform: translateX(-50%);
+        /* ── loading ── */
+        .sc-loading {
+          position: absolute; inset: 0;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          gap: 16px; z-index: 5;
           color: rgba(255,255,255,0.8);
-          font-size: 0.8rem; white-space: nowrap;
-          text-shadow: 0 1px 6px rgba(0,0,0,0.9);
-          z-index: 2; pointer-events: none;
-          letter-spacing: 0.01em;
+          font-size: 0.85rem;
+        }
+        .sc-spinner {
+          width: 32px; height: 32px;
+          border: 3px solid rgba(255,255,255,0.2);
+          border-top-color: #60a5fa;
+          border-radius: 50%;
+          animation: sc-spin 0.8s linear infinite;
+        }
+        @keyframes sc-spin {
+          to { transform: rotate(360deg); }
         }
 
         /* ── top bar ── */
@@ -314,38 +304,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         .sc-icon-btn:active { background: rgba(255,255,255,0.32); }
-
-        /* ── bottom controls ── */
-        .sc-bottombar {
-          position: absolute; bottom: 0; left: 0; right: 0;
-          display: flex; align-items: flex-end; justify-content: space-around;
-          padding: 20px 40px;
-          padding-bottom: max(env(safe-area-inset-bottom), 28px);
-          background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
-          z-index: 10;
-        }
-        .sc-ctrl-btn {
-          display: flex; flex-direction: column; align-items: center; gap: 6px;
-          background: rgba(255,255,255,0.15);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 16px;
-          padding: 14px 20px;
-          color: #fff; cursor: pointer;
-          -webkit-tap-highlight-color: transparent;
-          min-width: 72px;
-          transition: background 0.15s;
-        }
-        .sc-ctrl-btn:active { background: rgba(255,255,255,0.3); }
-        .sc-ctrl-btn--active {
-          background: rgba(251,191,36,0.2);
-          border-color: rgba(251,191,36,0.5);
-        }
-        .sc-ctrl-btn--hidden { opacity: 0; pointer-events: none; }
-        .sc-ctrl-label {
-          font-size: 0.7rem; font-weight: 600;
-          color: rgba(255,255,255,0.85);
-          letter-spacing: 0.02em;
-        }
 
         /* ── error ── */
         .sc-error {
