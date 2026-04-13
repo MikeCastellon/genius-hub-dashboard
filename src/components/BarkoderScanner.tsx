@@ -18,7 +18,7 @@ function IconClose() {
   )
 }
 
-export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
+export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }: Props) {
   const barkoderRef = useRef<BarkoderWasm | null>(null)
   const [pendingVin, setPendingVin] = useState('')
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
