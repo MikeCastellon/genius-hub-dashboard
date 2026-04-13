@@ -67,28 +67,40 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           VIN_DECODERS.PDF417,
           VIN_DECODERS.QR,
         )
-        barkoder.setEnableVINRestrictions(1) // EnableVINRestrictions.Enable
+        barkoder.setEnableVINRestrictions(0) // Disabled — we validate VINs ourselves via pickBestVinFromText
         barkoder.setDecodingSpeed(2) // DecodingSpeed.Slow for better accuracy
         barkoder.setCameraResolution(1) // CameraResolution.FHD
         barkoder.setContinuous(true)
         barkoder.setDuplicatesDelayMs(DUPLICATES_DELAY_MS)
+        barkoder.setEnableMisshaped1D(1) // Handle damaged/curved barcodes
 
-        // UI customization
+        // UI customization — large ROI for easy aiming
         barkoder.setRegionOfInterestVisible(true)
-        barkoder.setRegionOfInterest(2, 30, 96, 15) // Wide ROI for VIN barcodes
+        barkoder.setRegionOfInterest(2, 20, 96, 60) // Wide + tall ROI
         barkoder.setRoiLineColor('#60a5fa') // Blue to match app theme
-        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.55)')
+        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.45)')
         barkoder.setLocationInPreviewEnabled(true)
         barkoder.setLocationLineColor('#22c55e')
         barkoder.setFlashEnabled(true)
         barkoder.setZoomEnabled(true)
         barkoder.setCloseEnabled(false) // We overlay our own close button
         barkoder.setBeepOnSuccessEnabled(true)
+        barkoder.setCameraPickerEnabled(true) // Allow switching cameras
 
         setLoading(false)
         console.log('[BarkoderScanner] starting scanner...')
         barkoder.startScanner((result: BKResult) => {
-          if (result.error || !result.textualData) return
+          console.log('[BarkoderScanner] result:', JSON.stringify({
+            error: result.error,
+            textualData: result.textualData,
+            barcodeTypeName: result.barcodeTypeName,
+            resultsCount: result.resultsCount,
+          }))
+          if (result.error) {
+            console.warn('[BarkoderScanner] decode error:', result.error)
+            return
+          }
+          if (!result.textualData) return
           barkoder.setPauseDecoding(true)
           processResult(result.textualData)
         })
