@@ -53,6 +53,18 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
 
     async function initWeb() {
       try {
+        // Wait a tick to ensure the container div is in the DOM
+        // barkoder-wasm grabs document.getElementById('barkoder-container') at module load
+        await new Promise(r => requestAnimationFrame(r))
+
+        const containerEl = document.getElementById('barkoder-container')
+        console.log('[BarkoderScanner] container element:', containerEl ? 'found' : 'NOT FOUND')
+        if (!containerEl) {
+          setLoading(false)
+          setErrorMsg('Scanner container not found')
+          return
+        }
+
         console.log('[BarkoderScanner] importing barkoder-wasm...')
         const { initialize } = await import('barkoder-wasm')
         if (stopped) return
@@ -60,7 +72,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
         const key = getBarkoderLicenseKey()
         console.log('[BarkoderScanner] initializing with key:', key ? `${key.slice(0, 20)}...` : '(empty)')
         const barkoder = await initialize(key)
-        console.log('[BarkoderScanner] initialized successfully')
+        console.log('[BarkoderScanner] initialized successfully, version:', JSON.stringify(barkoder.getVersion()))
         if (stopped) {
           barkoder.stopScanner()
           return
