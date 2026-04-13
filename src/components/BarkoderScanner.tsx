@@ -30,10 +30,19 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
 
   const processResult = useCallback((text: string) => {
     const best = pickBestVinFromText(text)
-    if (!best?.vin) return false
-    setPendingVin(best.vin)
-    setPendingVinMeta({ checksumOk: !!best.checksumOk })
-    return true
+    if (best?.vin) {
+      setPendingVin(best.vin)
+      setPendingVinMeta({ checksumOk: !!best.checksumOk })
+      return true
+    }
+    // No VIN pattern found — show the raw decoded text so user can see what was scanned
+    const cleaned = text.trim()
+    if (cleaned) {
+      setPendingVin(cleaned)
+      setPendingVinMeta(null)
+      return true
+    }
+    return false
   }, [])
 
   // ── Web path: barkoder-wasm ──
@@ -90,19 +99,22 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
         setLoading(false)
         console.log('[BarkoderScanner] starting scanner...')
         barkoder.startScanner((result: BKResult) => {
-          console.log('[BarkoderScanner] result:', JSON.stringify({
-            error: result.error,
-            textualData: result.textualData,
-            barcodeTypeName: result.barcodeTypeName,
-            resultsCount: result.resultsCount,
-          }))
+          console.log('[BarkoderScanner] raw result:', JSON.stringify(result, null, 2))
           if (result.error) {
             console.warn('[BarkoderScanner] decode error:', result.error)
             return
           }
-          if (!result.textualData) return
+
+          // Try top-level textualData first, then check results array
+          let text = result.textualData
+          if (!text && result.results?.length) {
+            text = result.results[0].textualData
+          }
+          if (!text) return
+
+          console.log('[BarkoderScanner] decoded text:', text, '| type:', result.barcodeTypeName)
           barkoder.setPauseDecoding(true)
-          processResult(result.textualData)
+          processResult(text)
         })
       } catch (err: any) {
         if (stopped) return
