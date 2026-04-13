@@ -18,20 +18,31 @@ function IconClose() {
   )
 }
 
-export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
+export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }: Props) {
   const barkoderRef = useRef<BarkoderWasm | null>(null)
   const [pendingVin, setPendingVin] = useState('')
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  const isNative = Capacitor.isNativePlatform()
+  // Use native barkoder-capacitor only on Android.
+  // iOS uses barkoder-wasm in the webview (the capacitor plugin requires Cap 6, we have Cap 8).
+  const isNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
 
   const processResult = useCallback((text: string) => {
     const best = pickBestVinFromText(text)
-    if (!best?.vin) return false
-    setPendingVin(best.vin)
-    setPendingVinMeta({ checksumOk: !!best.checksumOk })
-    return true
+    if (best?.vin) {
+      setPendingVin(best.vin)
+      setPendingVinMeta({ checksumOk: !!best.checksumOk })
+      return true
+    }
+    // No VIN pattern found — show the raw decoded text so user can see what was scanned
+    const cleaned = text.trim()
+    if (cleaned) {
+      setPendingVin(cleaned)
+      setPendingVinMeta(null)
+      return true
+    }
+    return false
   }, [])
 
   // ── Web path: barkoder-wasm ──
@@ -42,11 +53,14 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
 
     async function initWeb() {
       try {
+        console.log('[BarkoderScanner] importing barkoder-wasm...')
         const { initialize } = await import('barkoder-wasm')
         if (stopped) return
 
         const key = getBarkoderLicenseKey()
+        console.log('[BarkoderScanner] initializing with key:', key ? `${key.slice(0, 20)}...` : '(empty)')
         const barkoder = await initialize(key)
+        console.log('[BarkoderScanner] initialized successfully')
         if (stopped) {
           barkoder.stopScanner()
           return
@@ -62,35 +76,52 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           VIN_DECODERS.PDF417,
           VIN_DECODERS.QR,
         )
-        barkoder.setEnableVINRestrictions(1) // EnableVINRestrictions.Enable
+        barkoder.setEnableVINRestrictions(0) // Disabled — we validate VINs ourselves via pickBestVinFromText
         barkoder.setDecodingSpeed(2) // DecodingSpeed.Slow for better accuracy
         barkoder.setCameraResolution(1) // CameraResolution.FHD
         barkoder.setContinuous(true)
         barkoder.setDuplicatesDelayMs(DUPLICATES_DELAY_MS)
+        barkoder.setEnableMisshaped1D(1) // Handle damaged/curved barcodes
 
-        // UI customization
+        // UI customization — large ROI for easy aiming
         barkoder.setRegionOfInterestVisible(true)
-        barkoder.setRegionOfInterest(2, 30, 96, 15) // Wide ROI for VIN barcodes
+        barkoder.setRegionOfInterest(2, 20, 96, 60) // Wide + tall ROI
         barkoder.setRoiLineColor('#60a5fa') // Blue to match app theme
-        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.55)')
+        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.45)')
         barkoder.setLocationInPreviewEnabled(true)
         barkoder.setLocationLineColor('#22c55e')
         barkoder.setFlashEnabled(true)
         barkoder.setZoomEnabled(true)
         barkoder.setCloseEnabled(false) // We overlay our own close button
         barkoder.setBeepOnSuccessEnabled(true)
+        barkoder.setCameraPickerEnabled(true) // Allow switching cameras
 
         setLoading(false)
+        console.log('[BarkoderScanner] starting scanner...')
         barkoder.startScanner((result: BKResult) => {
-          if (result.error || !result.textualData) return
+          console.log('[BarkoderScanner] raw result:', JSON.stringify(result, null, 2))
+          if (result.error) {
+            console.warn('[BarkoderScanner] decode error:', result.error)
+            return
+          }
+
+          // Try top-level textualData first, then check results array
+          let text = result.textualData
+          if (!text && result.results?.length) {
+            text = result.results[0].textualData
+          }
+          if (!text) return
+
+          console.log('[BarkoderScanner] decoded text:', text, '| type:', result.barcodeTypeName)
           barkoder.setPauseDecoding(true)
-          processResult(result.textualData)
+          processResult(text)
         })
       } catch (err: any) {
         if (stopped) return
+        console.error('[BarkoderScanner] web init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize scanner')
-        onFail?.()
+        // Don't call onFail here — let user see the error and close manually
       }
     }
 
@@ -100,7 +131,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
       stopped = true
       try { barkoderRef.current?.stopScanner() } catch { /* ignore */ }
     }
-  }, [isNative, processResult, onFail])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative, processResult])
 
   // ── Native path: barkoder-capacitor ──
   useEffect(() => {
@@ -157,9 +189,9 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         await BarkoderPlugin.startScanning()
       } catch (err: any) {
         if (stopped) return
+        console.error('[BarkoderScanner] native init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize native scanner')
-        onFail?.()
       }
     }
 
@@ -172,7 +204,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         BarkoderPlugin.stopScanning().catch(() => {})
       }).catch(() => {})
     }
-  }, [isNative, processResult, onFail])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative, processResult])
 
   const handleUseVin = () => {
     if (!pendingVin) return
