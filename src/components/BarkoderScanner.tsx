@@ -114,6 +114,12 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           console.log('[BarkoderScanner] raw result:', JSON.stringify(result, null, 2))
           if (result.error) {
             console.warn('[BarkoderScanner] decode error:', result.error)
+            const errName = result.error?.name || ''
+            const errMsg = result.error?.message || ''
+            if (errName === 'NotAllowedError' || errMsg.toLowerCase().includes('permission')) {
+              setLoading(false)
+              setErrorMsg('Camera permission denied. Please allow camera access and try again.')
+            }
             return
           }
 
