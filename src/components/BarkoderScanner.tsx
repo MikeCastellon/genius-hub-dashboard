@@ -24,9 +24,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  // Use native barkoder-capacitor only on Android.
-  // iOS uses barkoder-wasm in the webview (the capacitor plugin requires Cap 6, we have Cap 8).
-  const isNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
+  // Use native barkoder-capacitor on iOS and Android.
+  const isNative = Capacitor.isNativePlatform()
 
   const processResult = useCallback((text: string) => {
     const best = pickBestVinFromText(text)
