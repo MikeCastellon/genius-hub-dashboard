@@ -35,6 +35,12 @@ function extractBarkoderText(res: any): string {
   )
 }
 
+// Known-valid demo VIN: 2003 Honda Accord EX, passes VIN checksum,
+// decodes cleanly via NHTSA. Used when Barkoder runs in unlicensed
+// demo mode and watermarks the scan output, so the user can still
+// test the entire downstream intake flow.
+const DEMO_TEST_VIN = '1HGCM82633A004352'
+
 export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const barkoderRef = useRef<any>(null)
@@ -42,6 +48,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
   const lastVinRef = useRef<{ vin: string; ts: number }>({ vin: '', ts: 0 })
   const [pendingVin, setPendingVin] = useState('')
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
+  const [unlicensedDetected, setUnlicensedDetected] = useState(false)
+  const [unlicensedSample, setUnlicensedSample] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
   const [debugOpen, setDebugOpen] = useState(true)
@@ -137,6 +145,21 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
               return
             }
 
+            // ── Unlicensed demo-mode detection ──
+            // If Barkoder's server rejected the license, the SDK replaces
+            // real barcode text with a "(Unlicensed) ..." watermark. No
+            // VIN can ever be parsed from that. Pop a demo modal with a
+            // test VIN so the user can exercise the downstream intake
+            // flow while we wait for a valid license from Barkoder.
+            if (/unlicensed/i.test(text)) {
+              console.warn('[scanner] unlicensed demo mode detected, offering test VIN')
+              if (!unlicensedDetected) {
+                setUnlicensedDetected(true)
+                setUnlicensedSample(text)
+              }
+              return
+            }
+
             const best = pickBestVinFromText(text)
             console.log('[scanner] pickBestVinFromText result:', best)
             if (!best?.vin) {
@@ -224,6 +247,16 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
     }
   }, [])
 
+  const handleUseTestVin = () => {
+    onDetected(DEMO_TEST_VIN)
+    setUnlicensedDetected(false)
+  }
+
+  const handleEnterManually = () => {
+    setUnlicensedDetected(false)
+    onClose()
+  }
+
   const vinModalOpen = !!pendingVin
 
   return (
@@ -282,6 +315,32 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           <div className="sc-result-actions">
             <button type="button" className="sc-result-primary" onClick={handleUseVin}>Use VIN</button>
             <button type="button" className="sc-result-secondary" onClick={handleScanAgain}>Scan Again</button>
+          </div>
+        </div>
+      )}
+
+      {unlicensedDetected && !vinModalOpen && (
+        <div className="sc-result sc-result--warn">
+          <div>
+            <div className="sc-result-label sc-result-label--warn">Barkoder unlicensed demo mode</div>
+            <div className="sc-result-warn-body">
+              A barcode was detected and the scanner is working, but Barkoder's
+              server rejected the license key so the real VIN text is being
+              watermarked. Use the test VIN below to continue testing the
+              intake flow until a valid license is installed.
+            </div>
+            {unlicensedSample && (
+              <div className="sc-result-sample">watermark: <span>{unlicensedSample}</span></div>
+            )}
+            <div className="sc-result-testvin">
+              <span className="sc-result-label">Test VIN</span>
+              <code>{DEMO_TEST_VIN}</code>
+              <span className="sc-result-sub">2003 Honda Accord EX · NHTSA decodable</span>
+            </div>
+          </div>
+          <div className="sc-result-actions">
+            <button type="button" className="sc-result-primary" onClick={handleUseTestVin}>Use test VIN</button>
+            <button type="button" className="sc-result-secondary" onClick={handleEnterManually}>Enter manually</button>
           </div>
         </div>
       )}
@@ -372,6 +431,51 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         .sc-result-primary:active { background: #1d4ed8; }
         .sc-result-secondary { background: #f1f5f9; color: #0f172a; min-width: 120px; }
         .sc-result-secondary:active { background: #e2e8f0; }
+
+        /* Unlicensed demo-mode modal variant */
+        .sc-result--warn {
+          border-top: 4px solid #f59e0b;
+        }
+        .sc-result-label--warn {
+          color: #b45309 !important;
+        }
+        .sc-result-warn-body {
+          margin-top: 10px;
+          font-size: 0.82rem;
+          line-height: 1.4;
+          color: #374151;
+        }
+        .sc-result-sample {
+          margin-top: 10px;
+          font-size: 0.72rem;
+          color: #6b7280;
+          font-family: ui-monospace, monospace;
+          word-break: break-all;
+        }
+        .sc-result-sample span {
+          color: #b45309;
+        }
+        .sc-result-testvin {
+          margin-top: 14px;
+          padding: 10px 12px;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .sc-result-testvin code {
+          font-family: ui-monospace, monospace;
+          font-size: 1rem;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: 0.02em;
+        }
+        .sc-result-sub {
+          font-size: 0.7rem;
+          color: #78350f;
+        }
 
         /* Debug panel */
         .sc-debug {
