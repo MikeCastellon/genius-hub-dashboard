@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from 'react'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
-import { preloadBarkoderWasm, DUPLICATES_DELAY_MS } from '@/lib/barkoderConfig'
+import {
+  preloadBarkoderWasm,
+  DUPLICATES_DELAY_MS,
+  getDebugLines,
+  subscribeDebugLines,
+  clearDebugLines,
+} from '@/lib/barkoderConfig'
 
 interface Props {
   onClose: () => void
@@ -38,9 +44,33 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [debugOpen, setDebugOpen] = useState(true)
+
+  // Live debug log — re-renders whenever a new [scanner]/[barkoder] log arrives.
+  const debugLines = useSyncExternalStore(
+    subscribeDebugLines,
+    getDebugLines,
+    getDebugLines
+  )
 
   useEffect(() => {
     let cancelled = false
+    clearDebugLines()
+    console.log('[scanner] component mounted, UA=', navigator.userAgent.slice(0, 80))
+    console.log('[scanner] getUserMedia available?', !!navigator.mediaDevices?.getUserMedia)
+    console.log('[scanner] secure context?', window.isSecureContext)
+
+    // Catch any uncaught errors/rejections that happen during scanning
+    // (Barkoder internals, event handlers, etc) so they appear in the panel.
+    const onErr = (ev: ErrorEvent) => {
+      console.error('[scanner] window error:', ev.message, ev.filename + ':' + ev.lineno)
+    }
+    const onRej = (ev: PromiseRejectionEvent) => {
+      const reason: any = ev.reason
+      console.error('[scanner] unhandled rejection:', reason?.message || String(reason))
+    }
+    window.addEventListener('error', onErr)
+    window.addEventListener('unhandledrejection', onRej)
 
     async function initScanner() {
       try {
@@ -137,12 +167,27 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           Barkoder.startScanner(onResult)
           console.log('[scanner] startScanner returned')
         } catch (e: any) {
-          console.error('[scanner] startScanner threw:', e)
+          console.error('[scanner] startScanner threw:', e?.message || String(e))
           setErrorMsg('Scanner start failed: ' + (e?.message || String(e)))
         }
+
+        // Probe where Barkoder mounted its video element
+        setTimeout(() => {
+          if (cancelled) return
+          const containerVideo = containerRef.current?.querySelector('video')
+          const anyVideo = document.querySelector('video')
+          if (containerVideo) {
+            const s = containerVideo as HTMLVideoElement
+            console.log('[scanner] video in container:', s.videoWidth + 'x' + s.videoHeight, 'readyState=' + s.readyState, 'paused=' + s.paused)
+          } else if (anyVideo) {
+            console.warn('[scanner] video NOT in container, found elsewhere. parent=', anyVideo.parentElement?.tagName, anyVideo.parentElement?.id || '(no id)')
+          } else {
+            console.error('[scanner] NO video element in DOM after 1.2s')
+          }
+        }, 1200)
       } catch (err: any) {
         if (cancelled) return
-        console.error('[scanner] init failed:', err)
+        console.error('[scanner] init failed:', err?.message || String(err))
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize scanner')
         onFail?.()
@@ -153,6 +198,8 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
 
     return () => {
       cancelled = true
+      window.removeEventListener('error', onErr)
+      window.removeEventListener('unhandledrejection', onRej)
       try { barkoderRef.current?.stopScanner?.() } catch { /* ignore */ }
     }
   }, [onFail])
@@ -200,6 +247,26 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
       </div>
 
       {errorMsg && <div className="sc-error">{errorMsg}</div>}
+
+      {/* On-screen debug panel — mobile-friendly alternative to DevTools */}
+      <div className={debugOpen ? 'sc-debug sc-debug--open' : 'sc-debug'}>
+        <div className="sc-debug-header">
+          <span>debug ({debugLines.length})</span>
+          <button type="button" onClick={() => setDebugOpen((v) => !v)}>
+            {debugOpen ? 'hide' : 'show'}
+          </button>
+        </div>
+        {debugOpen && (
+          <div className="sc-debug-body">
+            {debugLines.length === 0 && <div className="sc-debug-empty">no logs yet…</div>}
+            {debugLines.map((line, i) => (
+              <div key={i} className={'sc-debug-line sc-debug-' + line.level}>
+                {line.text}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {vinModalOpen && (
         <div className="sc-result">
@@ -305,6 +372,51 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
         .sc-result-primary:active { background: #1d4ed8; }
         .sc-result-secondary { background: #f1f5f9; color: #0f172a; min-width: 120px; }
         .sc-result-secondary:active { background: #e2e8f0; }
+
+        /* Debug panel */
+        .sc-debug {
+          position: absolute;
+          left: 8px; right: 8px;
+          top: calc(env(safe-area-inset-top, 12px) + 64px);
+          max-height: 55vh;
+          background: rgba(0, 0, 0, 0.82);
+          color: #e5e7eb;
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 10px;
+          font-family: ui-monospace, Menlo, monospace;
+          font-size: 10.5px;
+          line-height: 1.35;
+          z-index: 20;
+          overflow: hidden;
+          pointer-events: auto;
+        }
+        .sc-debug-header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 6px 10px;
+          background: rgba(255,255,255,0.08);
+          border-bottom: 1px solid rgba(255,255,255,0.12);
+          font-weight: 700; letter-spacing: 0.03em;
+        }
+        .sc-debug-header button {
+          background: rgba(255,255,255,0.15); color: #fff;
+          border: none; border-radius: 6px;
+          padding: 3px 10px; font-size: 10.5px; font-weight: 700;
+          cursor: pointer;
+        }
+        .sc-debug-body {
+          padding: 6px 10px;
+          overflow-y: auto;
+          max-height: calc(55vh - 32px);
+        }
+        .sc-debug-empty { color: rgba(255,255,255,0.4); font-style: italic; }
+        .sc-debug-line {
+          word-break: break-word;
+          padding: 2px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .sc-debug-log { color: #e5e7eb; }
+        .sc-debug-warn { color: #fbbf24; }
+        .sc-debug-error { color: #f87171; font-weight: 600; }
       `}</style>
     </div>
   )
