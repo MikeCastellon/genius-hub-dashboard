@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Capacitor } from '@capacitor/core'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
-import { getBarkoderLicenseKey, VIN_DECODERS, DUPLICATES_DELAY_MS } from '@/lib/barkoderConfig'
-import type { Barkoder as BarkoderWasm, BKResult } from 'barkoder-wasm'
+import { preloadBarkoderWasm, DUPLICATES_DELAY_MS } from '@/lib/barkoderConfig'
 
 interface Props {
   onClose: () => void
@@ -18,211 +16,111 @@ function IconClose() {
   )
 }
 
-export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }: Props) {
-  const barkoderRef = useRef<BarkoderWasm | null>(null)
+export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const barkoderRef = useRef<any>(null)
+  const onResultRef = useRef<((res: any) => void) | null>(null)
+  const lastVinRef = useRef<{ vin: string; ts: number }>({ vin: '', ts: 0 })
   const [pendingVin, setPendingVin] = useState('')
   const [pendingVinMeta, setPendingVinMeta] = useState<{ checksumOk: boolean } | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  // Use native barkoder-capacitor on iOS and Android.
-  const isNative = Capacitor.isNativePlatform()
 
-  const processResult = useCallback((text: string) => {
-    const best = pickBestVinFromText(text)
-    if (best?.vin) {
-      setPendingVin(best.vin)
-      setPendingVinMeta({ checksumOk: !!best.checksumOk })
-      return true
-    }
-    // No VIN pattern found — show the raw decoded text so user can see what was scanned
-    const cleaned = text.trim()
-    if (cleaned) {
-      setPendingVin(cleaned)
-      setPendingVinMeta(null)
-      return true
-    }
-    return false
-  }, [])
-
-  // ── Web path: barkoder-wasm ──
   useEffect(() => {
-    if (isNative) return
+    let cancelled = false
 
-    let stopped = false
-
-    async function initWeb() {
+    async function initScanner() {
       try {
-        // Wait a tick to ensure the container div is in the DOM
-        // barkoder-wasm grabs document.getElementById('barkoder-container') at module load
-        await new Promise(r => requestAnimationFrame(r))
+        // preloadBarkoderWasm() was already called when NewIntake mounted —
+        // if WASM is ready this resolves instantly (cached promise / singleton).
+        const { bk: Barkoder, SDK } = await preloadBarkoderWasm()
+        if (cancelled) return
 
-        const containerEl = document.getElementById('barkoder-container')
-        console.log('[BarkoderScanner] container element:', containerEl ? 'found' : 'NOT FOUND')
-        if (!containerEl) {
-          setLoading(false)
-          setErrorMsg('Scanner container not found')
-          return
+        // Ensure the container div has the expected id
+        if (containerRef.current) {
+          containerRef.current.id = 'barkoder-container'
         }
 
-        console.log('[BarkoderScanner] importing barkoder-wasm...')
-        const { initialize } = await import('barkoder-wasm')
-        if (stopped) return
+        barkoderRef.current = Barkoder
 
-        const key = getBarkoderLicenseKey()
-        console.log('[BarkoderScanner] initializing with key:', key ? `${key.slice(0, 20)}...` : '(empty)')
-        const barkoder = await initialize(key)
-        console.log('[BarkoderScanner] initialized successfully, version:', JSON.stringify(barkoder.getVersion()))
-        if (stopped) {
-          barkoder.stopScanner()
-          return
+        // Hide built-in UI chrome — we render our own close button
+        try {
+          if (typeof Barkoder.setCameraSwitchVisibility === 'function') Barkoder.setCameraSwitchVisibility(false)
+          else if (typeof Barkoder.setCameraSwitchButtonVisible === 'function') Barkoder.setCameraSwitchButtonVisible(false)
+          if (typeof Barkoder.setCloseButtonVisibility === 'function') Barkoder.setCloseButtonVisibility(false)
+          else if (typeof Barkoder.setCloseButtonVisible === 'function') Barkoder.setCloseButtonVisible(false)
+          else if (typeof Barkoder.setCloseEnabled === 'function') Barkoder.setCloseEnabled(false)
+        } catch { /* non-critical */ }
+
+        // Enable VIN-relevant decoders using runtime constants (avoids hardcoded enum values)
+        try {
+          const C = Barkoder.constants || SDK.constants || {}
+          const D = C.Decoders || C.BarcodeType || {}
+          const toEnable = [D.Code39, D.Code128, D.DataMatrix, D.PDF417, D.QR].filter(v => v !== undefined)
+          if (toEnable.length && typeof Barkoder.setEnabledDecoders === 'function') {
+            Barkoder.setEnabledDecoders(...toEnable)
+          } else if (typeof Barkoder.setBarcodeTypeEnabled === 'function') {
+            toEnable.forEach((t: any) => Barkoder.setBarcodeTypeEnabled(t, true))
+          }
+        } catch { /* non-critical */ }
+
+        // ── Speed: FAST not Slow ──
+        // Slow mode (2) + FHD resolution caused ~30s detection lag.
+        // VINs are standard linear/2D codes — Fast mode is perfectly accurate.
+        // Do NOT set camera resolution — let the browser pick the optimal size.
+        try { Barkoder.setDecodingSpeed?.(0) } catch { /* ignore */ }  // 0 = Fast
+        try { Barkoder.setContinuous?.(true) } catch { /* ignore */ }
+        try { Barkoder.setDuplicatesDelayMs?.(DUPLICATES_DELAY_MS) } catch { /* ignore */ }
+
+        // ROI + visual feedback
+        try { Barkoder.setRegionOfInterestVisible?.(true) } catch { /* ignore */ }
+        try { Barkoder.setRegionOfInterest?.(2, 20, 96, 60) } catch { /* ignore */ }
+        try { Barkoder.setRoiLineColor?.('#60a5fa') } catch { /* ignore */ }
+        try { Barkoder.setRoiOverlayBackgroundColor?.('rgba(0,0,0,0.45)') } catch { /* ignore */ }
+        try { Barkoder.setLocationInPreviewEnabled?.(true) } catch { /* ignore */ }
+        try { Barkoder.setLocationLineColor?.('#22c55e') } catch { /* ignore */ }
+        try { Barkoder.setBeepOnSuccessEnabled?.(true) } catch { /* ignore */ }
+
+        const onResult = (res: any) => {
+          try {
+            const text =
+              res?.textualData ||
+              res?.text ||
+              res?.results?.[0]?.textualData ||
+              ''
+            if (!text) return
+
+            const best = pickBestVinFromText(text)
+            if (!best?.vin) return
+
+            const now = Date.now()
+            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < DUPLICATES_DELAY_MS) return
+            lastVinRef.current = { vin: best.vin, ts: now }
+
+            setPendingVin(best.vin)
+            setPendingVinMeta({ checksumOk: !!best.checksumOk })
+          } catch { /* ignore */ }
         }
 
-        barkoderRef.current = barkoder
-
-        // Configure VIN decoders
-        barkoder.setEnabledDecoders(
-          VIN_DECODERS.Code39,
-          VIN_DECODERS.Code128,
-          VIN_DECODERS.Datamatrix,
-          VIN_DECODERS.PDF417,
-          VIN_DECODERS.QR,
-        )
-        barkoder.setEnableVINRestrictions(0) // Disabled — we validate VINs ourselves via pickBestVinFromText
-        barkoder.setDecodingSpeed(2) // DecodingSpeed.Slow for better accuracy
-        barkoder.setCameraResolution(1) // CameraResolution.FHD
-        barkoder.setContinuous(true)
-        barkoder.setDuplicatesDelayMs(DUPLICATES_DELAY_MS)
-        barkoder.setEnableMisshaped1D(1) // Handle damaged/curved barcodes
-
-        // UI customization — large ROI for easy aiming
-        barkoder.setRegionOfInterestVisible(true)
-        barkoder.setRegionOfInterest(2, 20, 96, 60) // Wide + tall ROI
-        barkoder.setRoiLineColor('#60a5fa') // Blue to match app theme
-        barkoder.setRoiOverlayBackgroundColor('rgba(0,0,0,0.45)')
-        barkoder.setLocationInPreviewEnabled(true)
-        barkoder.setLocationLineColor('#22c55e')
-        barkoder.setFlashEnabled(true)
-        barkoder.setZoomEnabled(true)
-        barkoder.setCloseEnabled(false) // We overlay our own close button
-        barkoder.setBeepOnSuccessEnabled(true)
-        barkoder.setCameraPickerEnabled(true) // Allow switching cameras
-
+        onResultRef.current = onResult
         setLoading(false)
-        console.log('[BarkoderScanner] starting scanner...')
-        barkoder.startScanner((result: BKResult) => {
-          console.log('[BarkoderScanner] raw result:', JSON.stringify(result, null, 2))
-          if (result.error) {
-            console.warn('[BarkoderScanner] decode error:', result.error)
-            const errName = result.error?.name || ''
-            const errMsg = result.error?.message || ''
-            if (errName === 'NotAllowedError' || errMsg.toLowerCase().includes('permission')) {
-              setLoading(false)
-              setErrorMsg('Camera permission denied. Please allow camera access and try again.')
-            }
-            return
-          }
-
-          // Try top-level textualData first, then check results array
-          let text = result.textualData
-          if (!text && result.results?.length) {
-            text = result.results[0].textualData
-          }
-          if (!text) return
-
-          console.log('[BarkoderScanner] decoded text:', text, '| type:', result.barcodeTypeName)
-          barkoder.setPauseDecoding(true)
-          processResult(text)
-        })
+        Barkoder.startScanner(onResult)
       } catch (err: any) {
-        if (stopped) return
-        console.error('[BarkoderScanner] web init failed:', err)
+        if (cancelled) return
+        console.error('[BarkoderScanner] init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize scanner')
-        // Don't call onFail here — let user see the error and close manually
+        onFail?.()
       }
     }
 
-    initWeb()
+    initScanner()
 
     return () => {
-      stopped = true
-      try { barkoderRef.current?.stopScanner() } catch { /* ignore */ }
+      cancelled = true
+      try { barkoderRef.current?.stopScanner?.() } catch { /* ignore */ }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNative, processResult])
-
-  // ── Native path: barkoder-capacitor ──
-  useEffect(() => {
-    if (!isNative) return
-
-    let stopped = false
-    let listenerHandle: { remove: () => void } | null = null
-
-    async function initNative() {
-      try {
-        const { Barkoder: BarkoderPlugin, BarcodeType, DecodingSpeed, BarkoderResolution } = await import('barkoder-capacitor')
-        if (stopped) return
-
-        const key = getBarkoderLicenseKey()
-
-        // Initialize the native view (full-screen)
-        await BarkoderPlugin.initialize({ width: window.innerWidth, height: window.innerHeight, x: 0, y: 0 })
-        await BarkoderPlugin.registerWithLicenseKey({ licenseKey: key })
-
-        // Enable VIN barcode types
-        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.code39, enabled: true })
-        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.code128, enabled: true })
-        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.datamatrix, enabled: true })
-        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.pdf417, enabled: true })
-        await BarkoderPlugin.setBarcodeTypeEnabled({ type: BarcodeType.qr, enabled: true })
-        await BarkoderPlugin.setEnableVINRestrictions({ value: true })
-        await BarkoderPlugin.setDecodingSpeed({ value: DecodingSpeed.slow })
-        await BarkoderPlugin.setBarkoderResolution({ value: BarkoderResolution.FHD })
-        await BarkoderPlugin.setRegionOfInterest({ left: 2, top: 30, width: 96, height: 15 })
-        await BarkoderPlugin.setRegionOfInterestVisible({ value: true })
-        await BarkoderPlugin.setLocationInPreviewEnabled({ enabled: true })
-        await BarkoderPlugin.setBeepOnSuccessEnabled({ enabled: true })
-        await BarkoderPlugin.setVibrateOnSuccessEnabled({ enabled: true })
-        await BarkoderPlugin.setCloseSessionOnResultEnabled({ enabled: true })
-        await BarkoderPlugin.setThresholdBetweenDuplicatesScans({ value: DUPLICATES_DELAY_MS })
-
-        // UI colors
-        await BarkoderPlugin.setRoiLineColor({ value: '#60a5fa' })
-        await BarkoderPlugin.setRoiOverlayBackgroundColor({ value: 'rgba(0,0,0,0.55)' })
-        await BarkoderPlugin.setLocationLineColor({ value: '#22c55e' })
-
-        // Listen for scan results
-        listenerHandle = await BarkoderPlugin.addListener('barkoderResultEvent', (data: any) => {
-          if (stopped) return
-          const results = data?.decoderResults || data?.results || []
-          for (const r of results) {
-            if (r.textualData && processResult(r.textualData)) break
-          }
-        })
-
-        if (stopped) return
-        setLoading(false)
-
-        await BarkoderPlugin.startScanning()
-      } catch (err: any) {
-        if (stopped) return
-        console.error('[BarkoderScanner] native init failed:', err)
-        setLoading(false)
-        setErrorMsg(err?.message || 'Failed to initialize native scanner')
-      }
-    }
-
-    initNative()
-
-    return () => {
-      stopped = true
-      listenerHandle?.remove()
-      import('barkoder-capacitor').then(({ Barkoder: BarkoderPlugin }) => {
-        BarkoderPlugin.stopScanning().catch(() => {})
-      }).catch(() => {})
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNative, processResult])
+  }, [onFail])
 
   const handleUseVin = () => {
     if (!pendingVin) return
@@ -235,32 +133,22 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
   const handleScanAgain = useCallback(async () => {
     setPendingVin('')
     setPendingVinMeta(null)
-
-    if (isNative) {
-      try {
-        const { Barkoder: BarkoderPlugin } = await import('barkoder-capacitor')
-        await BarkoderPlugin.startScanning()
-      } catch { /* ignore */ }
-    } else {
-      barkoderRef.current?.setPauseDecoding(false)
+    lastVinRef.current = { vin: '', ts: 0 }
+    const bk = barkoderRef.current
+    if (bk && onResultRef.current) {
+      try { bk.stopScanner?.() } catch { /* ignore */ }
+      await new Promise(r => setTimeout(r, 150))
+      try { bk.startScanner?.(onResultRef.current) } catch { /* ignore */ }
     }
-  }, [isNative])
+  }, [])
 
   const vinModalOpen = !!pendingVin
 
   return (
     <div className="sc-overlay">
-      {/* Web: Barkoder renders its camera view inside this container */}
-      {!isNative && (
-        <div id="barkoder-container" className="sc-barkoder-container" />
-      )}
+      {/* Barkoder renders its camera view inside this container */}
+      <div ref={containerRef} id="barkoder-container" className="sc-barkoder-container" />
 
-      {/* Native: dark background when scanner dismissed for confirmation */}
-      {isNative && vinModalOpen && (
-        <div className="sc-native-bg" />
-      )}
-
-      {/* Loading indicator */}
       {loading && (
         <div className="sc-loading">
           <div className="sc-spinner" />
@@ -268,7 +156,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
         </div>
       )}
 
-      {/* Top bar with close button */}
       <div className="sc-topbar">
         <button type="button" className="sc-icon-btn" onClick={onClose} aria-label="Close">
           <IconClose />
@@ -279,7 +166,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
 
       {errorMsg && <div className="sc-error">{errorMsg}</div>}
 
-      {/* VIN result sheet */}
       {vinModalOpen && (
         <div className="sc-result">
           <div>
@@ -308,12 +194,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           position: absolute; inset: 0;
           width: 100%; height: 100%;
         }
-        .sc-native-bg {
-          position: absolute; inset: 0;
-          background: #000;
-        }
-
-        /* ── loading ── */
         .sc-loading {
           position: absolute; inset: 0;
           display: flex; flex-direction: column;
@@ -329,11 +209,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           border-radius: 50%;
           animation: sc-spin 0.8s linear infinite;
         }
-        @keyframes sc-spin {
-          to { transform: rotate(360deg); }
-        }
-
-        /* ── top bar ── */
+        @keyframes sc-spin { to { transform: rotate(360deg); } }
         .sc-topbar {
           position: absolute; top: 0; left: 0; right: 0;
           display: flex; align-items: center; justify-content: space-between;
@@ -354,8 +230,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         .sc-icon-btn:active { background: rgba(255,255,255,0.32); }
-
-        /* ── error ── */
         .sc-error {
           position: absolute; bottom: 120px; left: 50%;
           transform: translateX(-50%);
@@ -364,8 +238,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail: _onFail }
           font-size: 0.78rem; max-width: 85%; text-align: center;
           z-index: 10;
         }
-
-        /* ── result sheet ── */
         .sc-result {
           position: fixed; left: 0; right: 0; bottom: 0;
           background: #fff; color: #0f172a;

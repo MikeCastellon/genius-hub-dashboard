@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useServices, useCustomers, createIntake, useAuth, useIntakeConfig, upsertBusinessSettings, inviteCustomer, startJob, useActiveJob, uploadJobPhoto } from '@/lib/store'
 import { CartItem, PaymentMethod, IntakeSectionKey, IntakeConfig, getSectionFields, IntakeFieldDef, Customer } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
@@ -12,6 +12,7 @@ import PaymentSelector from '@/components/PaymentSelector'
 import BarkoderScanner from '@/components/BarkoderScanner'
 import SectionEditModal from '@/components/SectionEditModal'
 import { decodeVin, isLikelyVin } from '@/lib/utils'
+import { preloadBarkoderWasm } from '@/lib/barkoderConfig'
 
 interface VehicleData {
   vin: string
@@ -55,6 +56,10 @@ export default function NewIntake() {
   const hasActiveJob = !!activeJob && !jobStarted
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+
+  // Pre-warm the Barkoder WASM the moment this page mounts so it's ready
+  // before the user taps Scan VIN. Subsequent scanner opens are instant.
+  useEffect(() => { preloadBarkoderWasm().catch(() => {}) }, [])
 
   const saveConfigChange = async (newConfig: IntakeConfig) => {
     if (!profile?.business_id) return
