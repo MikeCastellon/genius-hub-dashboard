@@ -1,6 +1,11 @@
 /**
- * Shared Barkoder SDK configuration for web (WASM) and native (Capacitor) platforms.
- * VIN-focused barcode scanning with Code 39, Code 128, Data Matrix, PDF417, QR.
+ * Shared Barkoder SDK configuration for web (WASM).
+ *
+ * Minimal config matching the proven-working Auto Sync implementation.
+ * An earlier version of this file applied ~18 speculative "optimizations"
+ * (ROI, length ranges, DPM mode, extra decoders, setFormatting, etc.) and
+ * those broke scanning. Keep this minimal — if Auto Sync doesn't do it,
+ * don't do it here either.
  */
 
 export function getBarkoderLicenseKey(): string {
@@ -11,92 +16,46 @@ export function getBarkoderLicenseKey(): string {
 export const DUPLICATES_DELAY_MS = 1500
 
 // ── Singleton: WASM initialized once, reused across all scanner opens ──
-// This eliminates the cold-start download+compile on every scanner mount.
 let _barkoderInstance: any = null
-let _initPromise: Promise<any> | null = null
+let _initPromise: Promise<{ bk: any; SDK: any }> | null = null
 
 /**
- * Call this as early as possible (e.g. when the intake page mounts) to
- * pre-warm the WASM AND apply all config. Subsequent calls return the
- * cached promise immediately. The scanner component calls this too — if
- * pre-warming already finished, it resolves instantly and the scanner
- * only has to call startScanner().
+ * Call this as early as possible (e.g. when NewIntake mounts) to pre-warm
+ * the WASM. Subsequent calls return the cached promise immediately.
  */
-export function preloadBarkoderWasm(): Promise<any> {
+export function preloadBarkoderWasm(): Promise<{ bk: any; SDK: any }> {
   if (_initPromise) return _initPromise
 
   _initPromise = (async () => {
+    console.log('[barkoder] preload: starting')
     const key = getBarkoderLicenseKey()
-    if (!key) throw new Error('Missing Barkoder license key')
+    if (!key) {
+      console.error('[barkoder] preload: MISSING VITE_BARKODER_KEY')
+      throw new Error('Missing Barkoder license key')
+    }
+    console.log('[barkoder] preload: key length=', key.length)
 
-    const mod = await import('barkoder-wasm')
-    const SDK = (mod as any)?.default || mod
+    let SDK: any = null
+    try {
+      const mod = await import('barkoder-wasm')
+      SDK = (mod as any)?.default || mod
+      console.log('[barkoder] preload: module imported, initialize fn:', typeof SDK?.initialize)
+    } catch (e) {
+      console.error('[barkoder] preload: module import failed:', e)
+      SDK = (window as any).BarkoderSDK || (window as any).Barkoder || null
+    }
+
     if (!SDK?.initialize) throw new Error('barkoder-wasm: initialize not found')
 
     const bk = await SDK.initialize(key)
-
-    // ── Apply ALL config ONCE during preload ──
-    // Moving ~20 config calls out of the scanner hot path. These each do a
-    // WASM round-trip; consolidating them here means the scanner open latency
-    // is just startScanner(cb) — no config overhead.
-    const C = bk.constants || SDK.constants || {}
-    const D = C.Decoders || {}
-
-    try {
-      // Hide built-in UI chrome
-      if (typeof bk.setCameraSwitchVisibility === 'function') bk.setCameraSwitchVisibility(false)
-      else if (typeof bk.setCameraSwitchButtonVisible === 'function') bk.setCameraSwitchButtonVisible(false)
-      if (typeof bk.setCloseButtonVisibility === 'function') bk.setCloseButtonVisibility(false)
-      else if (typeof bk.setCloseButtonVisible === 'function') bk.setCloseButtonVisible(false)
-      else if (typeof bk.setCloseEnabled === 'function') bk.setCloseEnabled(false)
-
-      // Every realistic VIN barcode type on vehicles + docs
-      const toEnable = [
-        D.Code39, D.Code128, D.Code93,
-        D.Datamatrix,
-        D.PDF417, D.PDF417Micro,
-        D.QR, D.QRMicro,
-        D.Aztec,
-      ].filter((v: any) => v !== undefined)
-      if (toEnable.length) bk.setEnabledDecoders(...toEnable)
-
-      // Speed
-      bk.setDecodingSpeed?.(0)           // Fast
-      bk.setCameraResolution?.(0)        // HD (not FHD)
-      bk.setMaximumResultsCount?.(1)     // stop at first hit
-      bk.setMulticodeCachingEnabled?.(0) // disabled
-      bk.setContinuous?.(true)
-      bk.setDuplicatesDelayMs?.(DUPLICATES_DELAY_MS)
-
-      // VIN length constraint — decoder short-circuits on wrong length
-      if (D.Code39 !== undefined) bk.setLengthRange?.(D.Code39, 17, 25)
-      if (D.Code128 !== undefined) bk.setLengthRange?.(D.Code128, 17, 25)
-      if (D.Code93 !== undefined) bk.setLengthRange?.(D.Code93, 17, 25)
-
-      // Coverage for worn/etched labels
-      bk.setEnableMisshaped1D?.(1)
-      bk.setDatamatrixDpmModeEnabled?.(true)
-      bk.setFormatting?.(1) // Automatic
-
-      // ROI
-      bk.setRegionOfInterestVisible?.(true)
-      bk.setRegionOfInterest?.(3, 25, 94, 50)
-      bk.setRoiLineColor?.('#60a5fa')
-      bk.setRoiOverlayBackgroundColor?.('rgba(0,0,0,0.45)')
-      bk.setLocationInPreviewEnabled?.(true)
-      bk.setLocationLineColor?.('#22c55e')
-      bk.setBeepOnSuccessEnabled?.(true)
-    } catch (err) {
-      console.warn('[barkoder] config warning:', err)
-      // Non-fatal — scanner can still start with defaults
-    }
+    console.log('[barkoder] preload: initialized successfully')
 
     _barkoderInstance = bk
     return { bk, SDK }
   })()
 
-  _initPromise.catch(() => {
-    // Reset so a retry is possible on failure
+  _initPromise.catch((err) => {
+    console.error('[barkoder] preload: failed, resetting for retry:', err)
     _initPromise = null
     _barkoderInstance = null
   })

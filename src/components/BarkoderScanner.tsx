@@ -16,6 +16,19 @@ function IconClose() {
   )
 }
 
+// Extract textual data from a Barkoder result in all the shapes we've seen.
+function extractBarkoderText(res: any): string {
+  if (!res) return ''
+  return (
+    res.textualData ||
+    res.text ||
+    res.textual_data ||
+    res?.data?.text ||
+    res?.results?.[0]?.textualData ||
+    ''
+  )
+}
+
 export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const barkoderRef = useRef<any>(null)
@@ -31,50 +44,105 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
 
     async function initScanner() {
       try {
-        // preloadBarkoderWasm() was already called when NewIntake mounted —
-        // if WASM is ready this resolves instantly (cached promise / singleton).
-        // ALL config (decoders, speed, ROI, etc) was applied during preload,
-        // so the scanner open path is just: set container id + startScanner().
-        const { bk: Barkoder } = await preloadBarkoderWasm()
-        if (cancelled) return
-
-        // Ensure the container div has the expected id
-        if (containerRef.current) {
-          containerRef.current.id = 'barkoder-container'
+        console.log('[scanner] mount: awaiting preload')
+        const { bk: Barkoder, SDK } = await preloadBarkoderWasm()
+        if (cancelled) {
+          console.log('[scanner] mount: cancelled after preload')
+          return
         }
+        console.log('[scanner] mount: preload resolved')
 
         barkoderRef.current = Barkoder
 
+        // Ensure the container div has the expected id (Barkoder may use it internally)
+        if (containerRef.current) {
+          containerRef.current.id = containerRef.current.id || 'barkoder-container'
+          containerRef.current.style.width = containerRef.current.style.width || '100%'
+          containerRef.current.style.height = containerRef.current.style.height || '100%'
+        }
+
+        // ── Camera: prefer back-facing on mobile ──
+        try {
+          if (typeof Barkoder.setCameraPosition === 'function') Barkoder.setCameraPosition('back')
+          else if (typeof Barkoder.setCameraFacingMode === 'function') Barkoder.setCameraFacingMode('environment')
+          else if (typeof Barkoder.setPreferredCamera === 'function') Barkoder.setPreferredCamera('environment')
+        } catch (e) { console.warn('[scanner] camera setup warn:', e) }
+
+        // ── Hide built-in UI chrome — we render our own close button ──
+        try {
+          if (typeof Barkoder.setCameraSwitchVisibility === 'function') Barkoder.setCameraSwitchVisibility(false)
+          else if (typeof Barkoder.setCameraSwitchButtonVisible === 'function') Barkoder.setCameraSwitchButtonVisible(false)
+          if (typeof Barkoder.setCloseButtonVisibility === 'function') Barkoder.setCloseButtonVisibility(false)
+          else if (typeof Barkoder.setCloseButtonVisible === 'function') Barkoder.setCloseButtonVisible(false)
+          else if (typeof Barkoder.setCloseEnabled === 'function') Barkoder.setCloseEnabled(false)
+        } catch (e) { console.warn('[scanner] ui-hide warn:', e) }
+
+        // ── Decoders: exactly the set that works in Auto Sync ──
+        // Code39 + Code128: door jamb / under-hood VIN stickers
+        // DataMatrix: modern manufacturer labels
+        // PDF417: driver's license / registration cards
+        // QR: newer dashboards / registration QRs
+        try {
+          const C = Barkoder.constants || SDK.constants || {}
+          const D = C.Decoders || C.BarcodeType || {}
+          const decodersToEnable = [D.Code39, D.Code128, D.DataMatrix, D.Datamatrix, D.PDF417, D.QR]
+            .filter((v: any) => typeof v !== 'undefined')
+          console.log('[scanner] decoders to enable:', decodersToEnable)
+          if (decodersToEnable.length && typeof Barkoder.setEnabledDecoders === 'function') {
+            Barkoder.setEnabledDecoders(...decodersToEnable)
+          }
+        } catch (e) { console.warn('[scanner] decoder setup warn:', e) }
+
         const onResult = (res: any) => {
+          console.log('[scanner] result callback fired:', res)
           try {
-            const text =
-              res?.textualData ||
-              res?.text ||
-              res?.results?.[0]?.textualData ||
-              ''
-            if (!text) return
+            if (res?.error) {
+              console.warn('[scanner] result error field:', res.error)
+              return
+            }
+            const text = extractBarkoderText(res)
+            console.log('[scanner] extracted text:', JSON.stringify(text))
+            if (!text) {
+              console.log('[scanner] no text in result, ignoring')
+              return
+            }
 
             const best = pickBestVinFromText(text)
-            if (!best?.vin) return
+            console.log('[scanner] pickBestVinFromText result:', best)
+            if (!best?.vin) {
+              console.log('[scanner] no VIN matched regex in:', text)
+              return
+            }
 
             const now = Date.now()
-            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < DUPLICATES_DELAY_MS) return
+            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < DUPLICATES_DELAY_MS) {
+              console.log('[scanner] duplicate VIN within dedup window, ignoring')
+              return
+            }
             lastVinRef.current = { vin: best.vin, ts: now }
 
-            // Pause decoding instead of stopping — instant resume on "Scan Again"
-            try { Barkoder.setPauseDecoding?.(true) } catch { /* ignore */ }
-
+            console.log('[scanner] VIN accepted, showing modal:', best.vin)
             setPendingVin(best.vin)
             setPendingVinMeta({ checksumOk: !!best.checksumOk })
-          } catch { /* ignore */ }
+          } catch (err) {
+            console.error('[scanner] onResult threw:', err)
+          }
         }
 
         onResultRef.current = onResult
         setLoading(false)
-        Barkoder.startScanner(onResult)
+
+        try {
+          console.log('[scanner] calling startScanner')
+          Barkoder.startScanner(onResult)
+          console.log('[scanner] startScanner returned')
+        } catch (e: any) {
+          console.error('[scanner] startScanner threw:', e)
+          setErrorMsg('Scanner start failed: ' + (e?.message || String(e)))
+        }
       } catch (err: any) {
         if (cancelled) return
-        console.error('[BarkoderScanner] init failed:', err)
+        console.error('[scanner] init failed:', err)
         setLoading(false)
         setErrorMsg(err?.message || 'Failed to initialize scanner')
         onFail?.()
@@ -97,13 +165,16 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
     setPendingVinMeta(null)
   }
 
-  const handleScanAgain = useCallback(() => {
+  const handleScanAgain = useCallback(async () => {
     setPendingVin('')
     setPendingVinMeta(null)
     lastVinRef.current = { vin: '', ts: 0 }
     const bk = barkoderRef.current
-    // Scanner is still running, just paused — instant resume
-    try { bk?.setPauseDecoding?.(false) } catch { /* ignore */ }
+    if (bk && onResultRef.current) {
+      try { bk.stopScanner?.() } catch { /* ignore */ }
+      await new Promise(r => setTimeout(r, 150))
+      try { bk.startScanner?.(onResultRef.current) } catch { /* ignore */ }
+    }
   }, [])
 
   const vinModalOpen = !!pendingVin
