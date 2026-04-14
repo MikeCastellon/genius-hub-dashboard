@@ -52,29 +52,61 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           else if (typeof Barkoder.setCloseEnabled === 'function') Barkoder.setCloseEnabled(false)
         } catch { /* non-critical */ }
 
-        // Enable VIN-relevant decoders using runtime constants (avoids hardcoded enum values)
+        // ── Decoder set: every realistic VIN barcode type on vehicles + docs ──
+        // Code39/128/93: door jamb stickers, under-hood labels
+        // Datamatrix: modern manufacturer labels + engine block etching (DPM)
+        // PDF417/Micro: driver's license + vehicle registration cards
+        // QR/QRMicro: some modern dashboards and registration QRs
+        // Aztec: some DMV registration systems
         try {
           const C = Barkoder.constants || SDK.constants || {}
-          const D = C.Decoders || C.BarcodeType || {}
-          const toEnable = [D.Code39, D.Code128, D.DataMatrix, D.PDF417, D.QR].filter(v => v !== undefined)
+          const D = C.Decoders || {}
+          const toEnable = [
+            D.Code39,
+            D.Code128,
+            D.Code93,
+            D.Datamatrix,
+            D.PDF417,
+            D.PDF417Micro,
+            D.QR,
+            D.QRMicro,
+            D.Aztec,
+          ].filter(v => v !== undefined)
           if (toEnable.length && typeof Barkoder.setEnabledDecoders === 'function') {
             Barkoder.setEnabledDecoders(...toEnable)
-          } else if (typeof Barkoder.setBarcodeTypeEnabled === 'function') {
-            toEnable.forEach((t: any) => Barkoder.setBarcodeTypeEnabled(t, true))
           }
         } catch { /* non-critical */ }
 
-        // ── Speed: FAST not Slow ──
-        // Slow mode (2) + FHD resolution caused ~30s detection lag.
-        // VINs are standard linear/2D codes — Fast mode is perfectly accurate.
-        // Do NOT set camera resolution — let the browser pick the optimal size.
-        try { Barkoder.setDecodingSpeed?.(0) } catch { /* ignore */ }  // 0 = Fast
+        // ── Speed optimizations ──
+        // Fast decode speed, HD (not FHD) for half the pixels per frame,
+        // stop at first result (no multi-scan), no caching overhead.
+        try { Barkoder.setDecodingSpeed?.(0) } catch { /* ignore */ }           // 0 = Fast
+        try { Barkoder.setCameraResolution?.(0) } catch { /* ignore */ }        // 0 = HD (not FHD)
+        try { Barkoder.setMaximumResultsCount?.(1) } catch { /* ignore */ }     // stop at first hit
+        try { Barkoder.setMulticodeCachingEnabled?.(0) } catch { /* ignore */ } // 0 = disabled
         try { Barkoder.setContinuous?.(true) } catch { /* ignore */ }
         try { Barkoder.setDuplicatesDelayMs?.(DUPLICATES_DELAY_MS) } catch { /* ignore */ }
 
-        // ROI + visual feedback
+        // ── VIN length constraint on 1D decoders (MAJOR speed win) ──
+        // Decoder short-circuits on wrong-length barcodes without running
+        // full pattern recognition. VINs are 17 chars; 17-25 covers
+        // VIN-prefixed variants like "VIN:1HGCM82633A004352".
+        try {
+          const C = Barkoder.constants || SDK.constants || {}
+          const D = C.Decoders || {}
+          Barkoder.setLengthRange?.(D.Code39, 17, 25)
+          Barkoder.setLengthRange?.(D.Code128, 17, 25)
+          Barkoder.setLengthRange?.(D.Code93, 17, 25)
+        } catch { /* ignore */ }
+
+        // ── Coverage for damaged/etched labels ──
+        try { Barkoder.setEnableMisshaped1D?.(1) } catch { /* ignore */ }       // worn door stickers
+        try { Barkoder.setDatamatrixDpmModeEnabled?.(true) } catch { /* ignore */ } // engine etching
+        try { Barkoder.setFormatting?.(1) } catch { /* ignore */ }              // auto-format
+
+        // ── ROI: wide horizontal strip for long linear VIN barcodes ──
         try { Barkoder.setRegionOfInterestVisible?.(true) } catch { /* ignore */ }
-        try { Barkoder.setRegionOfInterest?.(2, 20, 96, 60) } catch { /* ignore */ }
+        try { Barkoder.setRegionOfInterest?.(3, 25, 94, 50) } catch { /* ignore */ }
         try { Barkoder.setRoiLineColor?.('#60a5fa') } catch { /* ignore */ }
         try { Barkoder.setRoiOverlayBackgroundColor?.('rgba(0,0,0,0.45)') } catch { /* ignore */ }
         try { Barkoder.setLocationInPreviewEnabled?.(true) } catch { /* ignore */ }
