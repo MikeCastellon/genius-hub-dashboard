@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { pickBestVinFromText, isLikelyVin, sanitizeVin } from '@/lib/utils'
-import {
-  preloadBarkoderWasm,
-  DUPLICATES_DELAY_MS,
-  getDebugLines,
-  subscribeDebugLines,
-  clearDebugLines,
-} from '@/lib/barkoderConfig'
+import { preloadBarkoderWasm, DUPLICATES_DELAY_MS } from '@/lib/barkoderConfig'
 
 interface Props {
   onClose: () => void
@@ -36,9 +30,10 @@ function extractBarkoderText(res: any): string {
 }
 
 // Known-valid demo VIN: 2003 Honda Accord EX, passes VIN checksum,
-// decodes cleanly via NHTSA. Used when Barkoder runs in unlicensed
-// demo mode and watermarks the scan output, so the user can still
-// test the entire downstream intake flow.
+// decodes cleanly via NHTSA. Used as a graceful fallback if Barkoder
+// ever reverts to unlicensed demo mode (expired/revoked license) —
+// the scanner still functions for downstream testing instead of
+// silently breaking.
 const DEMO_TEST_VIN = '1HGCM82633A004352'
 
 export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) {
@@ -52,43 +47,14 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
   const [unlicensedSample, setUnlicensedSample] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  const [debugOpen, setDebugOpen] = useState(true)
-
-  // Live debug log — re-renders whenever a new [scanner]/[barkoder] log arrives.
-  const debugLines = useSyncExternalStore(
-    subscribeDebugLines,
-    getDebugLines,
-    getDebugLines
-  )
 
   useEffect(() => {
     let cancelled = false
-    clearDebugLines()
-    console.log('[scanner] component mounted, UA=', navigator.userAgent.slice(0, 80))
-    console.log('[scanner] getUserMedia available?', !!navigator.mediaDevices?.getUserMedia)
-    console.log('[scanner] secure context?', window.isSecureContext)
-
-    // Catch any uncaught errors/rejections that happen during scanning
-    // (Barkoder internals, event handlers, etc) so they appear in the panel.
-    const onErr = (ev: ErrorEvent) => {
-      console.error('[scanner] window error:', ev.message, ev.filename + ':' + ev.lineno)
-    }
-    const onRej = (ev: PromiseRejectionEvent) => {
-      const reason: any = ev.reason
-      console.error('[scanner] unhandled rejection:', reason?.message || String(reason))
-    }
-    window.addEventListener('error', onErr)
-    window.addEventListener('unhandledrejection', onRej)
 
     async function initScanner() {
       try {
-        console.log('[scanner] mount: awaiting preload')
         const { bk: Barkoder, SDK } = await preloadBarkoderWasm()
-        if (cancelled) {
-          console.log('[scanner] mount: cancelled after preload')
-          return
-        }
-        console.log('[scanner] mount: preload resolved')
+        if (cancelled) return
 
         barkoderRef.current = Barkoder
 
@@ -104,7 +70,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           if (typeof Barkoder.setCameraPosition === 'function') Barkoder.setCameraPosition('back')
           else if (typeof Barkoder.setCameraFacingMode === 'function') Barkoder.setCameraFacingMode('environment')
           else if (typeof Barkoder.setPreferredCamera === 'function') Barkoder.setPreferredCamera('environment')
-        } catch (e) { console.warn('[scanner] camera setup warn:', e) }
+        } catch { /* non-critical */ }
 
         // ── Hide built-in UI chrome — we render our own close button ──
         try {
@@ -113,7 +79,7 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           if (typeof Barkoder.setCloseButtonVisibility === 'function') Barkoder.setCloseButtonVisibility(false)
           else if (typeof Barkoder.setCloseButtonVisible === 'function') Barkoder.setCloseButtonVisible(false)
           else if (typeof Barkoder.setCloseEnabled === 'function') Barkoder.setCloseEnabled(false)
-        } catch (e) { console.warn('[scanner] ui-hide warn:', e) }
+        } catch { /* non-critical */ }
 
         // ── Decoders: exactly the set that works in Auto Sync ──
         // Code39 + Code128: door jamb / under-hood VIN stickers
@@ -125,89 +91,52 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           const D = C.Decoders || C.BarcodeType || {}
           const decodersToEnable = [D.Code39, D.Code128, D.DataMatrix, D.Datamatrix, D.PDF417, D.QR]
             .filter((v: any) => typeof v !== 'undefined')
-          console.log('[scanner] decoders to enable:', decodersToEnable)
           if (decodersToEnable.length && typeof Barkoder.setEnabledDecoders === 'function') {
             Barkoder.setEnabledDecoders(...decodersToEnable)
           }
-        } catch (e) { console.warn('[scanner] decoder setup warn:', e) }
+        } catch { /* non-critical */ }
 
         const onResult = (res: any) => {
-          console.log('[scanner] result callback fired:', res)
           try {
-            if (res?.error) {
-              console.warn('[scanner] result error field:', res.error)
-              return
-            }
+            if (res?.error) return
             const text = extractBarkoderText(res)
-            console.log('[scanner] extracted text:', JSON.stringify(text))
-            if (!text) {
-              console.log('[scanner] no text in result, ignoring')
-              return
-            }
+            if (!text) return
 
-            // ── Unlicensed demo-mode detection ──
-            // If Barkoder's server rejected the license, the SDK replaces
-            // real barcode text with a "(Unlicensed) ..." watermark. No
-            // VIN can ever be parsed from that. Pop a demo modal with a
-            // test VIN so the user can exercise the downstream intake
-            // flow while we wait for a valid license from Barkoder.
+            // ── Unlicensed demo-mode fallback ──
+            // If Barkoder's server ever rejects the license, the SDK
+            // replaces real barcode text with a "(Unlicensed) ..."
+            // watermark. No VIN can ever be parsed from that. Pop a
+            // demo modal with a test VIN so the user can still exercise
+            // the downstream intake flow instead of silently hanging.
             if (/unlicensed/i.test(text)) {
-              console.warn('[scanner] unlicensed demo mode detected, offering test VIN')
-              if (!unlicensedDetected) {
-                setUnlicensedDetected(true)
-                setUnlicensedSample(text)
-              }
+              setUnlicensedDetected((v) => {
+                if (!v) setUnlicensedSample(text)
+                return true
+              })
               return
             }
 
             const best = pickBestVinFromText(text)
-            console.log('[scanner] pickBestVinFromText result:', best)
-            if (!best?.vin) {
-              console.log('[scanner] no VIN matched regex in:', text)
-              return
-            }
+            if (!best?.vin) return
 
             const now = Date.now()
-            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < DUPLICATES_DELAY_MS) {
-              console.log('[scanner] duplicate VIN within dedup window, ignoring')
-              return
-            }
+            if (lastVinRef.current.vin === best.vin && now - lastVinRef.current.ts < DUPLICATES_DELAY_MS) return
             lastVinRef.current = { vin: best.vin, ts: now }
 
-            console.log('[scanner] VIN accepted, showing modal:', best.vin)
             setPendingVin(best.vin)
             setPendingVinMeta({ checksumOk: !!best.checksumOk })
-          } catch (err) {
-            console.error('[scanner] onResult threw:', err)
-          }
+          } catch { /* ignore transient result errors */ }
         }
 
         onResultRef.current = onResult
         setLoading(false)
 
         try {
-          console.log('[scanner] calling startScanner')
           Barkoder.startScanner(onResult)
-          console.log('[scanner] startScanner returned')
         } catch (e: any) {
-          console.error('[scanner] startScanner threw:', e?.message || String(e))
+          console.error('[scanner] startScanner failed:', e?.message || String(e))
           setErrorMsg('Scanner start failed: ' + (e?.message || String(e)))
         }
-
-        // Probe where Barkoder mounted its video element
-        setTimeout(() => {
-          if (cancelled) return
-          const containerVideo = containerRef.current?.querySelector('video')
-          const anyVideo = document.querySelector('video')
-          if (containerVideo) {
-            const s = containerVideo as HTMLVideoElement
-            console.log('[scanner] video in container:', s.videoWidth + 'x' + s.videoHeight, 'readyState=' + s.readyState, 'paused=' + s.paused)
-          } else if (anyVideo) {
-            console.warn('[scanner] video NOT in container, found elsewhere. parent=', anyVideo.parentElement?.tagName, anyVideo.parentElement?.id || '(no id)')
-          } else {
-            console.error('[scanner] NO video element in DOM after 1.2s')
-          }
-        }, 1200)
       } catch (err: any) {
         if (cancelled) return
         console.error('[scanner] init failed:', err?.message || String(err))
@@ -221,8 +150,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
 
     return () => {
       cancelled = true
-      window.removeEventListener('error', onErr)
-      window.removeEventListener('unhandledrejection', onRej)
       try { barkoderRef.current?.stopScanner?.() } catch { /* ignore */ }
     }
   }, [onFail])
@@ -280,26 +207,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
       </div>
 
       {errorMsg && <div className="sc-error">{errorMsg}</div>}
-
-      {/* On-screen debug panel — mobile-friendly alternative to DevTools */}
-      <div className={debugOpen ? 'sc-debug sc-debug--open' : 'sc-debug'}>
-        <div className="sc-debug-header">
-          <span>debug ({debugLines.length})</span>
-          <button type="button" onClick={() => setDebugOpen((v) => !v)}>
-            {debugOpen ? 'hide' : 'show'}
-          </button>
-        </div>
-        {debugOpen && (
-          <div className="sc-debug-body">
-            {debugLines.length === 0 && <div className="sc-debug-empty">no logs yet…</div>}
-            {debugLines.map((line, i) => (
-              <div key={i} className={'sc-debug-line sc-debug-' + line.level}>
-                {line.text}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {vinModalOpen && (
         <div className="sc-result">
@@ -476,51 +383,6 @@ export default function BarkoderScanner({ onClose, onDetected, onFail }: Props) 
           font-size: 0.7rem;
           color: #78350f;
         }
-
-        /* Debug panel */
-        .sc-debug {
-          position: absolute;
-          left: 8px; right: 8px;
-          top: calc(env(safe-area-inset-top, 12px) + 64px);
-          max-height: 55vh;
-          background: rgba(0, 0, 0, 0.82);
-          color: #e5e7eb;
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 10px;
-          font-family: ui-monospace, Menlo, monospace;
-          font-size: 10.5px;
-          line-height: 1.35;
-          z-index: 20;
-          overflow: hidden;
-          pointer-events: auto;
-        }
-        .sc-debug-header {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 6px 10px;
-          background: rgba(255,255,255,0.08);
-          border-bottom: 1px solid rgba(255,255,255,0.12);
-          font-weight: 700; letter-spacing: 0.03em;
-        }
-        .sc-debug-header button {
-          background: rgba(255,255,255,0.15); color: #fff;
-          border: none; border-radius: 6px;
-          padding: 3px 10px; font-size: 10.5px; font-weight: 700;
-          cursor: pointer;
-        }
-        .sc-debug-body {
-          padding: 6px 10px;
-          overflow-y: auto;
-          max-height: calc(55vh - 32px);
-        }
-        .sc-debug-empty { color: rgba(255,255,255,0.4); font-style: italic; }
-        .sc-debug-line {
-          word-break: break-word;
-          padding: 2px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .sc-debug-log { color: #e5e7eb; }
-        .sc-debug-warn { color: #fbbf24; }
-        .sc-debug-error { color: #f87171; font-weight: 600; }
       `}</style>
     </div>
   )
