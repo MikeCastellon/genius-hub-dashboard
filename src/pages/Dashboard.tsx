@@ -985,7 +985,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div>
       {/* Sticky Header + Search */}
       <div className="sticky top-0 z-20 bg-[#f5f5f5]/95 backdrop-blur-md px-4 md:px-6 pt-4 md:pt-6 pb-3">
         <div className="flex items-center justify-between mb-4">
